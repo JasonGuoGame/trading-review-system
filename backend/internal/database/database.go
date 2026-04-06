@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"trading-review-system/backend/internal/config"
+	"trading-review-system/backend/internal/models"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -37,6 +38,22 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// Auto Migrate
+	err = db.AutoMigrate(
+		&models.Trade{},
+		&models.Order{},
+		&models.EntryDecision{},
+		&models.ExitPlan{},
+		&models.Tag{},
+		&models.TradeTag{},
+		&models.Review{},
+		&models.DailyReview{},
+		&models.MarketBreadth{},
+	)
+	if err != nil {
+		log.Printf("Warning: failed to auto migrate: %v", err)
+	}
 
 	log.Println("Database connected successfully")
 	return db, nil

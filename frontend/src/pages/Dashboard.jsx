@@ -17,8 +17,10 @@ import {
   useGetEquityCurveQuery,
   useGetWinRateQuery,
   useGetRecentTradesQuery,
+  useGetMarketBreadthQuery,
 } from '../app/api'
 import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor } from '../utils/format'
+import dayjs from 'dayjs'
 
 const COLORS = ['#52c41a', '#1677ff', '#faad14', '#ff4d4f']
 
@@ -27,6 +29,10 @@ function Dashboard() {
   const { data: equityCurve, isLoading: loadingEquity } = useGetEquityCurveQuery()
   const { data: winRate, isLoading: loadingWinRate } = useGetWinRateQuery()
   const { data: recentTrades, isLoading: loadingRecent } = useGetRecentTradesQuery()
+  
+  const todayDateStr = dayjs().format('YYYY-MM-DD')
+  const { data: breadthData, isLoading: loadingBreadth } = useGetMarketBreadthQuery(todayDateStr)
+
   const navigate = useNavigate()
 
   const recentColumns = [
@@ -57,13 +63,49 @@ function Dashboard() {
     },
   ]
 
+  const renderMarketBreadth = () => {
+    if (loadingBreadth) return <Spin />
+    if (!breadthData) return <Empty description="今日市场宽度未录入" />
+    
+    const up = breadthData.advancers || 0
+    const down = breadthData.decliners || 0
+    const flat = breadthData.flat || 0
+    const total = up + down + flat
+    const ratio = total > 0 ? (up / total * 100).toFixed(1) : 0
+    const upDownRatio = down > 0 ? (up / down).toFixed(1) : up > 0 ? '∞' : 0
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>上涨：<strong>{up}</strong> 🟢</span>
+          <span>下跌：<strong>{down}</strong> 🔴</span>
+          <span>平盘：<strong>{flat}</strong></span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#999' }}>
+          <span>上涨占比：<strong>{ratio}%</strong></span>
+          <span>涨跌比：<strong>{upDownRatio}</strong></span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>🔥 涨停：<strong>{breadthData.limit_up || 0}</strong></span>
+          <span>❄️ 跌停：<strong>{breadthData.limit_down || 0}</strong></span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-container">
       <h2 style={{ marginBottom: 24, fontSize: 24, fontWeight: 600 }}>📊 仪表盘</h2>
 
-      {/* Summary Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} lg={6}>
+          <Card title="今日市场情绪" bodyStyle={{ padding: '20px 24px' }}>
+            {renderMarketBreadth()}
+          </Card>
+        </Col>
+        <Col xs={24} lg={18}>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} lg={6}>
           <Card className={summary?.total_pnl >= 0 ? 'stat-card-profit' : 'stat-card-loss'}>
             <Statistic
               title="总收益"
@@ -112,6 +154,8 @@ function Dashboard() {
               loading={loadingSummary}
             />
           </Card>
+        </Col>
+          </Row>
         </Col>
       </Row>
 

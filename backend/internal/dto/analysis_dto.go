@@ -34,3 +34,14 @@ type ExecutionStat struct {
 	AvgPnl   float64 `json:"avg_pnl"`
 	TotalPnl float64 `json:"total_pnl"`
 }
+
+type EmotionStat struct {
+	Date         string  `json:"date"`
+	EmotionScore int     `json:"emotion_score"`
+	TotalProfit  float64 `json:"total_profit"`
+}
+
+type MistakeStat struct {
+	Mistake string `json:"mistake"`
+	Count   int    `json:"count"`
+}

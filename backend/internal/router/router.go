@@ -67,7 +67,17 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			analysis.GET("/tags", handlers.Analysis.GetTagStats)
 			analysis.GET("/market", handlers.Analysis.GetMarketStats)
 			analysis.GET("/execution", handlers.Analysis.GetExecutionStats)
+			analysis.GET("/emotion", handlers.Analysis.GetEmotionStats)
+			analysis.GET("/mistakes", handlers.Analysis.GetMistakeStats)
 		}
+
+		// Daily Reviews
+		api.GET("/daily-reviews/:date", handlers.DailyReview.GetByDate)
+		api.PUT("/daily-reviews/:date", handlers.DailyReview.Upsert)
+
+		// Market Breadth
+		api.GET("/market-breadth/:date", handlers.MarketBreadth.GetByDate)
+		api.PUT("/market-breadth/:date", handlers.MarketBreadth.Upsert)
 	}
 
 	return r

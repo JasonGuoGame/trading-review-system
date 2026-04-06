@@ -9,6 +9,8 @@ type Repositories struct {
 	Review        *ReviewRepository
 	EntryDecision *EntryDecisionRepository
 	ExitPlan      *ExitPlanRepository
+	DailyReview   *DailyReviewRepository
+	MarketBreadth *MarketBreadthRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -19,5 +21,7 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Review:        NewReviewRepository(db),
 		EntryDecision: NewEntryDecisionRepository(db),
 		ExitPlan:      NewExitPlanRepository(db),
+		DailyReview:   NewDailyReviewRepository(db),
+		MarketBreadth: NewMarketBreadthRepository(db),
 	}
 }

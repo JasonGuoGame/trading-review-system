@@ -197,6 +197,54 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
       providesTags: ['Analysis'],
     }),
+
+    getEmotionAnalysis: builder.query({
+      query: () => '/analysis/emotion',
+      transformResponse: (res) => res.data,
+      providesTags: ['Analysis'],
+    }),
+
+    getMistakeAnalysis: builder.query({
+      query: () => '/analysis/mistakes',
+      transformResponse: (res) => res.data,
+      providesTags: ['Analysis'],
+    }),
+
+    // === Daily Review ===
+    getDailyReview: builder.query({
+      query: (date) => `/daily-reviews/${date}`,
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, arg) => [{ type: 'DailyReview', id: arg }],
+    }),
+    upsertDailyReview: builder.mutation({
+      query: ({ date, ...body }) => ({
+        url: `/daily-reviews/${date}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { date }) => [
+        { type: 'DailyReview', id: date },
+        'Analysis',
+      ],
+    }),
+
+    // === Market Breadth ===
+    getMarketBreadth: builder.query({
+      query: (date) => `/market-breadth/${date}`,
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg }],
+    }),
+    upsertMarketBreadth: builder.mutation({
+      query: ({ date, ...body }) => ({
+        url: `/market-breadth/${date}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { date }) => [
+        { type: 'MarketBreadth', id: date },
+        'Dashboard', // Since dashboard will show market breadth
+      ],
+    }),
   }),
 })
 
@@ -223,4 +271,10 @@ export const {
   useGetTagAnalysisQuery,
   useGetMarketAnalysisQuery,
   useGetExecutionAnalysisQuery,
+  useGetEmotionAnalysisQuery,
+  useGetMistakeAnalysisQuery,
+  useGetDailyReviewQuery,
+  useUpsertDailyReviewMutation,
+  useGetMarketBreadthQuery,
+  useUpsertMarketBreadthMutation,
 } = apiSlice

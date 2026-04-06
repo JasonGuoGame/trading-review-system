@@ -56,3 +56,23 @@ func (h *AnalysisHandler) GetExecutionStats(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
+
+// GET /api/analysis/emotion
+func (h *AnalysisHandler) GetEmotionStats(c *gin.Context) {
+	data, err := h.service.GetEmotionStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: "Failed to get emotion stats"})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}
+
+// GET /api/analysis/mistakes
+func (h *AnalysisHandler) GetMistakeStats(c *gin.Context) {
+	data, err := h.service.GetMistakeStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: "Failed to get mistake stats"})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}

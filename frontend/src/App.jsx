@@ -5,17 +5,20 @@ import {
   UnorderedListOutlined,
   PlusCircleOutlined,
   BarChartOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
 import TradeDetail from './pages/TradeDetail'
 import TradeForm from './pages/TradeForm'
 import Analysis from './pages/Analysis'
+import DailyReview from './pages/DailyReview'
 
 const { Sider, Content } = Layout
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
+  { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
@@ -76,6 +79,7 @@ function App() {
         <Content style={{ minHeight: '100vh' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/daily-review" element={<DailyReview />} />
             <Route path="/trades" element={<Trades />} />
             <Route path="/trades/new" element={<TradeForm />} />
             <Route path="/trades/:id" element={<TradeDetail />} />

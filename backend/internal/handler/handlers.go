@@ -7,17 +7,21 @@ type Handlers struct {
 	Order     *OrderHandler
 	Tag       *TagHandler
 	Review    *ReviewHandler
-	Dashboard *DashboardHandler
-	Analysis  *AnalysisHandler
+	Dashboard     *DashboardHandler
+	Analysis      *AnalysisHandler
+	DailyReview   *DailyReviewHandler
+	MarketBreadth *MarketBreadthHandler
 }
 
 func NewHandlers(services *service.Services) *Handlers {
 	return &Handlers{
-		Trade:     NewTradeHandler(services.Trade),
-		Order:     NewOrderHandler(services.Order),
-		Tag:       NewTagHandler(services.Tag),
-		Review:    NewReviewHandler(services.Trade),
-		Dashboard: NewDashboardHandler(services.Dashboard),
-		Analysis:  NewAnalysisHandler(services.Analysis),
+		Trade:         NewTradeHandler(services.Trade),
+		Order:         NewOrderHandler(services.Order),
+		Tag:           NewTagHandler(services.Tag),
+		Review:        NewReviewHandler(services.Trade),
+		Dashboard:     NewDashboardHandler(services.Dashboard),
+		Analysis:      NewAnalysisHandler(services.Analysis),
+		DailyReview:   NewDailyReviewHandler(services.DailyReview),
+		MarketBreadth: NewMarketBreadthHandler(services.MarketBreadth),
 	}
 }

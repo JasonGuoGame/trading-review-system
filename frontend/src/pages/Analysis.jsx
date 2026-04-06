@@ -8,7 +8,10 @@ import {
   useGetTagAnalysisQuery,
   useGetMarketAnalysisQuery,
   useGetExecutionAnalysisQuery,
+  useGetEmotionAnalysisQuery,
+  useGetMistakeAnalysisQuery,
 } from '../app/api'
+import { LineChart, Line } from 'recharts'
 
 const COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2', '#eb2f96']
 
@@ -17,6 +20,8 @@ function Analysis() {
   const { data: tags, isLoading: loadingTags } = useGetTagAnalysisQuery()
   const { data: market, isLoading: loadingMarket } = useGetMarketAnalysisQuery()
   const { data: execution, isLoading: loadingExec } = useGetExecutionAnalysisQuery()
+  const { data: emotionData, isLoading: loadingEmotion } = useGetEmotionAnalysisQuery()
+  const { data: mistakeData, isLoading: loadingMistakes } = useGetMistakeAnalysisQuery()
 
   const signalColumns = [
     { title: '信号', dataIndex: 'signal', key: 'signal' },
@@ -225,6 +230,63 @@ function Analysis() {
               </>
             ) : (
               <Empty description="暂无执行数据" style={{ padding: 40 }} />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        {/* Mistakes Analysis */}
+        <Col xs={24} lg={12}>
+          <Card title="❌ 错误统计 — 避免同样错误">
+            {loadingMistakes ? (
+              <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div>
+            ) : mistakeData?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={mistakeData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    dataKey="count"
+                    nameKey="mistake"
+                    label={({ mistake, count }) => `${mistake}: ${count}`}
+                  >
+                    {mistakeData.map((_, idx) => (
+                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: '#1f1f1f', border: '1px solid #333', borderRadius: 8 }} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <Empty description="暂无错误统计" style={{ padding: 40 }} />
+            )}
+          </Card>
+        </Col>
+
+        {/* Emotion vs Profit Analysis */}
+        <Col xs={24} lg={12}>
+          <Card title="🧠 情绪 VS 盈利 — 情绪控制才是核心">
+            {loadingEmotion ? (
+              <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div>
+            ) : emotionData?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={emotionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                  <YAxis yAxisId="left" stroke="#666" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#666" domain={[0, 10]} />
+                  <Tooltip contentStyle={{ background: '#1f1f1f', border: '1px solid #333', borderRadius: 8 }} />
+                  <Legend />
+                  <Bar yAxisId="left" type="monotone" dataKey="total_profit" name="当日盈亏($)" fill="#1677ff" barSize={20} />
+                  <Line yAxisId="right" type="monotone" dataKey="emotion_score" name="情绪分" stroke="#faad14" strokeWidth={3} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <Empty description="暂无情绪数据" style={{ padding: 40 }} />
             )}
           </Card>
         </Col>

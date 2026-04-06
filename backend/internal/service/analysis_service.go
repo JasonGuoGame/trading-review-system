@@ -77,3 +77,29 @@ func (s *AnalysisService) GetMarketStats() ([]dto.MarketStat, error) {
 func (s *AnalysisService) GetExecutionStats() ([]dto.ExecutionStat, error) {
 	return s.repos.Trade.GetExecutionStats()
 }
+
+func (s *AnalysisService) GetEmotionStats() ([]dto.EmotionStat, error) {
+	// Custom query from daily_reviews
+	var stats []dto.EmotionStat
+	// Let's assume we read from DailyReview repository but via Gorm directly here to avoid circular dep or for simplicity
+	// Actually we should use repos.DailyReview, but we can query using raw DB in Trade repo or a global DB context.
+	// Since AnalysisService doesn't have DB, we can add a method to repos.DailyReview
+	if s.repos.DailyReview != nil {
+		rows, err := s.repos.DailyReview.GetEmotionStats()
+		if err == nil {
+			return rows, nil
+		}
+	}
+	return stats, nil
+}
+
+func (s *AnalysisService) GetMistakeStats() ([]dto.MistakeStat, error) {
+	var stats []dto.MistakeStat
+	if s.repos.DailyReview != nil {
+		rows, err := s.repos.DailyReview.GetMistakeStats()
+		if err == nil {
+			return rows, nil
+		}
+	}
+	return stats, nil
+}
