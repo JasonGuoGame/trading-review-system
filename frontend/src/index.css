@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Custom Ant Design overrides for dark trading theme */
+.ant-layout-sider {
+  background: linear-gradient(180deg, #0d1117 0%, #161b22 100%) !important;
+  border-right: 1px solid #21262d;
+}
+
+.ant-menu-dark {
+  background: transparent !important;
+}
+
+.ant-card {
+  transition: all 0.3s ease;
+}
+.ant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Stat cards glow effect */
+.stat-card-profit {
+  border-left: 3px solid #52c41a;
+}
+.stat-card-loss {
+  border-left: 3px solid #ff4d4f;
+}
+.stat-card-neutral {
+  border-left: 3px solid #1677ff;
+}
+
+/* Timeline custom */
+.order-timeline .ant-timeline-item-content {
+  padding-bottom: 16px;
+}
+
+/* Tag colors */
+.tag-error { color: #ff4d4f; border-color: #ff4d4f; }
+.tag-strategy { color: #1677ff; border-color: #1677ff; }
+.tag-setup { color: #722ed1; border-color: #722ed1; }
+
+/* Profit/Loss colors */
+.pnl-positive { color: #52c41a; font-weight: 600; }
+.pnl-negative { color: #ff4d4f; font-weight: 600; }
+.pnl-zero { color: #8c8c8c; }
+
+/* Score badges */
+.score-A { color: #52c41a; background: rgba(82, 196, 26, 0.1); border: 1px solid rgba(82, 196, 26, 0.3); }
+.score-B { color: #1677ff; background: rgba(22, 119, 255, 0.1); border: 1px solid rgba(22, 119, 255, 0.3); }
+.score-C { color: #faad14; background: rgba(250, 173, 20, 0.1); border: 1px solid rgba(250, 173, 20, 0.3); }
+.score-D { color: #ff4d4f; background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); }
+
+/* Page transitions */
+.page-container {
+  padding: 24px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Recharts custom */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #262626;
+}
