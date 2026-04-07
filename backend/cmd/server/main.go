@@ -27,6 +27,11 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	// Run seeder
+	if err := database.Seed(db); err != nil {
+		log.Fatalf("Failed to seed database: %v", err)
+	}
+
 	// Initialize layers
 	repos := repository.NewRepositories(db)
 	services := service.NewServices(repos)

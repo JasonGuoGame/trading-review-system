@@ -11,16 +11,9 @@ import {
   useUpsertMarketBreadthMutation,
 } from '../app/api'
 
-const { TextArea } = Input
+import { TagSelector } from '../components/TagSelector'
 
-const mistakesOptions = [
-  { label: '追高', value: '追高' },
-  { label: '止损失败', value: '止损失败' },
-  { label: '过早下车', value: '过早下车' },
-  { label: '仓位过重', value: '仓位过重' },
-  { label: '频繁交易', value: '频繁交易' },
-  { label: '逆势做多/空', value: '逆势' },
-]
+const { TextArea } = Input
 
 function DailyReview() {
   const [selectedDate, setSelectedDate] = useState(dayjs())
@@ -41,15 +34,22 @@ function DailyReview() {
   useEffect(() => {
     if (reviewData) {
       let mistakes = []
+      let sysTags = []
       try {
         mistakes = typeof reviewData.mistakes === 'string' ? JSON.parse(reviewData.mistakes) : (reviewData.mistakes || [])
       } catch (e) {
         mistakes = []
       }
+      try {
+        sysTags = typeof reviewData.tags === 'string' ? JSON.parse(reviewData.tags) : (reviewData.tags || [])
+      } catch (e) {
+        sysTags = []
+      }
 
       reviewForm.setFieldsValue({
         ...reviewData,
         mistakes,
+        tags: sysTags,
       })
     } else {
       reviewForm.resetFields()
@@ -71,6 +71,7 @@ function DailyReview() {
         ...values,
         date: dateStr,
         mistakes: JSON.stringify(values.mistakes || []),
+        tags: JSON.stringify(values.tags || []),
       }
       await upsertReview(payload).unwrap()
       message.success('每日复盘保存成功')
@@ -251,12 +252,20 @@ function DailyReview() {
                     </Form.Item>
                   </Col>
                   <Col span={24}>
+                    <Form.Item label="今日系统标签" name="tags">
+                      <TagSelector
+                        placeholder="盘面环境、情绪打标（例如：强势市场、普涨）"
+                        allowedCategories={['market', 'emotion', 'result', 'industry']}
+                        maxCount={5}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={24}>
                     <Form.Item label="错误记录" name="mistakes">
-                      <Select
-                        mode="multiple"
-                        allowClear
+                      <TagSelector
                         placeholder="今天犯了什么错？"
-                        options={mistakesOptions}
+                        allowedCategories={['mistake']}
+                        maxCount={5}
                       />
                     </Form.Item>
                   </Col>

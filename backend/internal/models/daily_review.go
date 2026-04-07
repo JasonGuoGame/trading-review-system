@@ -22,6 +22,9 @@ type DailyReview struct {
 	// Mistakes
 	Mistakes        JSON      `gorm:"type:json" json:"mistakes"`
 
+	// Tags (System presets for environment, emotion, etc)
+	Tags            JSON      `gorm:"type:json" json:"tags"`
+
 	// Emotion & Discipline
 	EmotionScore    int       `json:"emotion_score"`
 	DisciplineScore int       `json:"discipline_score"`

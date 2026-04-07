@@ -8,5 +8,6 @@ type Tag struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `gorm:"size:50;not null;uniqueIndex" json:"name"`
 	Category  string    `gorm:"size:30" json:"category"`
+	IsSystem  bool      `gorm:"default:false" json:"is_system"`
 	CreatedAt time.Time `json:"created_at"`
 }

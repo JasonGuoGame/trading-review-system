@@ -10,6 +10,7 @@ import {
 import { useState } from 'react'
 import { useGetTradeDetailQuery, useDeleteTradeMutation, useUpsertReviewMutation, useSetTradeTagsMutation, useGetTagsQuery, useCreateOrderMutation } from '../app/api'
 import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor, getOrderColor, getOrderLabel } from '../utils/format'
+import { TagSelector, getTagColor } from '../components/TagSelector'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -26,7 +27,7 @@ function TradeDetail() {
   const [reviewModal, setReviewModal] = useState(false)
   const [reviewForm, setReviewForm] = useState({})
   const [tagModal, setTagModal] = useState(false)
-  const [selectedTagIds, setSelectedTagIds] = useState([])
+  const [selectedTagNames, setSelectedTagNames] = useState([])
 
   const [createOrder] = useCreateOrderMutation()
   const [buyModal, setBuyModal] = useState(false)
@@ -80,13 +81,14 @@ function TradeDetail() {
   }
 
   const openTagModal = () => {
-    setSelectedTagIds(tags?.map((t) => t.id) || [])
+    setSelectedTagNames(tags?.map((t) => t.name) || [])
     setTagModal(true)
   }
 
   const handleTagSave = async () => {
     try {
-      await setTradeTags({ tradeId: id, tag_ids: selectedTagIds }).unwrap()
+      const tag_ids = selectedTagNames.map(name => allTags.find(t => t.name === name)?.id).filter(Boolean)
+      await setTradeTags({ tradeId: id, tag_ids }).unwrap()
       message.success('标签已更新')
       setTagModal(false)
     } catch {
@@ -345,10 +347,10 @@ function TradeDetail() {
                 {tags.map((tag) => (
                   <Tag
                     key={tag.id}
-                    color={tag.category === '错误' ? 'red' : tag.category === '策略' ? 'blue' : tag.category === '心态' ? 'purple' : 'default'}
+                    color={getTagColor(tag.category)}
                     style={{ fontSize: 14, padding: '4px 12px' }}
                   >
-                    {tag.name}
+                    {tag.name} {tag.category === 'mistake' && '❌'}
                   </Tag>
                 ))}
               </Space>
@@ -443,25 +445,19 @@ function TradeDetail() {
         onCancel={() => setTagModal(false)}
         okText="保存"
         cancelText="取消"
+        width={500}
       >
-        <Space wrap>
-          {allTags?.map((tag) => (
-            <Tag
-              key={tag.id}
-              color={selectedTagIds.includes(tag.id) ? 'blue' : 'default'}
-              style={{ cursor: 'pointer', fontSize: 14, padding: '4px 12px' }}
-              onClick={() => {
-                setSelectedTagIds((prev) =>
-                  prev.includes(tag.id)
-                    ? prev.filter((id) => id !== tag.id)
-                    : [...prev, tag.id]
-                )
-              }}
-            >
-              {tag.name}
-            </Tag>
-          ))}
-        </Space>
+        <div style={{ padding: '20px 0', minHeight: 200 }}>
+          <TagSelector
+            value={selectedTagNames}
+            onChange={setSelectedTagNames}
+            maxCount={5}
+            allowedCategories={['strategy', 'mistake', 'industry', 'emotion']}
+          />
+          <div style={{ marginTop: 12, color: '#888', fontSize: 13 }}>
+            每笔交易最多标记 5 个核心要素 (建议优先标注 策略、主线 与 错误)。
+          </div>
+        </div>
       </Modal>
 
       {/* Buy Order Modal */}
