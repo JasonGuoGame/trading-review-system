@@ -46,6 +46,7 @@ func (r *DailyReviewRepository) Upsert(review *models.DailyReview) error {
 	}
 
 	review.ID = existing.ID
+	review.CreatedAt = existing.CreatedAt
 	return r.db.Save(review).Error
 }
 

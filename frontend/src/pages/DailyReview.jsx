@@ -70,8 +70,8 @@ function DailyReview() {
       const payload = {
         ...values,
         date: dateStr,
-        mistakes: JSON.stringify(values.mistakes || []),
-        tags: JSON.stringify(values.tags || []),
+        mistakes: values.mistakes || [],
+        tags: values.tags || [],
       }
       await upsertReview(payload).unwrap()
       message.success('每日复盘保存成功')

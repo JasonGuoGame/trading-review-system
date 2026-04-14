@@ -1,0 +1,50 @@
+﻿[0m[33m[2.598ms] [34;1m[rows:0][0m UPDATE `daily_reviews` SET `date`='2026-04-10 00:00:00',`market_trend`='uptrend',`market_phase`='',`main_theme`='璇佸埜',`money_effect`='bad',`total_trades`=0,`total_profit`=0,`win_rate`=0,`mistakes`='"[]"',`tags`='null',`emotion_score`=5,`discipline_score`=5,`emotion_notes`='',`plan`='瑙傚療閿傛澘鍧楋紝鍥藉闃熸媺鍗囪瘉鍒搞€傛病浜鸿兘棰勬祴',`focus_stocks`='铻嶆嵎鑲′唤锛岀洓鏂伴攤鑳斤紝璧ｉ攱閿備笟 002787.SZ 600337.SH 001299.SZ 003019.SZ  603230.SH  600929.SH
+605338.SH 
+001211.SZ 30.68 ',`risk_points`='铻嶆嵎鑲′唤锛岀洓鏂伴攤鑳斤紝璧ｉ攱閿備笟 002787.SZ 600337.SH 001299.SZ 003019.SZ  603230.SH  600929.SH
+605338.SH 
+001211.SZ 30.68 ',`created_at`='0000-00-00 00:00:00' WHERE `id` = 3
+[GIN] 2026/04/10 - 21:18:53 | 500 |    5.315811ms |      172.18.0.1 | PUT      "/api/daily-reviews/2026-04-10"
+
+2026/04/10 21:18:54 [32m/app/internal/repository/daily_review_repo.go:25
+[0m[33m[1.712ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-10 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+[GIN] 2026/04/10 - 21:18:54 | 200 |    1.929323ms |      172.18.0.1 | GET      "/api/daily-reviews/2026-04-10"
+
+2026/04/10 21:19:24 [32m/app/internal/repository/daily_review_repo.go:25
+[0m[33m[2.108ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-08 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+[GIN] 2026/04/10 - 21:19:24 | 200 |    2.397271ms |      172.18.0.1 | GET      "/api/daily-reviews/2026-04-08"
+
+2026/04/10 21:19:24 [32m/app/internal/repository/market_breadth_repo.go:22
+[0m[33m[1.717ms] [34;1m[rows:1][0m SELECT * FROM `market_breadths` WHERE trade_date = '2026-04-08 00:00:00' ORDER BY `market_breadths`.`id` LIMIT 1
+[GIN] 2026/04/10 - 21:19:24 | 200 |    2.032894ms |      172.18.0.1 | GET      "/api/market-breadth/2026-04-08"
+
+2026/04/10 21:19:40 [32m/app/internal/repository/daily_review_repo.go:40
+[0m[33m[2.377ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-08 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+
+2026/04/10 21:19:40 [31;1m/app/internal/repository/daily_review_repo.go:49 [35;1mError 1292 (22007): Incorrect datetime value: '0000-00-00' for column 'created_at' at row 1
+[0m[33m[2.940ms] [34;1m[rows:0][0m UPDATE `daily_reviews` SET `date`='2026-04-08 00:00:00',`market_trend`='uptrend',`market_phase`='',`main_theme`='缇庝紛鍋滅伀鍏ㄧ嚎涓婃定, 骞垮憡,鍗庝负鍗囪吘绛?,`money_effect`='excellent',`total_trades`=0,`total_profit`=0,`win_rate`=0,`mistakes`='"[]"',`tags`='null',`emotion_score`=5,`discipline_score`=5,`emotion_notes`='甯傚満瀹屽叏琚編浼婃垬浜夊乏鍙筹紝涓嶇‘瀹氭槑澶╀細鍙戠敓浠€涔堛€?,`plan`='鏄庡ぉ缁х画杩涙敾',`focus_stocks`='铻嶆嵎鑲′唤锛岀洓鏂伴攤鑳斤紝璧ｉ攱閿備笟 ',`risk_points`='',`created_at`='0000-00-00 00:00:00' WHERE `id` = 2
+[GIN] 2026/04/10 - 21:19:40 | 500 |    6.040942ms |      172.18.0.1 | PUT      "/api/daily-reviews/2026-04-08"
+
+2026/04/10 21:19:40 [32m/app/internal/repository/daily_review_repo.go:25
+[0m[33m[1.063ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-08 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+[GIN] 2026/04/10 - 21:19:40 | 200 |    1.188895ms |      172.18.0.1 | GET      "/api/daily-reviews/2026-04-08"
+
+2026/04/10 21:22:58 [32m/app/internal/repository/daily_review_repo.go:40
+[0m[33m[0.777ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-10 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+
+2026/04/10 21:22:58 [31;1m/app/internal/repository/daily_review_repo.go:49 [35;1mError 1292 (22007): Incorrect datetime value: '0000-00-00' for column 'created_at' at row 1
+[0m[33m[0.805ms] [34;1m[rows:0][0m UPDATE `daily_reviews` SET `date`='2026-04-10 00:00:00',`market_trend`='',`market_phase`='',`main_theme`='',`money_effect`='',`total_trades`=0,`total_profit`=0,`win_rate`=0,`mistakes`='null',`tags`='null',`emotion_score`=7,`discipline_score`=0,`emotion_notes`='',`plan`='',`focus_stocks`='',`risk_points`='',`created_at`='0000-00-00 00:00:00' WHERE `id` = 3
+[GIN] 2026/04/10 - 21:22:58 | 500 |    2.478586ms |      172.18.0.1 | PUT      "/api/daily-reviews/2026-04-10"
+
+2026/04/10 21:23:30 [32m/app/internal/repository/daily_review_repo.go:40
+[0m[33m[0.829ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-10 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+
+2026/04/10 21:23:30 [31;1m/app/internal/repository/daily_review_repo.go:49 [35;1mError 1292 (22007): Incorrect datetime value: '0000-00-00' for column 'created_at' at row 1
+[0m[33m[0.932ms] [34;1m[rows:0][0m UPDATE `daily_reviews` SET `date`='2026-04-10 00:00:00',`market_trend`='',`market_phase`='',`main_theme`='',`money_effect`='',`total_trades`=0,`total_profit`=0,`win_rate`=0,`mistakes`='null',`tags`='null',`emotion_score`=7,`discipline_score`=0,`emotion_notes`='',`plan`='',`focus_stocks`='',`risk_points`='',`created_at`='0000-00-00 00:00:00' WHERE `id` = 3
+[GIN] 2026/04/10 - 21:23:30 | 500 |    2.442858ms |      172.18.0.1 | PUT      "/api/daily-reviews/2026-04-10"
+
+2026/04/10 21:24:08 [32m/app/internal/repository/daily_review_repo.go:40
+[0m[33m[0.695ms] [34;1m[rows:1][0m SELECT * FROM `daily_reviews` WHERE date = '2026-04-10 00:00:00' ORDER BY `daily_reviews`.`id` LIMIT 1
+
+2026/04/10 21:24:08 [31;1m/app/internal/repository/daily_review_repo.go:49 [35;1mError 1292 (22007): Incorrect datetime value: '0000-00-00' for column 'created_at' at row 1
+[0m[33m[0.770ms] [34;1m[rows:0][0m UPDATE `daily_reviews` SET `date`='2026-04-10 00:00:00',`market_trend`='',`market_phase`='',`main_theme`='',`money_effect`='',`total_trades`=0,`total_profit`=0,`win_rate`=0,`mistakes`='null',`tags`='null',`emotion_score`=7,`discipline_score`=0,`emotion_notes`='',`plan`='',`focus_stocks`='',`risk_points`='',`created_at`='0000-00-00 00:00:00' WHERE `id` = 3
+[GIN] 2026/04/10 - 21:24:08 | 500 |    2.228215ms |      172.18.0.1 | PUT      "/api/daily-reviews/2026-04-10"
