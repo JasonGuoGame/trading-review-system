@@ -19,6 +19,7 @@ type Trade struct {
 	HoldingDays     int        `gorm:"default:0" json:"holding_days"`
 	ExecutionScore  string     `gorm:"size:1" json:"execution_score"` // A/B/C/D
 	MarketCondition string     `gorm:"size:20" json:"market_condition"`
+	IsSimulated     bool       `gorm:"default:false" json:"is_simulated"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
 

@@ -7,6 +7,8 @@ export const STRATEGIES = [
   '波段交易',
   '日内交易',
   '事件驱动',
+  'MACD金叉',
+  '主力中军',
   '其他',
 ]
 

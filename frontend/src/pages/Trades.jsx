@@ -71,10 +71,15 @@ function Trades() {
     },
     {
       title: '持仓天数',
-      dataIndex: 'holding_days',
       key: 'holding_days',
       width: 90,
-      render: (v) => `${v || 0} 天`,
+      render: (_, record) => {
+        if (!record.entry_date) return '0 天'
+        const start = new Date(record.entry_date)
+        const end = record.status === 'closed' && record.exit_date ? new Date(record.exit_date) : new Date()
+        const days = Math.max(0, Math.floor((end - start) / (1000 * 60 * 60 * 24)))
+        return `${days} 天`
+      },
     },
     {
       title: '标签',

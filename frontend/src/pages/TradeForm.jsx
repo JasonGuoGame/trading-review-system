@@ -61,6 +61,7 @@ function TradeForm() {
         holding_days: trade.holding_days,
         execution_score: trade.execution_score,
         market_condition: trade.market_condition,
+        is_simulated: trade.is_simulated || false,
         status: trade.status,
         // Entry Decision
         ed_strategy: entry_decision?.strategy,
@@ -85,6 +86,7 @@ function TradeForm() {
         direction: values.direction || 'long',
         entry_date: values.entry_date?.format('YYYY-MM-DD'),
         market_condition: values.market_condition,
+        is_simulated: values.is_simulated || false,
       }
 
       let tradeId = id
@@ -174,10 +176,14 @@ function TradeForm() {
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
-        initialValues={{ direction: 'long', status: 'open' }}
+        initialValues={{ direction: 'long', status: 'open', is_simulated: false }}
       >
         {/* Basic Info */}
-        <Card title="📋 基本信息" style={{ marginBottom: 16 }}>
+        <Card title="📋 基本信息" extra={
+          <Form.Item name="is_simulated" valuePropName="checked" style={{ marginBottom: 0 }}>
+            <Checkbox>🧪 模拟交易</Checkbox>
+          </Form.Item>
+        } style={{ marginBottom: 16 }}>
           <Row gutter={16}>
             <Col xs={24} md={8}>
               <Form.Item name="symbol" label="股票代码" rules={[{ required: true, message: '请输入股票代码' }]}>
@@ -211,6 +217,7 @@ function TradeForm() {
                 </Select>
               </Form.Item>
             </Col>
+
             {isEdit && (
               <>
                 <Col xs={24} md={6}>
