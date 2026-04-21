@@ -16,12 +16,12 @@ import { LineChart, Line } from 'recharts'
 const COLORS = ['#1677ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2', '#eb2f96']
 
 function Analysis() {
-  const { data: signals, isLoading: loadingSignals } = useGetSignalAnalysisQuery()
-  const { data: tags, isLoading: loadingTags } = useGetTagAnalysisQuery()
-  const { data: market, isLoading: loadingMarket } = useGetMarketAnalysisQuery()
-  const { data: execution, isLoading: loadingExec } = useGetExecutionAnalysisQuery()
-  const { data: emotionData, isLoading: loadingEmotion } = useGetEmotionAnalysisQuery()
-  const { data: mistakeData, isLoading: loadingMistakes } = useGetMistakeAnalysisQuery()
+  const { data: signals, isLoading: loadingSignals } = useGetSignalAnalysisQuery(undefined, { refetchOnMountOrArgChange: true })
+  const { data: tags, isLoading: loadingTags } = useGetTagAnalysisQuery(undefined, { refetchOnMountOrArgChange: true })
+  const { data: market, isLoading: loadingMarket } = useGetMarketAnalysisQuery(undefined, { refetchOnMountOrArgChange: true })
+  const { data: execution, isLoading: loadingExec } = useGetExecutionAnalysisQuery(undefined, { refetchOnMountOrArgChange: true })
+  const { data: emotionData, isLoading: loadingEmotion } = useGetEmotionAnalysisQuery(undefined, { refetchOnMountOrArgChange: true })
+  const { data: mistakeData, isLoading: loadingMistakes } = useGetMistakeAnalysisQuery(undefined, { refetchOnMountOrArgChange: true })
 
   const signalColumns = [
     { title: '信号', dataIndex: 'signal', key: 'signal' },
