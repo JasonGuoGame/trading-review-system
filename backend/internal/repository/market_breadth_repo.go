@@ -43,5 +43,6 @@ func (r *MarketBreadthRepository) Upsert(breadth *models.MarketBreadth) error {
 	}
 
 	breadth.ID = existing.ID
+	breadth.CreatedAt = existing.CreatedAt
 	return r.db.Save(breadth).Error
 }

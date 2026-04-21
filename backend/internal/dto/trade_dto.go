@@ -28,7 +28,12 @@ type UpdateTradeRequest struct {
 	TotalPnlPct     *float64 `json:"total_pnl_pct"`
 	MaxDrawdown     *float64 `json:"max_drawdown"`
 	HoldingDays     *int     `json:"holding_days"`
-	ExecutionScore  *string  `json:"execution_score"`
+	EntryScore      *int     `json:"entry_score"`
+	MarketScore     *int     `json:"market_score"`
+	ExecutionScore  *int     `json:"execution_score"`
+	RiskScore       *int     `json:"risk_score"`
+	OutcomeScore    *int     `json:"outcome_score"`
+	Grade           *string  `json:"grade"`
 	MarketCondition *string  `json:"market_condition"`
 }
 

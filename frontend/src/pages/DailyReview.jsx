@@ -29,6 +29,7 @@ function DailyReview() {
 
   // Forms
   const [reviewForm] = Form.useForm()
+  const [statsForm] = Form.useForm()
   const [breadthForm] = Form.useForm()
 
   useEffect(() => {
@@ -51,11 +52,17 @@ function DailyReview() {
         mistakes,
         tags: sysTags,
       })
+      statsForm.setFieldsValue({
+        total_profit: reviewData.total_profit,
+        win_rate: reviewData.win_rate,
+        total_trades: reviewData.total_trades,
+      })
     } else {
       reviewForm.resetFields()
       reviewForm.setFieldsValue({ emotion_score: 5, discipline_score: 5 })
+      statsForm.resetFields()
     }
-  }, [reviewData, reviewForm])
+  }, [reviewData, reviewForm, statsForm])
 
   useEffect(() => {
     if (breadthData) {
@@ -65,13 +72,17 @@ function DailyReview() {
     }
   }, [breadthData, breadthForm])
 
-  const handleReviewSave = async (values) => {
+  const handleReviewSave = async () => {
     try {
+      const reviewValues = await reviewForm.getFieldsValue()
+      const statsValues = await statsForm.getFieldsValue()
+      
       const payload = {
-        ...values,
+        ...reviewValues,
+        ...statsValues,
         date: dateStr,
-        mistakes: values.mistakes || [],
-        tags: values.tags || [],
+        mistakes: reviewValues.mistakes || [],
+        tags: reviewValues.tags || [],
       }
       await upsertReview(payload).unwrap()
       message.success('每日复盘保存成功')
@@ -183,7 +194,7 @@ function DailyReview() {
           </Card>
 
           <Card title="💰 今日交易统计 (手动录入)" style={{ marginBottom: 16 }}>
-            <Form form={reviewForm} layout="vertical" onFinish={handleReviewSave}>
+            <Form form={statsForm} layout="vertical" onFinish={handleReviewSave}>
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item label="总盈亏 ($)" name="total_profit">
@@ -201,6 +212,9 @@ function DailyReview() {
                   </Form.Item>
                 </Col>
               </Row>
+              <Button type="primary" htmlType="submit" loading={savingReview} block>
+                保存统计数据
+              </Button>
             </Form>
           </Card>
         </Col>

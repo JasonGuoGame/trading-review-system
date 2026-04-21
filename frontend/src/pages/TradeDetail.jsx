@@ -1,14 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card, Row, Col, Tag, Button, Spin, Descriptions, Timeline, Typography,
-  Divider, Space, Popconfirm, message, Modal, Input, Empty, Switch, InputNumber
+  Divider, Space, Popconfirm, message, Modal, Input, Empty, Switch, InputNumber, Slider, Tooltip
 } from 'antd'
 import {
   ArrowLeftOutlined, EditOutlined, DeleteOutlined,
-  CheckCircleOutlined, CloseCircleOutlined, PlusOutlined, MinusOutlined, TagsOutlined
+  CheckCircleOutlined, CloseCircleOutlined, PlusOutlined, MinusOutlined, TagsOutlined, QuestionCircleOutlined
 } from '@ant-design/icons'
 import { useState } from 'react'
-import { useGetTradeDetailQuery, useDeleteTradeMutation, useUpsertReviewMutation, useSetTradeTagsMutation, useGetTagsQuery, useCreateOrderMutation } from '../app/api'
+import { useGetTradeDetailQuery, useDeleteTradeMutation, useUpsertReviewMutation, useSetTradeTagsMutation, useGetTagsQuery, useCreateOrderMutation, useUpdateOrderMutation, useUpdateTradeMutation } from '../app/api'
 import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor, getOrderColor, getOrderLabel } from '../utils/format'
 import { TagSelector, getTagColor } from '../components/TagSelector'
 
@@ -29,9 +29,15 @@ function TradeDetail() {
   const [tagModal, setTagModal] = useState(false)
   const [selectedTagNames, setSelectedTagNames] = useState([])
 
+  const [updateTrade] = useUpdateTradeMutation()
+  const [scoreModal, setScoreModal] = useState(false)
+  const [scoreForm, setScoreForm] = useState({})
+
   const [createOrder] = useCreateOrderMutation()
+  const [updateOrder] = useUpdateOrderMutation()
   const [buyModal, setBuyModal] = useState(false)
   const [sellModal, setSellModal] = useState(false)
+  const [editingOrderId, setEditingOrderId] = useState(null)
   const [orderForm, setOrderForm] = useState({
     price: null,
     quantity: null,
@@ -96,14 +102,67 @@ function TradeDetail() {
     }
   }
 
+  const openScoreModal = () => {
+    setScoreForm({
+      entry_score: trade.entry_score || 0,
+      market_score: trade.market_score || 0,
+      execution_score: trade.execution_score || 0,
+      risk_score: trade.risk_score || 0,
+      outcome_score: trade.outcome_score || 0,
+    })
+    setScoreModal(true)
+  }
+
+  const handleScoreSave = async () => {
+    try {
+      await updateTrade({
+        id,
+        ...scoreForm
+      }).unwrap()
+      message.success('评分已更新')
+      setScoreModal(false)
+    } catch {
+      message.error('更新评分失败')
+    }
+  }
+
   const openBuyModal = () => {
+    setEditingOrderId(null)
     setOrderForm({ price: null, quantity: null, position_pct: null, reason: '', is_rule_followed: true })
     setBuyModal(true)
   }
 
   const openSellModal = () => {
+    setEditingOrderId(null)
     setOrderForm({ price: null, quantity: null, position_pct: null, reason: '', is_rule_followed: true })
     setSellModal(true)
+  }
+
+  const openEditOrderModal = (order) => {
+    setEditingOrderId(order.id)
+    let parsedReason = order.reason || ''
+    let is_rule_followed = true
+    if (parsedReason.startsWith('[√ 已按规则] ')) {
+      parsedReason = parsedReason.replace('[√ 已按规则] ', '')
+      is_rule_followed = true
+    } else if (parsedReason.startsWith('[× 未按规则] ')) {
+      parsedReason = parsedReason.replace('[× 未按规则] ', '')
+      is_rule_followed = false
+    }
+
+    setOrderForm({
+      price: order.price,
+      quantity: order.quantity,
+      position_pct: order.position_pct,
+      reason: parsedReason,
+      is_rule_followed,
+    })
+    
+    if (order.order_type === 'buy') {
+      setBuyModal(true)
+    } else {
+      setSellModal(true)
+    }
   }
 
   const handleOrderSubmit = async (type) => {
@@ -129,10 +188,17 @@ function TradeDetail() {
         return
       }
 
-      await createOrder(payload).unwrap()
-      message.success(`${type === 'buy' ? '买入' : '卖出'}订单已提交`)
+      if (editingOrderId) {
+        await updateOrder({ id: editingOrderId, ...payload }).unwrap()
+        message.success(`${type === 'buy' ? '买入' : '卖出'}订单已更新`)
+      } else {
+        await createOrder(payload).unwrap()
+        message.success(`${type === 'buy' ? '买入' : '卖出'}订单已提交`)
+      }
+      
       setBuyModal(false)
       setSellModal(false)
+      setEditingOrderId(null)
     } catch {
       message.error('提交订单失败')
     }
@@ -193,15 +259,22 @@ function TradeDetail() {
         </Col>
         <Col xs={24} md={4}>
           <Card>
-            <Statistic title="持仓天数" value={trade.holding_days || 0} suffix="天" />
+            <Statistic title="持仓天数" value={
+              (() => {
+                if (!trade.entry_date) return 0
+                const start = new Date(trade.entry_date)
+                const end = trade.status === 'closed' && trade.exit_date ? new Date(trade.exit_date) : new Date()
+                return Math.max(0, Math.floor((end - start) / (1000 * 60 * 60 * 24)))
+              })()
+            } suffix="天" />
           </Card>
         </Col>
         <Col xs={24} md={4}>
           <Card>
-            <div style={{ marginBottom: 8, color: '#999', fontSize: 14 }}>执行评分</div>
-            {trade.execution_score ? (
-              <Tag color={getScoreColor(trade.execution_score)} style={{ fontSize: 20, padding: '4px 16px' }}>
-                {trade.execution_score}
+            <div style={{ marginBottom: 8, color: '#999', fontSize: 14 }}>综合评分</div>
+            {trade.grade ? (
+              <Tag color={getScoreColor(trade.grade)} style={{ fontSize: 20, padding: '4px 16px' }}>
+                {trade.grade}
               </Tag>
             ) : <Text type="secondary">未评分</Text>}
           </Card>
@@ -301,7 +374,10 @@ function TradeDetail() {
                           </Tag>
                           <Text strong>${order.price}</Text>
                         </Space>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(order.order_date)}</Text>
+                        <Space>
+                          <Text type="secondary" style={{ fontSize: 12 }}>{formatDate(order.order_date)}</Text>
+                          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEditOrderModal(order)} />
+                        </Space>
                       </div>
                       <div style={{ display: 'flex', gap: 16, fontSize: 13 }}>
                         {order.position_pct > 0 && <span>仓位: {order.position_pct}%</span>}
@@ -357,6 +433,44 @@ function TradeDetail() {
             ) : (
               <Empty description="暂无标签" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             )}
+          </Card>
+
+          {/* Score Panel ⭐⭐⭐ */}
+          <Card
+            title="🏆 交易评分"
+            style={{ marginBottom: 16 }}
+            extra={<Button type="link" onClick={openScoreModal}>编辑</Button>}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text type="secondary">1️⃣ 入场质量</Text>
+              <Text strong>{trade.entry_score || 0} <span style={{ color: '#999', fontWeight: 'normal', fontSize: 12 }}>/ 30</span></Text>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text type="secondary">2️⃣ 市场环境</Text>
+              <Text strong>{trade.market_score || 0} <span style={{ color: '#999', fontWeight: 'normal', fontSize: 12 }}>/ 20</span></Text>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text type="secondary">3️⃣ 执行纪律</Text>
+              <Text strong>{trade.execution_score || 0} <span style={{ color: '#999', fontWeight: 'normal', fontSize: 12 }}>/ 25</span></Text>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text type="secondary">4️⃣ 风控</Text>
+              <Text strong>{trade.risk_score || 0} <span style={{ color: '#999', fontWeight: 'normal', fontSize: 12 }}>/ 15</span></Text>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Text type="secondary">5️⃣ 结果</Text>
+              <Text strong>{trade.outcome_score || 0} <span style={{ color: '#999', fontWeight: 'normal', fontSize: 12 }}>/ 10</span></Text>
+            </div>
+            
+            <Divider style={{ margin: '12px 0' }} />
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text strong style={{ fontSize: 16 }}>总分 (Total)</Text>
+              <div>
+                <Text strong style={{ fontSize: 20, marginRight: 8 }}>{trade.total_score || 0}</Text>
+                {trade.grade ? <Tag color={getScoreColor(trade.grade)} style={{ fontSize: 16 }}>{trade.grade}</Tag> : <Text type="secondary">未评级</Text>}
+              </div>
+            </div>
           </Card>
 
           {/* Review Panel ⭐⭐⭐ */}
@@ -523,6 +637,83 @@ function TradeDetail() {
           <Switch checked={orderForm.is_rule_followed} onChange={(v) => setOrderForm(p => ({ ...p, is_rule_followed: v }))} checkedChildren="√" unCheckedChildren="×" />
         </div>
       </Modal>
+
+      {/* Score Modal */}
+      <Modal
+        title="编辑交易评分"
+        visible={scoreModal}
+        onOk={handleScoreSave}
+        onCancel={() => setScoreModal(false)}
+        width={500}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>
+                <span style={{ marginRight: 8 }}>🟢 1️⃣ 入场质量 Entry</span>
+                <Tooltip title={<div>是否符合策略<br/>是否在合理买点<br/>是否追高</div>}>
+                  <QuestionCircleOutlined style={{ color: '#999' }} />
+                </Tooltip>
+              </span>
+              <span>{scoreForm.entry_score} / 30</span>
+            </div>
+            <Slider min={0} max={30} value={scoreForm.entry_score} onChange={(v) => setScoreForm({ ...scoreForm, entry_score: v })} />
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>
+                <span style={{ marginRight: 8 }}>🔵 2️⃣ 市场环境 Market</span>
+                <Tooltip title={<div>是否在强势市场操作<br/>是否逆势交易<br/>是否顺主线</div>}>
+                  <QuestionCircleOutlined style={{ color: '#999' }} />
+                </Tooltip>
+              </span>
+              <span>{scoreForm.market_score} / 20</span>
+            </div>
+            <Slider min={0} max={20} value={scoreForm.market_score} onChange={(v) => setScoreForm({ ...scoreForm, market_score: v })} />
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>
+                <span style={{ marginRight: 8 }}>🟡 3️⃣ 执行纪律 Execution</span>
+                <Tooltip title={<div>是否按计划买<br/>是否按计划卖<br/>是否止损<br/><br/>参考：<br/>完全执行 → 20~25<br/>部分执行 → 10~20<br/>随意操作 → 0~10</div>}>
+                  <QuestionCircleOutlined style={{ color: '#999' }} />
+                </Tooltip>
+              </span>
+              <span>{scoreForm.execution_score} / 25</span>
+            </div>
+            <Slider min={0} max={25} value={scoreForm.execution_score} onChange={(v) => setScoreForm({ ...scoreForm, execution_score: v })} />
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>
+                <span style={{ marginRight: 8 }}>🔴 4️⃣ 风控 Risk</span>
+                <Tooltip title={<div>仓位是否合理<br/>止损是否及时<br/>是否重仓赌</div>}>
+                  <QuestionCircleOutlined style={{ color: '#999' }} />
+                </Tooltip>
+              </span>
+              <span>{scoreForm.risk_score} / 15</span>
+            </div>
+            <Slider min={0} max={15} value={scoreForm.risk_score} onChange={(v) => setScoreForm({ ...scoreForm, risk_score: v })} />
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span>
+                <span style={{ marginRight: 8 }}>🟣 5️⃣ 结果 Outcome</span>
+                <Tooltip title={<div>盈利/亏损<br/>盈亏比</div>}>
+                  <QuestionCircleOutlined style={{ color: '#999' }} />
+                </Tooltip>
+              </span>
+              <span>{scoreForm.outcome_score} / 10</span>
+            </div>
+            <Slider min={0} max={10} value={scoreForm.outcome_score} onChange={(v) => setScoreForm({ ...scoreForm, outcome_score: v })} />
+          </div>
+        </div>
+      </Modal>
+
     </div>
   )
 }

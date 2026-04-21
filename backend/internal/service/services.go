@@ -15,7 +15,7 @@ type Services struct {
 func NewServices(repos *repository.Repositories) *Services {
 	return &Services{
 		Trade:         NewTradeService(repos),
-		Order:         NewOrderService(repos.Order),
+		Order:         NewOrderService(repos),
 		Tag:           NewTagService(repos.Tag),
 		Dashboard:     NewDashboardService(repos),
 		Analysis:      NewAnalysisService(repos),

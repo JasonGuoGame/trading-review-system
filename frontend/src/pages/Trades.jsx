@@ -95,8 +95,8 @@ function Trades() {
     },
     {
       title: '评分',
-      dataIndex: 'execution_score',
-      key: 'execution_score',
+      dataIndex: 'grade',
+      key: 'grade',
       width: 70,
       render: (v) => v ? <Tag color={getScoreColor(v)}>{v}</Tag> : '--',
     },

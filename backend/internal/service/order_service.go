@@ -10,11 +10,11 @@ import (
 )
 
 type OrderService struct {
-	repo *repository.OrderRepository
+	repos *repository.Repositories
 }
 
-func NewOrderService(repo *repository.OrderRepository) *OrderService {
-	return &OrderService{repo: repo}
+func NewOrderService(repos *repository.Repositories) *OrderService {
+	return &OrderService{repos: repos}
 }
 
 func (s *OrderService) CreateOrder(tradeID uint, req dto.CreateOrderRequest) (*models.Order, error) {
@@ -37,14 +37,14 @@ func (s *OrderService) CreateOrder(tradeID uint, req dto.CreateOrderRequest) (*m
 		order.OrderDate = time.Now()
 	}
 
-	if err := s.repo.Create(order); err != nil {
+	if err := s.repos.Order.Create(order); err != nil {
 		return nil, err
 	}
+	s.recalculateTrade(tradeID)
 	return order, nil
 }
-
 func (s *OrderService) UpdateOrder(id uint, req dto.UpdateOrderRequest) (*models.Order, error) {
-	order, err := s.repo.FindByID(id)
+	order, err := s.repos.Order.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +71,73 @@ func (s *OrderService) UpdateOrder(id uint, req dto.UpdateOrderRequest) (*models
 		order.Reason = *req.Reason
 	}
 
-	if err := s.repo.Update(order); err != nil {
+	if err := s.repos.Order.Update(order); err != nil {
 		return nil, err
 	}
+	s.recalculateTrade(order.TradeID)
 	return order, nil
 }
 
 func (s *OrderService) DeleteOrder(id uint) error {
-	return s.repo.Delete(id)
+	order, err := s.repos.Order.FindByID(id)
+	if err != nil {
+		return err
+	}
+	err = s.repos.Order.Delete(id)
+	if err == nil {
+		s.recalculateTrade(order.TradeID)
+	}
+	return err
+}
+
+func (s *OrderService) recalculateTrade(tradeID uint) {
+	trade, err := s.repos.Trade.FindByID(tradeID)
+	if err != nil {
+		return
+	}
+	orders, err := s.repos.Order.FindByTradeID(tradeID)
+	if err != nil {
+		return
+	}
+
+	var buyQty, sellQty float64
+	var buyValue, sellValue float64
+	var lastExitDate time.Time
+
+	for _, o := range orders {
+		if o.OrderType == "buy" {
+			buyQty += o.Quantity
+			buyValue += o.Quantity * o.Price
+		} else if o.OrderType == "sell" {
+			sellQty += o.Quantity
+			sellValue += o.Quantity * o.Price
+			if o.OrderDate.After(lastExitDate) {
+				lastExitDate = o.OrderDate
+			}
+		}
+	}
+
+	// Calculate Pnl
+	trade.TotalPnl = sellValue - (sellQty * (buyValue / max(buyQty, 1)))
+
+	// Close trade if sold everything
+	if sellQty > 0 && sellQty >= buyQty {
+		trade.Status = "closed"
+		trade.ExitDate = &lastExitDate
+		if buyValue > 0 {
+			trade.TotalPnlPct = (trade.TotalPnl / buyValue) * 100
+		}
+	} else if sellQty < buyQty {
+		trade.Status = "open"
+		trade.ExitDate = nil
+	}
+	
+	s.repos.Trade.Update(trade)
+}
+
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }

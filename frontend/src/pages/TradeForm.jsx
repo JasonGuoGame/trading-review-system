@@ -59,7 +59,6 @@ function TradeForm() {
         total_pnl_pct: trade.total_pnl_pct,
         max_drawdown: trade.max_drawdown,
         holding_days: trade.holding_days,
-        execution_score: trade.execution_score,
         market_condition: trade.market_condition,
         is_simulated: trade.is_simulated || false,
         status: trade.status,
@@ -100,7 +99,6 @@ function TradeForm() {
           total_pnl_pct: values.total_pnl_pct,
           max_drawdown: values.max_drawdown,
           holding_days: values.holding_days,
-          execution_score: values.execution_score,
           status: values.status,
         }).unwrap()
       } else {
@@ -257,13 +255,6 @@ function TradeForm() {
               <Col xs={12} md={3}>
                 <Form.Item name="holding_days" label="持仓天数">
                   <InputNumber style={{ width: '100%' }} min={0} />
-                </Form.Item>
-              </Col>
-              <Col xs={12} md={3}>
-                <Form.Item name="execution_score" label="执行评分">
-                  <Select placeholder="评分" allowClear>
-                    {SCORES.map((s) => <Option key={s} value={s}>{s}</Option>)}
-                  </Select>
                 </Form.Item>
               </Col>
             </Row>

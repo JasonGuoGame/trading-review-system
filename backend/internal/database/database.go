@@ -39,6 +39,17 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
+	// Safe migration for score overhaul
+	var colType string
+	db.Raw("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'trades' AND COLUMN_NAME = 'execution_score' AND TABLE_SCHEMA = DATABASE()").Scan(&colType)
+	if colType == "varchar" || colType == "char" {
+		log.Println("Migrating execution_score (string) to grade...")
+		err = db.Exec("ALTER TABLE trades CHANGE execution_score grade VARCHAR(2)").Error
+		if err != nil {
+			log.Printf("Warning: failed to rename execution_score to grade: %v", err)
+		}
+	}
+
 	// Auto Migrate
 	err = db.AutoMigrate(
 		&models.Trade{},

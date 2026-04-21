@@ -174,6 +174,21 @@ func (s *TradeService) UpdateTrade(id uint, req dto.UpdateTradeRequest) (*models
 	if req.ExecutionScore != nil {
 		trade.ExecutionScore = *req.ExecutionScore
 	}
+	if req.EntryScore != nil {
+		trade.EntryScore = *req.EntryScore
+	}
+	if req.MarketScore != nil {
+		trade.MarketScore = *req.MarketScore
+	}
+	if req.RiskScore != nil {
+		trade.RiskScore = *req.RiskScore
+	}
+	if req.OutcomeScore != nil {
+		trade.OutcomeScore = *req.OutcomeScore
+	}
+	if req.Grade != nil {
+		trade.Grade = *req.Grade
+	}
 	if req.MarketCondition != nil {
 		trade.MarketCondition = *req.MarketCondition
 	}

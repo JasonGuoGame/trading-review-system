@@ -70,7 +70,7 @@ func (r *TradeRepository) FindWithFilters(query dto.TradeListQuery) ([]models.Tr
 		db = db.Where("strategy = ?", query.Strategy)
 	}
 	if query.Score != "" {
-		db = db.Where("execution_score = ?", query.Score)
+		db = db.Where("grade = ?", query.Score)
 	}
 	if query.Status != "" {
 		db = db.Where("status = ?", query.Status)
@@ -160,9 +160,9 @@ func (r *TradeRepository) GetSummaryStats() (*dto.DashboardSummary, error) {
 func (r *TradeRepository) GetScoreDistribution() ([]dto.ScoreDistribution, error) {
 	var distribution []dto.ScoreDistribution
 	err := r.db.Model(&models.Trade{}).
-		Where("status = ? AND execution_score != ''", "closed").
-		Select("execution_score as score, COUNT(*) as count").
-		Group("execution_score").
+		Where("status = ? AND grade != ''", "closed").
+		Select("grade as score, COUNT(*) as count").
+		Group("grade").
 		Order("score ASC").
 		Scan(&distribution).Error
 	return distribution, err
@@ -187,16 +187,16 @@ func (r *TradeRepository) GetMarketStats() ([]dto.MarketStat, error) {
 func (r *TradeRepository) GetExecutionStats() ([]dto.ExecutionStat, error) {
 	var stats []dto.ExecutionStat
 	err := r.db.Model(&models.Trade{}).
-		Where("status = ? AND execution_score != ''", "closed").
+		Where("status = ? AND grade != ''", "closed").
 		Select(`
-			execution_score as score,
+			grade as score,
 			COUNT(*) as total,
 			SUM(CASE WHEN total_pnl > 0 THEN 1 ELSE 0 END) as wins,
 			ROUND(SUM(CASE WHEN total_pnl > 0 THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) as win_rate,
 			ROUND(AVG(total_pnl), 2) as avg_pnl,
 			ROUND(SUM(total_pnl), 2) as total_pnl
 		`).
-		Group("execution_score").
+		Group("grade").
 		Order("score ASC").
 		Scan(&stats).Error
 	return stats, err

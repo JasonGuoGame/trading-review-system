@@ -51,8 +51,8 @@ function Dashboard() {
     },
     {
       title: '评分',
-      dataIndex: 'execution_score',
-      key: 'execution_score',
+      dataIndex: 'grade',
+      key: 'grade',
       render: (v) => v ? <Tag color={getScoreColor(v)}>{v}</Tag> : '--',
     },
     {

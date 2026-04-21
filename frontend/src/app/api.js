@@ -60,6 +60,8 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (result, error, { tradeId }) => [
         { type: 'TradeDetail', id: tradeId },
+        'Trade',
+        'Dashboard',
       ],
     }),
 
@@ -71,6 +73,8 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (result, error, { tradeId }) => [
         { type: 'TradeDetail', id: tradeId },
+        'Trade',
+        'Dashboard',
       ],
     }),
 
@@ -81,6 +85,8 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: (result, error, { tradeId }) => [
         { type: 'TradeDetail', id: tradeId },
+        'Trade',
+        'Dashboard',
       ],
     }),
 

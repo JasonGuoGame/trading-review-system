@@ -9,13 +9,7 @@ import (
 )
 
 func Seed(db *gorm.DB) error {
-	var count int64
-	db.Model(&models.Tag{}).Where("is_system = ?", true).Count(&count)
-	if count > 0 {
-		return nil // Already seeded
-	}
-
-	log.Println("Seeding system tags...")
+	log.Println("Checking and syncing system tags...")
 
 	tags := []models.Tag{
 		// 策略标签
@@ -35,6 +29,7 @@ func Seed(db *gorm.DB) error {
 		{Name: "连板", Category: "strategy", IsSystem: true},
 		{Name: "龙头", Category: "strategy", IsSystem: true},
 		{Name: "跟风", Category: "strategy", IsSystem: true},
+		{Name: "MACD金叉", Category: "strategy", IsSystem: true},
 
 		// 行业/主线标签
 		{Name: "AI", Category: "industry", IsSystem: true},
