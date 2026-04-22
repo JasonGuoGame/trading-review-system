@@ -38,6 +38,10 @@ export const SIGNALS = [
   '形态突破',
   '支撑位反弹',
   '压力位突破',
+  '资金异动',
+  '龙头',
+  '中军',
+  '补涨',
 ]
 
 // Execution scores
