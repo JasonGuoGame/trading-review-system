@@ -251,6 +251,15 @@ export const apiSlice = createApi({
         'Dashboard', // Since dashboard will show market breadth
       ],
     }),
+    // === Abnormal Capital ===
+    getAbnormalCapital: builder.query({
+      query: (params) => ({
+        url: '/abnormal-capital',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+      providesTags: ['AbnormalCapital'],
+    }),
   }),
 })
 
@@ -283,4 +292,5 @@ export const {
   useUpsertDailyReviewMutation,
   useGetMarketBreadthQuery,
   useUpsertMarketBreadthMutation,
+  useGetAbnormalCapitalQuery,
 } = apiSlice

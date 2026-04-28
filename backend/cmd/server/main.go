@@ -22,6 +22,11 @@ func main() {
 		log.Fatalf("Failed to connect database: %v", err)
 	}
 
+	quantDb, err := database.ConnectQuantDB(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect quant database: %v", err)
+	}
+
 	// Run migrations
 	if err := database.Migrate(db); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
@@ -33,7 +38,7 @@ func main() {
 	}
 
 	// Initialize layers
-	repos := repository.NewRepositories(db)
+	repos := repository.NewRepositories(db, quantDb)
 	services := service.NewServices(repos)
 	handlers := handler.NewHandlers(services)
 	mw := middleware.NewMiddleware()

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col,
   Checkbox, Divider, Space, message, Spin,
@@ -21,6 +21,7 @@ const { Option } = Select
 function TradeForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const isEdit = !!id
   const [form] = Form.useForm()
   const [createTrade] = useCreateTradeMutation()
@@ -29,6 +30,22 @@ function TradeForm() {
   const [upsertExitPlan] = useUpsertExitPlanMutation()
   const { data: tradeDetail, isLoading } = useGetTradeDetailQuery(id, { skip: !isEdit })
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!isEdit) {
+      // Allow prefilling from URL query params (e.g. from Abnormal Capital module)
+      const params = new URLSearchParams(location.search)
+      const qSymbol = params.get('symbol')
+      const qStrategy = params.get('strategy')
+      const qSignal = params.get('signal')
+
+      form.setFieldsValue({
+        symbol: qSymbol || '',
+        strategy: qStrategy || undefined,
+        entry_signals: qSignal ? [qSignal] : [],
+      })
+    }
+  }, [isEdit, location.search, form])
 
   useEffect(() => {
     if (isEdit && tradeDetail) {

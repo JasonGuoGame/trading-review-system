@@ -10,6 +10,7 @@ type Services struct {
 	Analysis      *AnalysisService
 	DailyReview   *DailyReviewService
 	MarketBreadth *MarketBreadthService
+	Abnormal      *AbnormalService
 }
 
 func NewServices(repos *repository.Repositories) *Services {
@@ -21,5 +22,6 @@ func NewServices(repos *repository.Repositories) *Services {
 		Analysis:      NewAnalysisService(repos),
 		DailyReview:   NewDailyReviewService(repos.DailyReview),
 		MarketBreadth: NewMarketBreadthService(repos.MarketBreadth),
+		Abnormal:      NewAbnormalService(repos.Abnormal),
 	}
 }

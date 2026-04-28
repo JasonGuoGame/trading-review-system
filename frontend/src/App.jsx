@@ -6,6 +6,7 @@ import {
   PlusCircleOutlined,
   BarChartOutlined,
   CalendarOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -13,6 +14,7 @@ import TradeDetail from './pages/TradeDetail'
 import TradeForm from './pages/TradeForm'
 import Analysis from './pages/Analysis'
 import DailyReview from './pages/DailyReview'
+import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
 
 const { Sider, Content } = Layout
 
@@ -21,6 +23,7 @@ const menuItems = [
   { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
+  { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
 ]
 
@@ -84,6 +87,7 @@ function App() {
             <Route path="/trades/new" element={<TradeForm />} />
             <Route path="/trades/:id" element={<TradeDetail />} />
             <Route path="/trades/:id/edit" element={<TradeForm />} />
+            <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
             <Route path="/analysis" element={<Analysis />} />
           </Routes>
         </Content>

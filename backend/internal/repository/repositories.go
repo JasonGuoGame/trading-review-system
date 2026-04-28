@@ -11,9 +11,10 @@ type Repositories struct {
 	ExitPlan      *ExitPlanRepository
 	DailyReview   *DailyReviewRepository
 	MarketBreadth *MarketBreadthRepository
+	Abnormal      *AbnormalRepository
 }
 
-func NewRepositories(db *gorm.DB) *Repositories {
+func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 	return &Repositories{
 		Trade:         NewTradeRepository(db),
 		Order:         NewOrderRepository(db),
@@ -23,5 +24,6 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		ExitPlan:      NewExitPlanRepository(db),
 		DailyReview:   NewDailyReviewRepository(db),
 		MarketBreadth: NewMarketBreadthRepository(db),
+		Abnormal:      NewAbnormalRepository(quantDb),
 	}
 }

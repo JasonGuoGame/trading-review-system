@@ -78,6 +78,9 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		// Market Breadth
 		api.GET("/market-breadth/:date", handlers.MarketBreadth.GetByDate)
 		api.PUT("/market-breadth/:date", handlers.MarketBreadth.Upsert)
+
+		// Abnormal Capital
+		api.GET("/abnormal-capital", handlers.Abnormal.GetAbnormalCapital)
 	}
 
 	return r
