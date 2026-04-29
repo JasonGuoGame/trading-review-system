@@ -11,6 +11,7 @@ type CreateTradeRequest struct {
 	Direction       string  `json:"direction"`
 	EntryDate       string  `json:"entry_date"`
 	MarketCondition string  `json:"market_condition"`
+	IsSimulated     bool    `json:"is_simulated"`
 	// Nested creation
 	EntryDecision *CreateEntryDecisionRequest `json:"entry_decision,omitempty"`
 	ExitPlan      *CreateExitPlanRequest      `json:"exit_plan,omitempty"`
@@ -35,6 +36,7 @@ type UpdateTradeRequest struct {
 	OutcomeScore    *int     `json:"outcome_score"`
 	Grade           *string  `json:"grade"`
 	MarketCondition *string  `json:"market_condition"`
+	IsSimulated     *bool    `json:"is_simulated"`
 }
 
 type TradeListQuery struct {

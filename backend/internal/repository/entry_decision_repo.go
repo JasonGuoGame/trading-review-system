@@ -23,12 +23,13 @@ func (r *EntryDecisionRepository) Upsert(ed *models.EntryDecision) error {
 	if err != nil {
 		return err
 	}
-	existing.Strategy = ed.Strategy
-	existing.SetupType = ed.SetupType
-	existing.Signals = ed.Signals
-	existing.Indicators = ed.Indicators
-	existing.Reason = ed.Reason
-	return r.db.Save(&existing).Error
+	return r.db.Model(&existing).Updates(map[string]interface{}{
+		"strategy":   ed.Strategy,
+		"setup_type": ed.SetupType,
+		"signals":    ed.Signals,
+		"indicators": ed.Indicators,
+		"reason":     ed.Reason,
+	}).Error
 }
 
 func (r *EntryDecisionRepository) FindByTradeID(tradeID uint) (*models.EntryDecision, error) {

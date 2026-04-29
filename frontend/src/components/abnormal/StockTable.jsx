@@ -1,5 +1,6 @@
 import { Table, Tag, Button, Typography } from 'antd'
 import { EyeOutlined } from '@ant-design/icons'
+import { formatDate } from '../../utils/format'
 
 const { Text } = Typography
 
@@ -25,6 +26,12 @@ export default function StockTable({ data, loading, onRowClick }) {
       dataIndex: 'symbol',
       key: 'symbol',
       render: (text) => <Text strong>{text}</Text>,
+    },
+    {
+      title: '异动时间',
+      dataIndex: 'trade_date',
+      key: 'trade_date',
+      render: (val) => formatDate(val),
     },
     {
       title: '名称',

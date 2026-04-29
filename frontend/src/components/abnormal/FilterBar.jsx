@@ -69,7 +69,13 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
               form.resetFields()
               onReset()
             }}>重置</Button>
-            <Button type="primary" onClick={onRefresh} loading={loading}>刷新</Button>
+            <Button type="primary" onClick={() => {
+              const allValues = form.getFieldsValue()
+              onFilterChange({
+                ...allValues,
+                trade_date: allValues.trade_date ? allValues.trade_date.format('YYYY-MM-DD') : '',
+              })
+            }} loading={loading}>刷新</Button>
           </Space>
         </Form.Item>
       </Form>

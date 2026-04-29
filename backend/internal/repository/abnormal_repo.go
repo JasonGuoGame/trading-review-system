@@ -22,6 +22,13 @@ func (r *AbnormalRepository) GetAbnormalCapital(query dto.AbnormalCapitalQuery) 
 
 	if query.TradeDate != "" {
 		q = q.Where("trade_date = ?", query.TradeDate)
+	} else {
+		// Default to the most recent trade_date
+		var latestDate string
+		r.db.Model(&models.StkCapitalAbnormal{}).Select("MAX(trade_date)").Scan(&latestDate)
+		if latestDate != "" {
+			q = q.Where("trade_date = ?", latestDate)
+		}
 	}
 	if query.MinVolRatio > 0 {
 		q = q.Where("vol_ratio >= ?", query.MinVolRatio)

@@ -25,6 +25,7 @@ func (s *TradeService) CreateTrade(req dto.CreateTradeRequest) (*models.Trade, e
 		Status:          "open",
 		Direction:       req.Direction,
 		MarketCondition: req.MarketCondition,
+		IsSimulated:     req.IsSimulated,
 	}
 
 	if req.Direction == "" {
@@ -191,6 +192,9 @@ func (s *TradeService) UpdateTrade(id uint, req dto.UpdateTradeRequest) (*models
 	}
 	if req.MarketCondition != nil {
 		trade.MarketCondition = *req.MarketCondition
+	}
+	if req.IsSimulated != nil {
+		trade.IsSimulated = *req.IsSimulated
 	}
 
 	if err := s.repos.Trade.Update(trade); err != nil {

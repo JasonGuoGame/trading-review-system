@@ -147,16 +147,15 @@ function TradeForm() {
 
       // For edit mode, also update entry decision and exit plan
       if (isEdit && tradeId) {
-        if (values.ed_strategy || values.ed_signals?.length > 0 || values.ed_reason) {
-          await upsertEntryDecision({
-            tradeId,
-            strategy: values.ed_strategy || '',
-            setup_type: values.ed_setup_type || '',
-            signals: values.ed_signals || [],
-            indicators: {},
-            reason: values.ed_reason || '',
-          }).unwrap()
-        }
+        // Always update entry decision in edit mode to capture removals/clears
+        await upsertEntryDecision({
+          tradeId,
+          strategy: values.ed_strategy || '',
+          setup_type: values.ed_setup_type || '',
+          signals: values.ed_signals || [],
+          indicators: {},
+          reason: values.ed_reason || '',
+        }).unwrap()
 
         if (values.stop_loss || values.take_profit) {
           await upsertExitPlan({

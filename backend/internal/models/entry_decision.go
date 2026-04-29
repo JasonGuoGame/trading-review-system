@@ -24,7 +24,9 @@ func (j *JSON) Scan(value interface{}) error {
 	}
 	switch v := value.(type) {
 	case []byte:
-		*j = JSON(v)
+		b := make([]byte, len(v))
+		copy(b, v)
+		*j = JSON(b)
 	case string:
 		*j = JSON(v)
 	default:

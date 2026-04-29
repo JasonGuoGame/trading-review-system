@@ -23,10 +23,11 @@ func (r *ExitPlanRepository) Upsert(ep *models.ExitPlan) error {
 	if err != nil {
 		return err
 	}
-	existing.StopLoss = ep.StopLoss
-	existing.TakeProfit = ep.TakeProfit
-	existing.BatchPlan = ep.BatchPlan
-	return r.db.Save(&existing).Error
+	return r.db.Model(&existing).Updates(map[string]interface{}{
+		"stop_loss":   ep.StopLoss,
+		"take_profit": ep.TakeProfit,
+		"batch_plan":  ep.BatchPlan,
+	}).Error
 }
 
 func (r *ExitPlanRepository) FindByTradeID(tradeID uint) (*models.ExitPlan, error) {
