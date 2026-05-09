@@ -42,6 +42,7 @@ export const SIGNALS = [
   '龙头',
   '中军',
   '补涨',
+  '早晨之星',
 ]
 
 // Execution scores

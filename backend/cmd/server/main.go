@@ -9,6 +9,7 @@ import (
 	"trading-review-system/backend/internal/middleware"
 	"trading-review-system/backend/internal/repository"
 	"trading-review-system/backend/internal/router"
+	"trading-review-system/backend/internal/scheduler"
 	"trading-review-system/backend/internal/service"
 )
 
@@ -42,6 +43,11 @@ func main() {
 	services := service.NewServices(repos)
 	handlers := handler.NewHandlers(services)
 	mw := middleware.NewMiddleware()
+
+	// Start market breadth scheduler (09:30-15:00, every 20 min)
+	mbJob := scheduler.NewMarketBreadthJob(db, quantDb)
+	mbJob.Start()
+	defer mbJob.Stop()
 
 	// Setup router
 	r := router.Setup(handlers, mw)

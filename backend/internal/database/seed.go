@@ -81,5 +81,6 @@ func Seed(db *gorm.DB) error {
 	}
 
 	log.Println("Seeding system tags completed.")
+
 	return nil
 }

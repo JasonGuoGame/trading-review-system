@@ -12,6 +12,7 @@ type Handlers struct {
 	DailyReview   *DailyReviewHandler
 	MarketBreadth *MarketBreadthHandler
 	Abnormal      *AbnormalHandler
+	FundFlow      *FundFlowHandler
 }
 
 func NewHandlers(services *service.Services) *Handlers {
@@ -25,5 +26,6 @@ func NewHandlers(services *service.Services) *Handlers {
 		DailyReview:   NewDailyReviewHandler(services.DailyReview),
 		MarketBreadth: NewMarketBreadthHandler(services.MarketBreadth),
 		Abnormal:      NewAbnormalHandler(services.Abnormal),
+		FundFlow:      NewFundFlowHandler(services.FundFlow),
 	}
 }

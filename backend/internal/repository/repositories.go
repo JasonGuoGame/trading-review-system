@@ -12,6 +12,7 @@ type Repositories struct {
 	DailyReview   *DailyReviewRepository
 	MarketBreadth *MarketBreadthRepository
 	Abnormal      *AbnormalRepository
+	FundFlow      *FundFlowRepository
 }
 
 func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
@@ -25,5 +26,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		DailyReview:   NewDailyReviewRepository(db),
 		MarketBreadth: NewMarketBreadthRepository(db),
 		Abnormal:      NewAbnormalRepository(quantDb),
+		FundFlow:      NewFundFlowRepository(quantDb),
 	}
 }

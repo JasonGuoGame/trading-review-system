@@ -260,6 +260,30 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
       providesTags: ['AbnormalCapital'],
     }),
+    getAbnormalSectors: builder.query({
+      query: (params) => ({
+        url: '/abnormal-capital/sectors',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+      providesTags: ['AbnormalCapital'],
+    }),
+
+    // === Sector Fund Flow ===
+    getSectorFundFlow: builder.query({
+      query: (params) => ({
+        url: '/sector-fund-flow',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
+    getSectorTrend: builder.query({
+      query: (params) => ({
+        url: '/sector-fund-flow/trend',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
   }),
 })
 
@@ -293,4 +317,7 @@ export const {
   useGetMarketBreadthQuery,
   useUpsertMarketBreadthMutation,
   useGetAbnormalCapitalQuery,
+  useGetAbnormalSectorsQuery,
+  useGetSectorFundFlowQuery,
+  useGetSectorTrendQuery,
 } = apiSlice

@@ -1,10 +1,31 @@
 import { Card, Space, DatePicker, Select, Button, Form } from 'antd'
 import dayjs from 'dayjs'
+import { useGetAbnormalCapitalQuery } from '../../app/api'
 
 const { Option } = Select
 
 export default function FilterBar({ filters, onFilterChange, onReset, onRefresh, loading }) {
   const [form] = Form.useForm()
+
+  // Fetch all data (without sector filter) to aggregate sector counts
+  const { data: allData } = useGetAbnormalCapitalQuery(
+    { trade_date: filters.trade_date || '', min_vol_ratio: filters.min_vol_ratio, min_surge_ret: filters.min_surge_ret, sort: filters.sort },
+    { refetchOnMountOrArgChange: true }
+  )
+
+  // Aggregate sector counts from all stock data
+  const sectorOptions = (() => {
+    const stocks = allData?.data || []
+    const map = {}
+    for (const s of stocks) {
+      const name = s.sector_name || ''
+      if (!name) continue
+      map[name] = (map[name] || 0) + 1
+    }
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }))
+  })()
 
   const handleValuesChange = (changedValues, allValues) => {
     onFilterChange({
@@ -21,14 +42,30 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
         initialValues={{
           trade_date: filters.trade_date ? dayjs(filters.trade_date) : null,
           min_vol_ratio: filters.min_vol_ratio,
-          min_surge_count: filters.min_surge_count,
           min_surge_ret: filters.min_surge_ret,
+          sector_name: filters.sector_name,
           sort: filters.sort,
         }}
         onValuesChange={handleValuesChange}
+        style={{ flexWrap: 'wrap', rowGap: 8 }}
       >
         <Form.Item name="trade_date" label="跑批日期">
           <DatePicker format="YYYY-MM-DD" placeholder="昨日/今日" />
+        </Form.Item>
+        <Form.Item name="sector_name" label="板块">
+          <Select
+            style={{ width: 180 }}
+            placeholder="全部板块"
+            allowClear
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={sectorOptions.map(({ name, count }) => ({
+              label: `${name}（${count}）`,
+              value: name,
+            }))}
+          />
         </Form.Item>
         <Form.Item name="min_vol_ratio" label="日线爆量">
           <Select style={{ width: 100 }}>
@@ -37,14 +74,6 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
             <Option value={2}>&gt; 2倍</Option>
             <Option value={3}>&gt; 3倍</Option>
             <Option value={5}>&gt; 5倍</Option>
-          </Select>
-        </Form.Item>
-        <Form.Item name="min_surge_count" label="脉冲次数">
-          <Select style={{ width: 100 }}>
-            <Option value={0}>全部</Option>
-            <Option value={1}>&gt; 1次</Option>
-            <Option value={3}>&gt; 3次</Option>
-            <Option value={5}>&gt; 5次</Option>
           </Select>
         </Form.Item>
         <Form.Item name="min_surge_ret" label="单分最大脉冲">

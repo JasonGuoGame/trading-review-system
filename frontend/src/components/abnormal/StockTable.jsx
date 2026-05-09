@@ -39,6 +39,14 @@ export default function StockTable({ data, loading, onRowClick }) {
       key: 'name',
     },
     {
+      title: '板块',
+      dataIndex: 'sector_name',
+      key: 'sector_name',
+      render: (val) => val ? <Tag color="geekblue">{val}</Tag> : <Text type="secondary">--</Text>,
+      filters: [...new Set((data || []).map(d => d.sector_name).filter(Boolean))].map(s => ({ text: s, value: s })),
+      onFilter: (value, record) => record.sector_name === value,
+    },
+    {
       title: '爆量倍数',
       dataIndex: 'vol_ratio',
       key: 'vol_ratio',

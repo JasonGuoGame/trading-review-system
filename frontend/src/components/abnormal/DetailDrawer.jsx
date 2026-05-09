@@ -54,6 +54,12 @@ export default function DetailDrawer({ visible, data, onClose }) {
       }
     >
       <Descriptions column={1} bordered size="small" style={{ marginBottom: 24 }}>
+        <Descriptions.Item label="板块">
+          {data.sector_name
+            ? <Tag color="geekblue">{data.sector_name}</Tag>
+            : <Text type="secondary">--</Text>
+          }
+        </Descriptions.Item>
         <Descriptions.Item label="爆量倍数">
           <Text strong style={{ color: '#cf1322' }}>{data.vol_ratio.toFixed(1)}x</Text>
         </Descriptions.Item>

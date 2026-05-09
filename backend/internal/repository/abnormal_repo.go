@@ -39,6 +39,9 @@ func (r *AbnormalRepository) GetAbnormalCapital(query dto.AbnormalCapitalQuery) 
 	if query.MinSurgeRet > 0 {
 		q = q.Where("max_surge_ret >= ?", query.MinSurgeRet)
 	}
+	if query.SectorName != "" {
+		q = q.Where("sector_name = ?", query.SectorName)
+	}
 
 	q = q.Select("*, (vol_ratio * 0.5 + surge_count * 0.3 + max_surge_ret * 0.2) as score")
 
@@ -57,4 +60,29 @@ func (r *AbnormalRepository) GetAbnormalCapital(query dto.AbnormalCapitalQuery) 
 
 	err := q.Find(&records).Error
 	return records, err
+}
+
+// GetSectorList returns distinct sector names for a given trade date.
+// If tradeDate is empty, uses the most recent date.
+func (r *AbnormalRepository) GetSectorList(tradeDate string) ([]string, error) {
+	var sectors []string
+
+	q := r.db.Model(&models.StkCapitalAbnormal{})
+
+	if tradeDate != "" {
+		q = q.Where("trade_date = ?", tradeDate)
+	} else {
+		var latestDate string
+		r.db.Model(&models.StkCapitalAbnormal{}).Select("MAX(trade_date)").Scan(&latestDate)
+		if latestDate != "" {
+			q = q.Where("trade_date = ?", latestDate)
+		}
+	}
+
+	err := q.Where("sector_name IS NOT NULL AND sector_name != ''").
+		Distinct("sector_name").
+		Order("sector_name").
+		Pluck("sector_name", &sectors).Error
+
+	return sectors, err
 }

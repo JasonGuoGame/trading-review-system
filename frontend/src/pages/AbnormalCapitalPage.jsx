@@ -12,8 +12,8 @@ export default function AbnormalCapitalPage() {
   const [filters, setFilters] = useState({
     trade_date: '',
     min_vol_ratio: 0,
-    min_surge_count: 0,
     min_surge_ret: 0,
+    sector_name: '',
     sort: 'score',
   })
   
@@ -32,8 +32,8 @@ export default function AbnormalCapitalPage() {
     setFilters({
       trade_date: '',
       min_vol_ratio: 0,
-      min_surge_count: 0,
       min_surge_ret: 0,
+      sector_name: '',
       sort: 'score',
     })
   }

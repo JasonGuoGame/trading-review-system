@@ -80,7 +80,12 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		api.PUT("/market-breadth/:date", handlers.MarketBreadth.Upsert)
 
 		// Abnormal Capital
+		api.GET("/abnormal-capital/sectors", handlers.Abnormal.GetSectors)
 		api.GET("/abnormal-capital", handlers.Abnormal.GetAbnormalCapital)
+
+		// Sector Fund Flow
+		api.GET("/sector-fund-flow", handlers.FundFlow.GetFundFlow)
+		api.GET("/sector-fund-flow/trend", handlers.FundFlow.GetFundFlowTrend)
 	}
 
 	return r
