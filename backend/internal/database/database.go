@@ -61,6 +61,8 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&models.Review{},
 		&models.DailyReview{},
 		&models.MarketBreadth{},
+		&models.StockPool{},
+		&models.StockPoolSignal{},
 	)
 	if err != nil {
 		log.Printf("Warning: failed to auto migrate: %v", err)

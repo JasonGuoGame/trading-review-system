@@ -86,6 +86,16 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		// Sector Fund Flow
 		api.GET("/sector-fund-flow", handlers.FundFlow.GetFundFlow)
 		api.GET("/sector-fund-flow/trend", handlers.FundFlow.GetFundFlowTrend)
+
+		// Stock Pool
+		stockPool := api.Group("/stock-pool")
+		{
+			stockPool.GET("", handlers.StockPool.List)
+			stockPool.POST("", handlers.StockPool.Create)
+			stockPool.PUT("/:id", handlers.StockPool.UpdateStatus)
+			stockPool.DELETE("/:id", handlers.StockPool.Delete)
+			stockPool.GET("/:symbol/detail", handlers.StockPool.GetDetail)
+		}
 	}
 
 	return r

@@ -8,7 +8,7 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
-	
+
 	QuantDBHost     string
 	QuantDBPort     string
 	QuantDBUser     string
@@ -17,6 +17,8 @@ type Config struct {
 
 	ServerPort string
 	GinMode    string
+
+	SectorBlacklist []string
 }
 
 func Load() *Config {
@@ -35,6 +37,16 @@ func Load() *Config {
 
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		GinMode:    getEnv("GIN_MODE", "debug"),
+
+		SectorBlacklist: []string{
+			"融资融券", "沪股通", "深股通", "MSCI", "标准普尔", "富时罗素",
+			"央国企改革", "中证", "上证", "昨日", "小盘", "大盘",
+			"权重", "两融", "证金", "汇金", "基金重仓", "预盈预增",
+			"标普", "深证", "创业板", "科创板", "活跃", "高振幅",
+			"昨日涨停", "转债", "破净", "机构重仓", "股权转让", "中盘股", "深成500",
+			"最近多板", "东方财富", "年报预增", "电子", "HS300", "百元股", "中盘成长", "近期新高",
+			"创业成份", "百日新高",
+		},
 	}
 }
 

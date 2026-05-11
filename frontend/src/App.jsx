@@ -8,6 +8,7 @@ import {
   CalendarOutlined,
   ThunderboltOutlined,
   FundOutlined,
+  FireOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -17,11 +18,13 @@ import Analysis from './pages/Analysis'
 import DailyReview from './pages/DailyReview'
 import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
 import SectorFundFlowPage from './pages/SectorFundFlowPage'
+import StockPoolPage from './pages/StockPoolPage'
 
 const { Sider, Content } = Layout
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
+  { key: '/stock-pool', icon: <FireOutlined />, label: '股票池' },
   { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
@@ -69,7 +72,7 @@ function App() {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}>
-            📈 交易复盘
+            🚀 交易作战系统
           </h1>
         </div>
         <Menu
@@ -92,6 +95,7 @@ function App() {
             <Route path="/trades/:id/edit" element={<TradeForm />} />
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
+            <Route path="/stock-pool" element={<StockPoolPage />} />
             <Route path="/analysis" element={<Analysis />} />
           </Routes>
         </Content>

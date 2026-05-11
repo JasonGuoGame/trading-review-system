@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -284,6 +284,44 @@ export const apiSlice = createApi({
       }),
       transformResponse: (res) => res.data,
     }),
+
+    // === Stock Pool ===
+    getStockPool: builder.query({
+      query: (params) => ({
+        url: '/stock-pool',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+      providesTags: ['StockPool'],
+    }),
+    getStockDetail: builder.query({
+      query: (symbol) => `/stock-pool/${symbol}/detail`,
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, symbol) => [{ type: 'StockPool', id: symbol }],
+    }),
+    createStockPool: builder.mutation({
+      query: (body) => ({
+        url: '/stock-pool',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['StockPool'],
+    }),
+    updateStockPoolStatus: builder.mutation({
+      query: ({ id, status }) => ({
+        url: `/stock-pool/${id}`,
+        method: 'PUT',
+        body: { status },
+      }),
+      invalidatesTags: ['StockPool'],
+    }),
+    deleteStockPool: builder.mutation({
+      query: (id) => ({
+        url: `/stock-pool/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['StockPool'],
+    }),
   }),
 })
 
@@ -320,4 +358,9 @@ export const {
   useGetAbnormalSectorsQuery,
   useGetSectorFundFlowQuery,
   useGetSectorTrendQuery,
+  useGetStockPoolQuery,
+  useGetStockDetailQuery,
+  useCreateStockPoolMutation,
+  useUpdateStockPoolStatusMutation,
+  useDeleteStockPoolMutation,
 } = apiSlice

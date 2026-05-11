@@ -72,7 +72,12 @@ export default function StrongSectorPanel({ data, loading, onRowClick }) {
         dataSource={data}
         rowKey="sector_name"
         loading={loading}
-        pagination={false}
+        pagination={{ 
+          defaultPageSize: 20, 
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          showTotal: (total) => `共 ${total} 个板块`
+        }}
         size="middle"
       />
     </Card>

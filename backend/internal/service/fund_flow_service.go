@@ -11,11 +11,24 @@ import (
 )
 
 type FundFlowService struct {
-	repo *repository.FundFlowRepository
+	repo      *repository.FundFlowRepository
+	blacklist []string
 }
 
-func NewFundFlowService(repo *repository.FundFlowRepository) *FundFlowService {
-	return &FundFlowService{repo: repo}
+func NewFundFlowService(repo *repository.FundFlowRepository, blacklist []string) *FundFlowService {
+	return &FundFlowService{
+		repo:      repo,
+		blacklist: blacklist,
+	}
+}
+
+func (s *FundFlowService) shouldFilter(name string) bool {
+	for _, kw := range s.blacklist {
+		if strings.Contains(name, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 // GetFundFlowData aggregates sector fund flows for the specified mode (1d, 3d, 5d) up to the given date
@@ -61,6 +74,9 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 	var summary dto.MarketFlowSummary
 
 	for name, flows := range sectorData {
+		if s.shouldFilter(name) {
+			continue
+		}
 		// flows are ordered by date DESC from repository
 		sort.Slice(flows, func(i, j int) bool {
 			return flows[i].TradeDate.After(flows[j].TradeDate)

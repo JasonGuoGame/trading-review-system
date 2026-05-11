@@ -40,7 +40,7 @@ func main() {
 
 	// Initialize layers
 	repos := repository.NewRepositories(db, quantDb)
-	services := service.NewServices(repos)
+	services := service.NewServices(repos, cfg)
 	handlers := handler.NewHandlers(services)
 	mw := middleware.NewMiddleware()
 
