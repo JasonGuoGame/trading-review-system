@@ -18,9 +18,15 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
     const stocks = allData?.data || []
     const map = {}
     for (const s of stocks) {
-      const name = s.sector_name || ''
-      if (!name) continue
-      map[name] = (map[name] || 0) + 1
+      const sectorStr = s.sector_name || ''
+      if (!sectorStr) continue
+      
+      const parts = sectorStr.split(' / ')
+      for (let name of parts) {
+        name = name.trim()
+        if (!name) continue
+        map[name] = (map[name] || 0) + 1
+      }
     }
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])

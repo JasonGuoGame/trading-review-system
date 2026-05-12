@@ -43,6 +43,7 @@ export const SIGNALS = [
   '中军',
   '补涨',
   '早晨之星',
+  'MACD+BOLL',
 ]
 
 // Execution scores

@@ -1,4 +1,4 @@
-import { Table, Tag, Button, Typography } from 'antd'
+import { Table, Tag, Button, Typography, Space } from 'antd'
 import { EyeOutlined } from '@ant-design/icons'
 import { formatDate } from '../../utils/format'
 
@@ -42,9 +42,26 @@ export default function StockTable({ data, loading, onRowClick }) {
       title: '板块',
       dataIndex: 'sector_name',
       key: 'sector_name',
-      render: (val) => val ? <Tag color="geekblue">{val}</Tag> : <Text type="secondary">--</Text>,
-      filters: [...new Set((data || []).map(d => d.sector_name).filter(Boolean))].map(s => ({ text: s, value: s })),
-      onFilter: (value, record) => record.sector_name === value,
+      render: (val) => {
+        if (!val) return <Text type="secondary">--</Text>
+        return (
+          <Space wrap size={[0, 4]}>
+            {val.split(' / ').map(s => (
+              <Tag color="geekblue" key={s} style={{ marginRight: 0 }}>{s.trim()}</Tag>
+            ))}
+          </Space>
+        )
+      },
+      filters: (() => {
+        const set = new Set()
+        data.forEach(d => {
+          if (d.sector_name) {
+            d.sector_name.split(' / ').forEach(s => set.add(s.trim()))
+          }
+        })
+        return Array.from(set).sort().map(s => ({ text: s, value: s }))
+      })(),
+      onFilter: (value, record) => record.sector_name && record.sector_name.includes(value),
     },
     {
       title: '爆量倍数',

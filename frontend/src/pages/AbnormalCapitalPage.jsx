@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Typography, message } from 'antd'
+import dayjs from 'dayjs'
 import FilterBar from '../components/abnormal/FilterBar'
 import SummaryBar from '../components/abnormal/SummaryBar'
 import StockTable from '../components/abnormal/StockTable'
@@ -10,7 +11,7 @@ const { Title } = Typography
 
 export default function AbnormalCapitalPage() {
   const [filters, setFilters] = useState({
-    trade_date: '',
+    trade_date: dayjs().format('YYYY-MM-DD'),
     min_vol_ratio: 0,
     min_surge_ret: 0,
     sector_name: '',
@@ -30,7 +31,7 @@ export default function AbnormalCapitalPage() {
 
   const handleReset = () => {
     setFilters({
-      trade_date: '',
+      trade_date: dayjs().format('YYYY-MM-DD'),
       min_vol_ratio: 0,
       min_surge_ret: 0,
       sector_name: '',

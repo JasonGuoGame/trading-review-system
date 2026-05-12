@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/repository"
 )
@@ -33,20 +34,29 @@ func (s *AbnormalService) GetAbnormalCapital(query dto.AbnormalCapitalQuery) (*d
 			strongCount++
 		}
 
-		// Aggregate by sector
-		sector := r.SectorName
-		if sector == "" {
-			sector = "未知"
+		// Aggregate by sector (Split by " / " to handle concatenated sectors)
+		sectorStr := r.SectorName
+		if sectorStr == "" {
+			sectorStr = "未知"
 		}
-		stat, ok := sectorMap[sector]
-		if !ok {
-			stat = &dto.SectorStat{SectorName: sector}
-			sectorMap[sector] = stat
-		}
-		stat.Count++
-		stat.AvgVolRatio += r.VolRatio
-		if r.VolRatio > 3 && r.SurgeCount > 5 {
-			stat.StrongCount++
+		
+		sectors := strings.Split(sectorStr, " / ")
+		for _, sector := range sectors {
+			sector = strings.TrimSpace(sector)
+			if sector == "" {
+				continue
+			}
+			
+			stat, ok := sectorMap[sector]
+			if !ok {
+				stat = &dto.SectorStat{SectorName: sector}
+				sectorMap[sector] = stat
+			}
+			stat.Count++
+			stat.AvgVolRatio += r.VolRatio
+			if r.VolRatio > 3 && r.SurgeCount > 5 {
+				stat.StrongCount++
+			}
 		}
 	}
 
@@ -90,5 +100,35 @@ func (s *AbnormalService) GetAbnormalCapital(query dto.AbnormalCapitalQuery) (*d
 }
 
 func (s *AbnormalService) GetSectorList(tradeDate string) ([]string, error) {
-	return s.repo.GetSectorList(tradeDate)
+	rawSectors, err := s.repo.GetSectorList(tradeDate)
+	if err != nil {
+		return nil, err
+	}
+
+	sectorSet := make(map[string]bool)
+	for _, raw := range rawSectors {
+		parts := strings.Split(raw, " / ")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				sectorSet[p] = true
+			}
+		}
+	}
+
+	sectors := make([]string, 0, len(sectorSet))
+	for s := range sectorSet {
+		sectors = append(sectors, s)
+	}
+	
+	// Sort sectors for consistency
+	for i := 0; i < len(sectors); i++ {
+		for j := i + 1; j < len(sectors); j++ {
+			if sectors[i] > sectors[j] {
+				sectors[i], sectors[j] = sectors[j], sectors[i]
+			}
+		}
+	}
+
+	return sectors, nil
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import dayjs from 'dayjs'
 import { Row, Col, Typography, Spin } from 'antd'
 import DateSelector from '../components/fundflow/DateSelector'
 import MarketFlowSummary from '../components/fundflow/MarketFlowSummary'
@@ -12,7 +13,7 @@ const { Title } = Typography
 
 export default function SectorFundFlowPage() {
   const [filters, setFilters] = useState({
-    date: '',
+    date: dayjs().format('YYYY-MM-DD'),
     mode: '1d', // 1d, 3d, 5d
     sort: 'inflow', // inflow, rate, trend
   })
