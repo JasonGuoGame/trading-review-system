@@ -14,9 +14,13 @@ func NewStockPoolRepository(db *gorm.DB) *StockPoolRepository {
 	return &StockPoolRepository{db: db}
 }
 
-func (r *StockPoolRepository) List(poolType models.StockPoolType) ([]models.StockPool, error) {
+func (r *StockPoolRepository) List(poolType models.StockPoolType, days int) ([]models.StockPool, error) {
 	var stocks []models.StockPool
-	err := r.db.Where("pool_type = ?", poolType).Order("score DESC").Find(&stocks).Error
+	query := r.db.Where("pool_type = ?", poolType)
+	if days > 0 {
+		query = query.Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days-1)
+	}
+	err := query.Order("score DESC").Find(&stocks).Error
 	return stocks, err
 }
 

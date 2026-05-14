@@ -11,7 +11,8 @@ const { Title } = Typography
 
 export default function AbnormalCapitalPage() {
   const [filters, setFilters] = useState({
-    trade_date: dayjs().format('YYYY-MM-DD'),
+    trade_date: '',
+    days: 1,
     min_vol_ratio: 0,
     min_surge_ret: 0,
     sector_name: '',
@@ -31,7 +32,8 @@ export default function AbnormalCapitalPage() {
 
   const handleReset = () => {
     setFilters({
-      trade_date: dayjs().format('YYYY-MM-DD'),
+      trade_date: '',
+      days: 1,
       min_vol_ratio: 0,
       min_surge_ret: 0,
       sector_name: '',

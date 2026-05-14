@@ -96,6 +96,14 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			stockPool.DELETE("/:id", handlers.StockPool.Delete)
 			stockPool.GET("/:symbol/detail", handlers.StockPool.GetDetail)
 		}
+
+		// Market Attack
+		marketAttack := api.Group("/market-attack")
+		{
+			marketAttack.GET("/top", handlers.MarketAttack.GetTopAttacks)
+			marketAttack.GET("/sector/:name", handlers.MarketAttack.GetSectorDetail)
+			marketAttack.GET("/trend", handlers.MarketAttack.GetSectorTrend)
+		}
 	}
 
 	return r

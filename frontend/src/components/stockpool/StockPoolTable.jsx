@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table, Tag, Progress, Space, Button } from 'antd';
 import { EyeOutlined, EditOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const StockPoolTable = ({ type, data, loading, onRowClick }) => {
   const getStatusColor = (status) => {
@@ -8,7 +9,9 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
       case '买点': return 'error';
       case '强': return 'warning';
       case '观察': return 'default';
-      case '风险': return 'success'; // User said deep green for risk? Wait. "风险: 深绿" in prompt. 
+      case '风险': return 'success';
+      case '新入选': return 'error'; // Red color for newly selected to stand out
+      case '曾经入选': return 'processing'; // Blue color for previously selected
       default: return 'default';
     }
   };
@@ -28,6 +31,17 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
       title: '板块',
       dataIndex: 'sector_name',
       key: 'sector_name',
+    },
+    {
+      title: '日期',
+      dataIndex: 'trade_date',
+      key: 'trade_date',
+      sorter: (a, b) => dayjs(a.trade_date).unix() - dayjs(b.trade_date).unix(),
+      render: (val) => (
+        <span style={{ color: '#8b949e', fontSize: 13 }}>
+          {val ? dayjs(val).format('YYYY-MM-DD') : '-'}
+        </span>
+      ),
     },
     {
       title: '评分',

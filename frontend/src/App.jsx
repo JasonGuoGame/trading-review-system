@@ -9,6 +9,7 @@ import {
   ThunderboltOutlined,
   FundOutlined,
   FireOutlined,
+  AimOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -17,6 +18,7 @@ import TradeForm from './pages/TradeForm'
 import Analysis from './pages/Analysis'
 import DailyReview from './pages/DailyReview'
 import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
+import MarketAttackPage from './pages/MarketAttackPage'
 import SectorFundFlowPage from './pages/SectorFundFlowPage'
 import StockPoolPage from './pages/StockPoolPage'
 
@@ -29,6 +31,7 @@ const menuItems = [
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
   { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
+  { key: '/market-attack', icon: <AimOutlined />, label: '主线攻击' },
   { key: '/sector-fund-flow', icon: <FundOutlined />, label: '资金流向' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
 ]
@@ -94,6 +97,7 @@ function App() {
             <Route path="/trades/:id" element={<TradeDetail />} />
             <Route path="/trades/:id/edit" element={<TradeForm />} />
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
+            <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage />} />
             <Route path="/analysis" element={<Analysis />} />

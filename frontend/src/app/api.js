@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -322,6 +322,30 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['StockPool'],
     }),
+    // === Market Attack ===
+    getTopMarketAttacks: builder.query({
+      query: (params) => ({
+        url: '/market-attack/top',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+      providesTags: ['MarketAttack'],
+    }),
+    getSectorAttackDetail: builder.query({
+      query: ({ name, ...params }) => ({
+        url: `/market-attack/sector/${name}`,
+        params,
+      }),
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, { name }) => [{ type: 'MarketAttack', id: name }],
+    }),
+    getSectorAttackTrend: builder.query({
+      query: (params) => ({
+        url: '/market-attack/trend',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
   }),
 })
 
@@ -363,4 +387,7 @@ export const {
   useCreateStockPoolMutation,
   useUpdateStockPoolStatusMutation,
   useDeleteStockPoolMutation,
+  useGetTopMarketAttacksQuery,
+  useGetSectorAttackDetailQuery,
+  useGetSectorAttackTrendQuery,
 } = apiSlice

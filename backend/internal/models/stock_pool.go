@@ -21,6 +21,7 @@ type StockPool struct {
 	Status     string        `gorm:"size:50" json:"status"`
 	Tags       string        `gorm:"type:json" json:"tags"` // JSON string
 	Notes      string        `gorm:"type:text" json:"notes"`
+	TradeDate  time.Time     `gorm:"type:date" json:"trade_date"`
 	CreatedAt  time.Time     `json:"created_at"`
 	UpdatedAt  time.Time     `json:"updated_at"`
 }

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"time"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/models"
 
@@ -20,14 +21,37 @@ func (r *AbnormalRepository) GetAbnormalCapital(query dto.AbnormalCapitalQuery) 
 
 	q := r.db.Model(&models.StkCapitalAbnormal{})
 
-	if query.TradeDate != "" {
-		q = q.Where("trade_date = ?", query.TradeDate)
-	} else {
-		// Default to the most recent trade_date
-		var latestDate string
-		r.db.Model(&models.StkCapitalAbnormal{}).Select("MAX(trade_date)").Scan(&latestDate)
-		if latestDate != "" {
-			q = q.Where("trade_date = ?", latestDate)
+	targetDate := query.TradeDate
+	if targetDate == "" {
+		var latest time.Time
+		r.db.Model(&models.StkCapitalAbnormal{}).Select("MAX(trade_date)").Scan(&latest)
+		if !latest.IsZero() {
+			targetDate = latest.Format("2006-01-02")
+		}
+	}
+
+	if targetDate != "" {
+		days := query.Days
+		if days <= 0 {
+			days = 1
+		}
+		
+		if days > 1 {
+			var dates []time.Time
+			r.db.Model(&models.StkCapitalAbnormal{}).
+				Where("trade_date <= ?", targetDate).
+				Distinct("trade_date").
+				Order("trade_date DESC").
+				Limit(days).
+				Pluck("trade_date", &dates)
+			
+			if len(dates) > 0 {
+				q = q.Where("trade_date IN ?", dates)
+			} else {
+				q = q.Where("trade_date = ?", targetDate)
+			}
+		} else {
+			q = q.Where("trade_date = ?", targetDate)
 		}
 	}
 	if query.MinVolRatio > 0 {
@@ -54,8 +78,10 @@ func (r *AbnormalRepository) GetAbnormalCapital(query dto.AbnormalCapitalQuery) 
 		q = q.Order("max_surge_ret DESC")
 	case "score":
 		q = q.Order("score DESC")
+	case "symbol":
+		q = q.Order("symbol ASC")
 	default:
-		q = q.Order("vol_ratio DESC")
+		q = q.Order("score DESC")
 	}
 
 	err := q.Find(&records).Error
@@ -72,9 +98,10 @@ func (r *AbnormalRepository) GetSectorList(tradeDate string) ([]string, error) {
 	if tradeDate != "" {
 		q = q.Where("trade_date = ?", tradeDate)
 	} else {
-		var latestDate string
-		r.db.Model(&models.StkCapitalAbnormal{}).Select("MAX(trade_date)").Scan(&latestDate)
-		if latestDate != "" {
+		var latest time.Time
+		r.db.Model(&models.StkCapitalAbnormal{}).Select("MAX(trade_date)").Scan(&latest)
+		if !latest.IsZero() {
+			latestDate := latest.Format("2006-01-02")
 			q = q.Where("trade_date = ?", latestDate)
 		}
 	}

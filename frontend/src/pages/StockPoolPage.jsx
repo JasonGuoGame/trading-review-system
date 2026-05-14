@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Layout, Typography, Space, Button, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Layout, Typography, Space, Button, InputNumber, message } from 'antd';
+import { PlusOutlined, CalendarOutlined } from '@ant-design/icons';
 import HeaderSummary from '../components/stockpool/HeaderSummary';
 import PoolTabs from '../components/stockpool/PoolTabs';
 import StockPoolTable from '../components/stockpool/StockPoolTable';
@@ -15,11 +15,12 @@ const StockPoolPage = () => {
   const [activeTab, setActiveTab] = useState('short');
   const [selectedStock, setSelectedStock] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [days, setDays] = useState(7);
 
   const today = dayjs().format('YYYY-MM-DD');
   
-  // Data fetching
-  const { data: stocks = [], isLoading: stocksLoading } = useGetStockPoolQuery({ type: activeTab });
+  // Data fetching - pass days parameter
+  const { data: stocks = [], isFetching, refetch } = useGetStockPoolQuery({ type: activeTab, days: days || undefined });
   const { data: marketBreadth } = useGetMarketBreadthQuery(today);
   const { data: sectorFlow } = useGetSectorFundFlowQuery({ limit: 5 });
 
@@ -54,15 +55,48 @@ const StockPoolPage = () => {
           <Title level={2} style={{ color: '#fff', margin: 0 }}>🧠 股票池作战中心</Title>
           <Typography.Text type="secondary">Trading Command Center - 区分逻辑，快速决策</Typography.Text>
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          size="large"
-          style={{ background: 'linear-gradient(135deg, #1677ff, #722ed1)', border: 'none' }}
-          onClick={() => message.info('添加股票功能开发中...')}
-        >
-          添加股票
-        </Button>
+        <Space size="middle">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: '#1a1a2e',
+            padding: '6px 16px',
+            borderRadius: 8,
+            border: '1px solid #30363d',
+          }}>
+            <CalendarOutlined style={{ color: '#8b949e', fontSize: 16 }} />
+            <span style={{ color: '#8b949e', fontSize: 13, whiteSpace: 'nowrap' }}>最近</span>
+            <InputNumber
+              min={1}
+              max={365}
+              value={days}
+              onChange={(val) => setDays(val)}
+              style={{
+                width: 64,
+                background: '#0d1117',
+                borderColor: '#30363d',
+              }}
+              size="small"
+            />
+            <span style={{ color: '#8b949e', fontSize: 13 }}>天</span>
+          </div>
+          <Button
+            onClick={refetch}
+            style={{ background: '#1a1a2e', borderColor: '#30363d', color: '#fff' }}
+          >
+            刷新
+          </Button>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            size="large"
+            style={{ background: 'linear-gradient(135deg, #1677ff, #722ed1)', border: 'none' }}
+            onClick={() => message.info('添加股票功能开发中...')}
+          >
+            添加股票
+          </Button>
+        </Space>
       </header>
 
       <HeaderSummary marketData={marketOverview} />
@@ -73,7 +107,7 @@ const StockPoolPage = () => {
         <StockPoolTable 
           type={activeTab} 
           data={stocks} 
-          loading={stocksLoading} 
+          loading={isFetching} 
           onRowClick={handleRowClick}
         />
       </div>
@@ -88,3 +122,4 @@ const StockPoolPage = () => {
 };
 
 export default StockPoolPage;
+

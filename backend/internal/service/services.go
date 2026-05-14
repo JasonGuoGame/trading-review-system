@@ -16,6 +16,7 @@ type Services struct {
 	Abnormal      *AbnormalService
 	FundFlow      *FundFlowService
 	StockPool     *StockPoolService
+	MarketAttack  *MarketAttackService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -27,8 +28,9 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		Analysis:      NewAnalysisService(repos),
 		DailyReview:   NewDailyReviewService(repos.DailyReview),
 		MarketBreadth: NewMarketBreadthService(repos.MarketBreadth),
-		Abnormal:      NewAbnormalService(repos.Abnormal),
+		Abnormal:      NewAbnormalService(repos.Abnormal, cfg.SectorBlacklist),
 		FundFlow:      NewFundFlowService(repos.FundFlow, cfg.SectorBlacklist),
 		StockPool:     NewStockPoolService(repos.StockPool, repos.FundFlow),
+		MarketAttack:  NewMarketAttackService(repos.MarketAttack, cfg.SectorBlacklist),
 	}
 }

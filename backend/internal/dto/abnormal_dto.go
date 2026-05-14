@@ -4,11 +4,12 @@ import "trading-review-system/backend/internal/models"
 
 type AbnormalCapitalQuery struct {
 	TradeDate     string  `form:"trade_date"`
+	Days          int     `form:"days,default=1"`
 	MinVolRatio   float64 `form:"min_vol_ratio,default=0"`
 	MinSurgeCount int     `form:"min_surge_count,default=0"`
 	MinSurgeRet   float64 `form:"min_surge_ret,default=0"`
 	SectorName    string  `form:"sector_name"`
-	Sort          string  `form:"sort,default=vol_ratio"` // vol_ratio, surge_count, max_surge_ret, score
+	Sort          string  `form:"sort,default=score"` // vol_ratio, surge_count, max_surge_ret, score
 }
 
 type SectorStat struct {

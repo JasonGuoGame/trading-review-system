@@ -24,7 +24,14 @@ func (h *StockPoolHandler) List(c *gin.Context) {
 		poolType = "short"
 	}
 
-	stocks, err := h.service.GetStockPool(models.StockPoolType(poolType))
+	days := 0
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+
+	stocks, err := h.service.GetStockPool(models.StockPoolType(poolType), days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

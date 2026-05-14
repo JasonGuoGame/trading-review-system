@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sort"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/models"
 	"trading-review-system/backend/internal/repository"
@@ -18,18 +19,42 @@ func NewStockPoolService(repo *repository.StockPoolRepository, fundRepo *reposit
 	}
 }
 
-func (s *StockPoolService) GetStockPool(poolType models.StockPoolType) ([]dto.StockPoolResponse, error) {
-	stocks, err := s.repo.List(poolType)
+func (s *StockPoolService) GetStockPool(poolType models.StockPoolType, days int) ([]dto.StockPoolResponse, error) {
+	stocks, err := s.repo.List(poolType, days)
 	if err != nil {
 		return nil, err
 	}
 
-	responses := make([]dto.StockPoolResponse, len(stocks))
-	for i, stock := range stocks {
-		responses[i] = dto.StockPoolResponse{
-			StockPool: stock,
-		}
+	symbolGroups := make(map[string][]models.StockPool)
+	for _, stock := range stocks {
+		symbolGroups[stock.Symbol] = append(symbolGroups[stock.Symbol], stock)
 	}
+
+	var responses []dto.StockPoolResponse
+	for _, group := range symbolGroups {
+		latestStock := group[0]
+		for _, stock := range group {
+			if stock.TradeDate.After(latestStock.TradeDate) {
+				latestStock = stock
+			}
+		}
+
+		if len(group) == 1 {
+			latestStock.Status = "新入选"
+		} else {
+			latestStock.Status = "曾经入选"
+		}
+
+		responses = append(responses, dto.StockPoolResponse{
+			StockPool: latestStock,
+		})
+	}
+
+	// 保持按分数降序排列
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].Score > responses[j].Score
+	})
+
 	return responses, nil
 }
 

@@ -1,4 +1,4 @@
-import { Card, Space, DatePicker, Select, Button, Form } from 'antd'
+import { Card, Space, Select, Button, Form, InputNumber } from 'antd'
 import dayjs from 'dayjs'
 import { useGetAbnormalCapitalQuery } from '../../app/api'
 
@@ -9,7 +9,7 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
 
   // Fetch all data (without sector filter) to aggregate sector counts
   const { data: allData } = useGetAbnormalCapitalQuery(
-    { trade_date: filters.trade_date || '', min_vol_ratio: filters.min_vol_ratio, min_surge_ret: filters.min_surge_ret, sort: filters.sort },
+    { trade_date: filters.trade_date || '', days: filters.days, min_vol_ratio: filters.min_vol_ratio, min_surge_ret: filters.min_surge_ret, sort: filters.sort },
     { refetchOnMountOrArgChange: true }
   )
 
@@ -34,10 +34,7 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
   })()
 
   const handleValuesChange = (changedValues, allValues) => {
-    onFilterChange({
-      ...allValues,
-      trade_date: allValues.trade_date ? allValues.trade_date.format('YYYY-MM-DD') : '',
-    })
+    onFilterChange(allValues)
   }
 
   return (
@@ -46,7 +43,7 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
         form={form}
         layout="inline"
         initialValues={{
-          trade_date: filters.trade_date ? dayjs(filters.trade_date) : null,
+          days: filters.days,
           min_vol_ratio: filters.min_vol_ratio,
           min_surge_ret: filters.min_surge_ret,
           sector_name: filters.sector_name,
@@ -55,8 +52,13 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
         onValuesChange={handleValuesChange}
         style={{ flexWrap: 'wrap', rowGap: 8 }}
       >
-        <Form.Item name="trade_date" label="跑批日期">
-          <DatePicker format="YYYY-MM-DD" placeholder="昨日/今日" />
+        <Form.Item name="days" label="最近天数">
+          <InputNumber
+            min={1}
+            max={365}
+            style={{ width: 80 }}
+            addonAfter="天"
+          />
         </Form.Item>
         <Form.Item name="sector_name" label="板块">
           <Select
@@ -96,6 +98,7 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
             <Option value="vol_ratio">爆量倍数</Option>
             <Option value="surge_count">脉冲频次</Option>
             <Option value="max_surge_ret">最大涨幅</Option>
+            <Option value="symbol">股票代码</Option>
           </Select>
         </Form.Item>
         <Form.Item>
@@ -106,10 +109,8 @@ export default function FilterBar({ filters, onFilterChange, onReset, onRefresh,
             }}>重置</Button>
             <Button type="primary" onClick={() => {
               const allValues = form.getFieldsValue()
-              onFilterChange({
-                ...allValues,
-                trade_date: allValues.trade_date ? allValues.trade_date.format('YYYY-MM-DD') : '',
-              })
+              onFilterChange(allValues)
+              onRefresh()
             }} loading={loading}>刷新</Button>
           </Space>
         </Form.Item>
