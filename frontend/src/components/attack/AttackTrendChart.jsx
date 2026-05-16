@@ -1,53 +1,51 @@
+import React from 'react'
 import { Card, Typography } from 'antd'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
-export default function AttackTrendChart({ data, sectorName }) {
-  if (!data || data.length === 0) return null
+const AttackTrendChart = ({ data, sectorName }) => {
+  const chartData = Array.isArray(data) ? data : []
 
   return (
     <Card 
-      title={<Title level={4} style={{ margin: 0 }}>📈 {sectorName} 攻击趋势</Title>}
-      style={{ borderRadius: 12, border: 'none', background: 'rgba(255, 255, 255, 0.02)' }}
+      title={<Text style={{ color: '#fff' }}>{sectorName || '板块'} 攻击趋势</Text>}
+      style={{ background: '#141414', border: '1px solid #30363d', borderRadius: 12, height: '100%' }}
     >
       <div style={{ height: 300, width: '100%' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={chartData}>
             <defs>
-              <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#722ed1" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#722ed1" stopOpacity={0}/>
+              <linearGradient id="colorAttack" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ff4d4f" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#ff4d4f" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
             <XAxis 
               dataKey="trade_date" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 12 }} 
+              stroke="#8b949e" 
+              fontSize={10}
+              tickFormatter={(str) => str ? str.substring(5) : ''}
             />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 12 }} 
-            />
+            <YAxis stroke="#8b949e" fontSize={10} />
             <Tooltip 
               contentStyle={{ 
                 backgroundColor: '#1f1f1f', 
                 border: 'none', 
                 borderRadius: 8,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-              }} 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                color: '#fff'
+              }}
+              itemStyle={{ color: '#ff4d4f' }}
             />
             <Area 
               type="monotone" 
               dataKey="attack_score" 
-              name="攻击评分"
-              stroke="#722ed1" 
-              strokeWidth={3}
+              stroke="#ff4d4f" 
               fillOpacity={1} 
-              fill="url(#colorScore)" 
+              fill="url(#colorAttack)" 
+              name="攻击强度"
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -55,3 +53,5 @@ export default function AttackTrendChart({ data, sectorName }) {
     </Card>
   )
 }
+
+export default AttackTrendChart

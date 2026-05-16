@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math"
 	"sort"
 	"strings"
 	"trading-review-system/backend/internal/dto"
@@ -44,31 +45,44 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 
 	// Aggregate by sector
 	sectorMap := make(map[string]*dto.MarketAttackTopItem)
-	leaderMap := make(map[string]struct {
+	type stockInfo struct {
 		name   string
+		pct    float64
 		amount float64
-	})
+	}
+	leaderMap := make(map[string]stockInfo)
 
 	for _, log := range logs {
 		if s.shouldFilter(log.SectorName) {
 			continue
 		}
-		if _, ok := sectorMap[log.SectorName]; !ok {
-			score := float64(log.SectorNewCount)*40 + log.SectorNewAmount*0.6
-			sectorMap[log.SectorName] = &dto.MarketAttackTopItem{
+		item, ok := sectorMap[log.SectorName]
+		if !ok {
+			item = &dto.MarketAttackTopItem{
 				SectorName:     log.SectorName,
 				NewStockCount:  log.SectorNewCount,
 				NewTotalAmount: log.SectorNewAmount,
-				AttackScore:    score,
 			}
+			sectorMap[log.SectorName] = item
+		}
+
+		// Count action types, amounts and limits
+		if log.ActionType == "进攻" {
+			item.AttackCount++
+			item.AttackAmount += log.AmountToday
+		} else if log.ActionType == "撤退" {
+			item.RetreatCount++
+			item.RetreatAmount += log.AmountToday
+		}
+		if log.PctChg > 9.5 {
+			item.LimitUpCount++
+		} else if log.PctChg < -9.5 {
+			item.LimitDownCount++
 		}
 
 		// Update leader (stock with max amount today)
 		if curr, ok := leaderMap[log.SectorName]; !ok || log.AmountToday > curr.amount {
-			leaderMap[log.SectorName] = struct {
-				name   string
-				amount float64
-			}{name: log.Name, amount: log.AmountToday}
+			leaderMap[log.SectorName] = stockInfo{name: log.Name, pct: log.PctChg, amount: log.AmountToday}
 		}
 	}
 
@@ -78,9 +92,35 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 	var topSector string
 
 	for name, item := range sectorMap {
-		item.LeaderStock = leaderMap[name].name
-		// Trend calculation (simplified: compare with previous days if available, but for now just placeholder)
-		item.Trend = "UP" 
+		leader := leaderMap[name]
+		item.LeaderStock = leader.name
+		item.LeaderPct = leader.pct
+		item.LeaderIsLimitUp = leader.pct > 9.5
+
+		// Calculate Scores based on refactored formulas
+		// attack_score = 进攻票数量 * 3 + 进攻类成交额 * 0.3 + 龙头涨幅 * 2 + 涨停数量 * 5
+		item.AttackScore = float64(item.AttackCount)*3 + item.AttackAmount*0.3 + item.LeaderPct*2 + float64(item.LimitUpCount)*5
+		// retreat_score = 撤退票数量 * 3 + 撤退类成交额 * 0.3 + 跌停数量 * 5
+		item.RetreatScore = float64(item.RetreatCount)*3 + item.RetreatAmount*0.3 + float64(item.LimitDownCount)*5 
+		item.NetScore = item.AttackScore - item.RetreatScore
+
+		if item.NewStockCount > 0 {
+			item.AttackRatio = float64(item.AttackCount) / float64(item.NewStockCount)
+		}
+
+		// Trend Identification Logic
+		if item.NetScore < -10 || (item.RetreatCount > item.AttackCount && item.NetScore < 0) {
+			item.Trend = "退潮"
+		} else if item.NetScore > 100 || item.LimitUpCount >= 3 {
+			item.Trend = "高潮"
+		} else if item.AttackCount > 0 && item.RetreatCount > 0 && math.Abs(item.NetScore) < 30 {
+			item.Trend = "分歧"
+		} else if item.AttackRatio > 0.6 && item.NetScore > 30 {
+			item.Trend = "主升"
+		} else {
+			item.Trend = "启动"
+		}
+
 		topList = append(topList, *item)
 
 		if item.NewTotalAmount > maxAmount {
@@ -90,18 +130,56 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 	}
 
 	// Count unique stocks across all sectors
+	limitUpStocksMap := make(map[string]string) // name -> symbol
 	for _, log := range logs {
 		totalNewStocksSet[log.Symbol] = true
+		if log.PctChg > 9.5 {
+			limitUpStocksMap[log.Name] = log.Symbol
+		}
 	}
 
-	// Sort by score DESC
+	// Prepare LeaderHierarchy (Mocking levels for now, but identifying limit ups)
+	leaderHierarchy := []dto.LeaderHierarchyItem{}
+	if len(limitUpStocksMap) > 0 {
+		stocks := []string{}
+		for name := range limitUpStocksMap {
+			stocks = append(stocks, name)
+		}
+		// Sort stocks by name for consistency
+		sort.Strings(stocks)
+		leaderHierarchy = append(leaderHierarchy, dto.LeaderHierarchyItem{
+			Level:  1,
+			Stocks: stocks,
+		})
+	}
+
+	// Sort all by NetScore DESC
 	sort.Slice(topList, func(i, j int) bool {
-		return topList[i].AttackScore > topList[j].AttackScore
+		return topList[i].NetScore > topList[j].NetScore
 	})
 
-	// Limit to TOP 10
-	if len(topList) > 10 {
-		topList = topList[:10]
+	var attackList []dto.MarketAttackTopItem
+	var retreatList []dto.MarketAttackTopItem
+
+	for _, item := range topList {
+		if item.NetScore > 0 {
+			attackList = append(attackList, item)
+		} else if item.NetScore < 0 {
+			retreatList = append(retreatList, item)
+		}
+	}
+
+	// Sort retreatList by NetScore ASC (most negative first)
+	sort.Slice(retreatList, func(i, j int) bool {
+		return retreatList[i].NetScore < retreatList[j].NetScore
+	})
+
+	// Limit each to 20
+	if len(attackList) > 20 {
+		attackList = attackList[:20]
+	}
+	if len(retreatList) > 20 {
+		retreatList = retreatList[:20]
 	}
 
 	summary := dto.MarketAttackSummary{
@@ -112,8 +190,10 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 	}
 
 	return &dto.MarketAttackTopResponse{
-		Summary: summary,
-		TopList: topList,
+		Summary:         summary,
+		AttackList:      attackList,
+		RetreatList:     retreatList,
+		LeaderHierarchy: leaderHierarchy,
 	}, nil
 }
 
@@ -132,7 +212,10 @@ func (s *MarketAttackService) GetSectorDetail(date, sectorName string) (*dto.Sec
 	}
 
 	var stocks []dto.AttackStockDetail
-	for _, log := range logs {
+	var leaderIndex int = -1
+	var maxPctChg float64 = -999.0
+
+	for i, log := range logs {
 		stocks = append(stocks, dto.AttackStockDetail{
 			Symbol:          log.Symbol,
 			Name:            log.Name,
@@ -140,7 +223,19 @@ func (s *MarketAttackService) GetSectorDetail(date, sectorName string) (*dto.Sec
 			AmountToday:     log.AmountToday,
 			AmountDiff:      log.AmountToday - log.AmountYesterday,
 			PctChg:          log.PctChg,
+			ClosePos:        log.ClosePos,
+			ActionType:      log.ActionType,
+			IsLeader:        false,
 		})
+
+		if log.PctChg > maxPctChg {
+			maxPctChg = log.PctChg
+			leaderIndex = i
+		}
+	}
+
+	if leaderIndex != -1 && len(stocks) > 0 {
+		stocks[leaderIndex].IsLeader = true
 	}
 
 	// Sort stocks by AmountToday DESC

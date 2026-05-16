@@ -1,4 +1,4 @@
-import { Table, Tag, Typography, Progress, Button } from 'antd'
+import { Table, Tag, Typography, Progress, Button, Space } from 'antd'
 import { ArrowRightOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -18,6 +18,25 @@ export default function AttackRankTable({ data, loading, onRowClick }) {
       dataIndex: 'sector_name',
       key: 'sector_name',
       render: (text) => <Text strong style={{ fontSize: 16 }}>{text}</Text>,
+    },
+    {
+      title: '动作性质',
+      key: 'action_distribution',
+      width: 120,
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Tag color="#cf1322" style={{ margin: 0, minWidth: 50, textAlign: 'center' }}>
+              进攻 {record.attack_count}
+            </Tag>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Tag color="#3f8600" style={{ margin: 0, minWidth: 50, textAlign: 'center' }}>
+              撤退 {record.retreat_count}
+            </Tag>
+          </div>
+        </Space>
+      ),
     },
     {
       title: '攻击强度 (评分)',

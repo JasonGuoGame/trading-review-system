@@ -31,7 +31,7 @@ const menuItems = [
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
   { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
-  { key: '/market-attack', icon: <AimOutlined />, label: '主线攻击' },
+  { key: '/market-attack', icon: <AimOutlined />, label: '情绪周期' },
   { key: '/sector-fund-flow', icon: <FundOutlined />, label: '资金流向' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
 ]

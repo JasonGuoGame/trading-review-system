@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'antd';
-import { ThunderboltOutlined, SmallDashOutlined } from '@ant-design/icons';
+import { ThunderboltOutlined, SmallDashOutlined, LineChartOutlined } from '@ant-design/icons';
 
 const PoolTabs = ({ activeKey, onChange }) => {
   const items = [
@@ -19,6 +19,15 @@ const PoolTabs = ({ activeKey, onChange }) => {
         <span>
           <SmallDashOutlined />
           🌊 长线股票池
+        </span>
+      ),
+    },
+    {
+      key: 'macd_boll',
+      label: (
+        <span>
+          <LineChartOutlined />
+          📈 MACD+BOLL
         </span>
       ),
     },

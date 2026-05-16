@@ -16,7 +16,14 @@ func NewStockPoolRepository(db *gorm.DB) *StockPoolRepository {
 
 func (r *StockPoolRepository) List(poolType models.StockPoolType, days int) ([]models.StockPool, error) {
 	var stocks []models.StockPool
-	query := r.db.Where("pool_type = ?", poolType)
+	var query *gorm.DB
+
+	if poolType == "macd_boll" {
+		query = r.db.Where("status = ?", "资金共振金叉")
+	} else {
+		query = r.db.Where("pool_type = ?", poolType)
+	}
+
 	if days > 0 {
 		query = query.Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days-1)
 	}

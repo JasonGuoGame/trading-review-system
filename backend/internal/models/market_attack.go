@@ -13,6 +13,8 @@ type StkMarketAttackLog struct {
 	SectorNewCount  int       `gorm:"column:sector_new_count"`
 	SectorNewAmount float64   `gorm:"column:sector_new_amount"`
 	LastUpdate      time.Time `gorm:"column:last_update"`
+	ClosePos        float64   `gorm:"column:close_pos"`
+	ActionType      string    `gorm:"column:action_type"`
 }
 
 func (StkMarketAttackLog) TableName() string {

@@ -122,9 +122,44 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
     ...commonColumns.slice(2),
   ];
 
+  const macdBollColumns = [
+    ...commonColumns.slice(0, 2),
+    {
+      title: '指标数据 (Tags)',
+      dataIndex: 'tags',
+      key: 'tags',
+      render: (val) => {
+        if (!val) return <span style={{ color: '#8b949e' }}>-</span>;
+        try {
+          const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+          return (
+            <Space direction="vertical" size={2}>
+              {Object.entries(parsed).map(([k, v]) => (
+                <Tag color="purple" key={k}>{k}: {v}</Tag>
+              ))}
+            </Space>
+          );
+        } catch (e) {
+          return <span>{val}</span>;
+        }
+      },
+    },
+    {
+      title: '逻辑演绎 (Notes)',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => (
+        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {val || '-'}
+        </span>
+      ),
+    },
+    ...commonColumns.slice(2),
+  ];
+
   return (
     <Table
-      columns={type === 'short' ? shortTermColumns : longTermColumns}
+      columns={type === 'short' ? shortTermColumns : type === 'long' ? longTermColumns : macdBollColumns}
       dataSource={data}
       loading={loading}
       rowKey="id"

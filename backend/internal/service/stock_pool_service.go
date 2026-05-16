@@ -39,10 +39,13 @@ func (s *StockPoolService) GetStockPool(poolType models.StockPoolType, days int)
 			}
 		}
 
-		if len(group) == 1 {
-			latestStock.Status = "新入选"
-		} else {
-			latestStock.Status = "曾经入选"
+		// Preserve original Status from database
+		if latestStock.Status == "" {
+			if len(group) == 1 {
+				latestStock.Status = "新入选"
+			} else {
+				latestStock.Status = "曾经入选"
+			}
 		}
 
 		responses = append(responses, dto.StockPoolResponse{
