@@ -3,7 +3,13 @@ import { EyeOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
-export default function StrongSectorPanel({ data, loading, onRowClick }) {
+export default function StrongSectorPanel({ data, loading, mode, onRowClick }) {
+  const getFlowTitle = () => {
+    if (mode === '3d') return '近3日净流入 (亿)'
+    if (mode === '5d') return '近5日净流入 (亿)'
+    return '今日净流入 (亿)'
+  }
+
   const columns = [
     {
       title: '排名',
@@ -25,9 +31,10 @@ export default function StrongSectorPanel({ data, loading, onRowClick }) {
       render: (text) => <Text strong>{text}</Text>,
     },
     {
-      title: '净流入 (亿)',
+      title: getFlowTitle(),
       dataIndex: 'total_net_inflow',
       key: 'total_net_inflow',
+      sorter: (a, b) => a.total_net_inflow - b.total_net_inflow,
       render: (val) => <Text style={{ color: '#cf1322', fontWeight: 'bold' }}>+{val.toFixed(1)}亿</Text>,
     },
     {

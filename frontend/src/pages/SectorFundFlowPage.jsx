@@ -53,11 +53,13 @@ export default function SectorFundFlowPage() {
               <StrongSectorPanel 
                 data={data.strong_sectors || []} 
                 loading={isFetching}
+                mode={filters.mode}
                 onRowClick={handleRowClick}
               />
               <WeakSectorPanel 
                 data={data.weak_sectors || []} 
                 loading={isFetching}
+                mode={filters.mode}
                 onRowClick={handleRowClick}
               />
             </Col>
