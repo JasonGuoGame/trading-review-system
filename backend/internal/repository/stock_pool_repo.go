@@ -20,6 +20,14 @@ func (r *StockPoolRepository) List(poolType models.StockPoolType, days int) ([]m
 
 	if poolType == "macd_boll" {
 		query = r.db.Where("status = ?", "资金共振金叉")
+	} else if poolType == "trend_following" {
+		query = r.db.Where("status IN ?", []string{"趋势确立", "共振买点"})
+	} else if poolType == "turnover_vol" {
+		query = r.db.Where("status IN ?", []string{"主升接力", "启动突破"})
+	} else if poolType == "short" {
+		query = r.db.Where("pool_type = ? AND status = ?", poolType, "短线爆发黑马")
+	} else if poolType == "long" {
+		query = r.db.Where("pool_type = ? AND status = ?", poolType, "长线牛")
 	} else {
 		query = r.db.Where("pool_type = ?", poolType)
 	}

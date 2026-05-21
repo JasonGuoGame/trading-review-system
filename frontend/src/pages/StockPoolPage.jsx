@@ -15,7 +15,7 @@ const StockPoolPage = () => {
   const [activeTab, setActiveTab] = useState('short');
   const [selectedStock, setSelectedStock] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState(1);
 
   const today = dayjs().format('YYYY-MM-DD');
   

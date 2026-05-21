@@ -27,7 +27,25 @@ const PoolTabs = ({ activeKey, onChange }) => {
       label: (
         <span>
           <LineChartOutlined />
+          📈 0轴金叉资金共振
+        </span>
+      ),
+    },
+    {
+      key: 'trend_following',
+      label: (
+        <span>
+          <LineChartOutlined />
           📈 MACD+BOLL
+        </span>
+      ),
+    },
+    {
+      key: 'turnover_vol',
+      label: (
+        <span>
+          <LineChartOutlined />
+          📈 换手率+量比
         </span>
       ),
     },
