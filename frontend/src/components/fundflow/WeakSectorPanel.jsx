@@ -31,23 +31,25 @@ export default function WeakSectorPanel({ data, loading, mode, onRowClick }) {
       render: (val) => <Text style={{ color: '#3f8600', fontWeight: 'bold' }}>{val.toFixed(1)}亿</Text>,
     },
     {
-      title: '最新流出率',
+      title: '最新流入率',
       dataIndex: 'today_inflow_rate',
       key: 'today_inflow_rate',
       render: (val) => <Text style={{ color: '#3f8600' }}>{val.toFixed(2)}%</Text>,
     },
-    {
+    // Only show 3d trend in 3d/5d modes
+    ...(mode !== '1d' ? [{
       title: '3日趋势',
       dataIndex: 'trend_3d',
       key: 'trend_3d',
       render: (val) => <span style={{ fontSize: 16 }}>{val}</span>,
-    },
-    {
+    }] : []),
+    // Only show 5d trend in 5d mode
+    ...(mode === '5d' ? [{
       title: '5日趋势',
       dataIndex: 'trend_5d',
       key: 'trend_5d',
       render: (val) => <span style={{ fontSize: 16 }}>{val}</span>,
-    },
+    }] : []),
     {
       title: '操作',
       key: 'action',

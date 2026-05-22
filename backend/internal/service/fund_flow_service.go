@@ -86,7 +86,6 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			continue
 		}
 
-		todayInflow := flows[0].NetInflowAmount
 		todayRate := flows[0].InflowRate
 		leader := flows[0].TopStock
 
@@ -117,13 +116,13 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		}
 		allSectors = append(allSectors, item)
 
-		// Aggregate summary for 'today' (flows[0])
-		if todayInflow > 0 {
+		// Aggregate summary using mode-specific totalInflow (consistent with bucketing)
+		if totalInflow > 0 {
 			summary.InflowSectorCount++
-			summary.TotalNetInflow += todayInflow
-		} else {
+			summary.TotalNetInflow += totalInflow
+		} else if totalInflow < 0 {
 			summary.OutflowSectorCount++
-			summary.TotalNetOutflow += todayInflow
+			summary.TotalNetOutflow += totalInflow
 		}
 
 		// Bucket into Strong or Weak
@@ -157,8 +156,18 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 
 	sortFlows(allSectors, query.Sort)
 	sortFlows(strongSectors, query.Sort)
-	// Weak sectors usually we want the MOST negative at top
+	// Weak sectors: most negative at top, but respect sortKey for the ordering metric
 	sort.Slice(weakSectors, func(i, j int) bool {
+		if query.Sort == "rate" {
+			return weakSectors[i].TodayInflowRate < weakSectors[j].TodayInflowRate
+		} else if query.Sort == "trend" {
+			c1 := strings.Count(weakSectors[i].Trend, "📈") - strings.Count(weakSectors[i].Trend, "📉")
+			c2 := strings.Count(weakSectors[j].Trend, "📈") - strings.Count(weakSectors[j].Trend, "📉")
+			if c1 != c2 {
+				return c1 < c2
+			}
+			return weakSectors[i].TotalNetInflow < weakSectors[j].TotalNetInflow
+		}
 		return weakSectors[i].TotalNetInflow < weakSectors[j].TotalNetInflow
 	})
 	for idx := range weakSectors {

@@ -43,18 +43,20 @@ export default function StrongSectorPanel({ data, loading, mode, onRowClick }) {
       key: 'today_inflow_rate',
       render: (val) => <Text style={{ color: val > 0 ? '#cf1322' : '#595959' }}>{val.toFixed(2)}%</Text>,
     },
-    {
+    // Only show 3d trend in 3d/5d modes
+    ...(mode !== '1d' ? [{
       title: '3日趋势',
       dataIndex: 'trend_3d',
       key: 'trend_3d',
       render: (val) => <span style={{ fontSize: 16 }}>{val}</span>,
-    },
-    {
+    }] : []),
+    // Only show 5d trend in 5d mode
+    ...(mode === '5d' ? [{
       title: '5日趋势',
       dataIndex: 'trend_5d',
       key: 'trend_5d',
       render: (val) => <span style={{ fontSize: 16 }}>{val}</span>,
-    },
+    }] : []),
     {
       title: '龙头',
       dataIndex: 'leader_stock',
