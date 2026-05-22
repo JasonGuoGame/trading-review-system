@@ -2,6 +2,7 @@ package service
 
 import (
 	"sort"
+	"time"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/models"
 	"trading-review-system/backend/internal/repository"
@@ -78,17 +79,33 @@ func (s *StockPoolService) CreateStock(req dto.CreateStockPoolRequest) error {
 	return s.repo.Create(stock)
 }
 
-func (s *StockPoolService) UpdateStatus(id uint, status string) error {
-	stock, err := s.repo.GetByID(id)
+func (s *StockPoolService) UpdateStatus(symbol string, tradeDateStr, poolTypeStr, oldStatus, newStatus string) error {
+	tradeDate, err := time.Parse("2006-01-02", tradeDateStr)
 	if err != nil {
 		return err
 	}
-	stock.Status = status
-	return s.repo.Update(stock)
+	poolType := models.StockPoolType(poolTypeStr)
+
+	stock, err := s.repo.GetBySymbol(symbol)
+	if err != nil {
+		return err
+	}
+	// Create new record with updated status, delete old one
+	newStock := *stock
+	newStock.Status = newStatus
+	if err := s.repo.Create(&newStock); err != nil {
+		return err
+	}
+	return s.repo.Delete(symbol, tradeDate, poolType, oldStatus)
 }
 
-func (s *StockPoolService) DeleteStock(id uint) error {
-	return s.repo.Delete(id)
+func (s *StockPoolService) DeleteStock(symbol string, tradeDateStr, poolTypeStr, status string) error {
+	tradeDate, err := time.Parse("2006-01-02", tradeDateStr)
+	if err != nil {
+		return err
+	}
+	poolType := models.StockPoolType(poolTypeStr)
+	return s.repo.Delete(symbol, tradeDate, poolType, status)
 }
 
 func (s *StockPoolService) GetStockDetail(symbol string) (*dto.StockPoolDetailResponse, error) {

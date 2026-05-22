@@ -30,7 +30,7 @@ type StockPoolSearchResult struct {
 type StockPoolEntry struct {
 	PoolType  models.StockPoolType `json:"pool_type"`
 	Status    string               `json:"status"`
-	Score     int                  `json:"score"`
+	Score     int64                `json:"score"`
 	TradeDate string               `json:"trade_date"`
 }
 
@@ -39,7 +39,7 @@ type StockPoolDetailResponse struct {
 	StockName  string               `json:"stock_name"`
 	PoolType   models.StockPoolType `json:"pool_type"`
 	SectorName string               `json:"sector_name"`
-	Score      int                  `json:"score"`
+	Score      int64                `json:"score"`
 	Status     string               `json:"status"`
 	Notes      string               `json:"notes"`
 	Signals    []models.StockPoolSignal `json:"signals"`

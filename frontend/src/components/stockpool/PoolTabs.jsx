@@ -49,6 +49,15 @@ const PoolTabs = ({ activeKey, onChange }) => {
         </span>
       ),
     },
+    {
+      key: 'winner_mode',
+      label: (
+        <span>
+          <LineChartOutlined />
+          🏆 赢家模式
+        </span>
+      ),
+    },
   ];
 
   return (

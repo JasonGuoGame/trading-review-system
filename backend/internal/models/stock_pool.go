@@ -12,16 +12,15 @@ const (
 )
 
 type StockPool struct {
-	ID         uint          `gorm:"primaryKey" json:"id"`
-	Symbol     string        `gorm:"size:20;index" json:"symbol"`
+	Symbol     string        `gorm:"primaryKey;size:20;index" json:"symbol"`
+	TradeDate  time.Time     `gorm:"primaryKey;type:date" json:"trade_date"`
+	PoolType   StockPoolType `gorm:"primaryKey;type:enum('short','long');default:'short'" json:"pool_type"`
+	Status     string        `gorm:"primaryKey;size:50" json:"status"`
 	StockName  string        `gorm:"size:100" json:"stock_name"`
-	PoolType   StockPoolType `gorm:"type:enum('short','long');default:'short'" json:"pool_type"`
 	SectorName string        `gorm:"size:100" json:"sector_name"`
-	Score      int           `json:"score"`
-	Status     string        `gorm:"size:50" json:"status"`
+	Score      int64         `json:"score"`
 	Tags       string        `gorm:"type:json" json:"tags"` // JSON string
 	Notes      string        `gorm:"type:text" json:"notes"`
-	TradeDate  time.Time     `gorm:"type:date" json:"trade_date"`
 	CreatedAt  time.Time     `json:"created_at"`
 	UpdatedAt  time.Time     `json:"updated_at"`
 }

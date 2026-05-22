@@ -60,8 +60,10 @@ func (h *StockPoolHandler) Create(c *gin.Context) {
 }
 
 func (h *StockPoolHandler) UpdateStatus(c *gin.Context) {
-	idStr := c.Param("id")
-	id, _ := strconv.ParseUint(idStr, 10, 32)
+	symbol := c.Query("symbol")
+	tradeDate := c.Query("trade_date")
+	poolType := c.Query("pool_type")
+	oldStatus := c.Query("old_status")
 
 	var req dto.UpdateStockPoolStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -69,7 +71,7 @@ func (h *StockPoolHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateStatus(uint(id), req.Status); err != nil {
+	if err := h.service.UpdateStatus(symbol, tradeDate, poolType, oldStatus, req.Status); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -114,10 +116,12 @@ func (h *StockPoolHandler) Search(c *gin.Context) {
 }
 
 func (h *StockPoolHandler) Delete(c *gin.Context) {
-	idStr := c.Param("id")
-	id, _ := strconv.ParseUint(idStr, 10, 32)
+	symbol := c.Query("symbol")
+	tradeDate := c.Query("trade_date")
+	poolType := c.Query("pool_type")
+	status := c.Query("status")
 
-	if err := h.service.DeleteStock(uint(id)); err != nil {
+	if err := h.service.DeleteStock(symbol, tradeDate, poolType, status); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"trading-review-system/backend/internal/models"
 
 	"gorm.io/gorm"
@@ -28,6 +30,8 @@ func (r *StockPoolRepository) List(poolType models.StockPoolType, days int) ([]m
 		query = r.db.Where("pool_type = ? AND status = ?", poolType, "短线爆发黑马")
 	} else if poolType == "long" {
 		query = r.db.Where("pool_type = ? AND status = ?", poolType, "长线牛")
+	} else if poolType == "winner_mode" {
+		query = r.db.Where("status LIKE ?", "赢家模式:%")
 	} else {
 		query = r.db.Where("pool_type = ?", poolType)
 	}
@@ -37,12 +41,6 @@ func (r *StockPoolRepository) List(poolType models.StockPoolType, days int) ([]m
 	}
 	err := query.Order("score DESC").Find(&stocks).Error
 	return stocks, err
-}
-
-func (r *StockPoolRepository) GetByID(id uint) (*models.StockPool, error) {
-	var stock models.StockPool
-	err := r.db.First(&stock, id).Error
-	return &stock, err
 }
 
 func (r *StockPoolRepository) GetBySymbol(symbol string) (*models.StockPool, error) {
@@ -55,15 +53,20 @@ func (r *StockPoolRepository) GetBySymbol(symbol string) (*models.StockPool, err
 }
 
 func (r *StockPoolRepository) Create(stock *models.StockPool) error {
+	if stock.TradeDate.IsZero() {
+		stock.TradeDate = time.Now()
+	}
 	return r.db.Create(stock).Error
 }
 
 func (r *StockPoolRepository) Update(stock *models.StockPool) error {
-	return r.db.Save(stock).Error
+	return r.db.Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
+		stock.Symbol, stock.TradeDate, stock.PoolType, stock.Status).Updates(stock).Error
 }
 
-func (r *StockPoolRepository) Delete(id uint) error {
-	return r.db.Delete(&models.StockPool{}, id).Error
+func (r *StockPoolRepository) Delete(symbol string, tradeDate time.Time, poolType models.StockPoolType, status string) error {
+	return r.db.Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
+		symbol, tradeDate, poolType, status).Delete(&models.StockPool{}).Error
 }
 
 func (r *StockPoolRepository) Search(query string) ([]models.StockPool, error) {

@@ -163,9 +163,111 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
     ...commonColumns.slice(2),
   ];
 
+  const WINNER_FACTOR_LABELS = {
+    vol_ratio: '量比',
+    dif: 'DIF',
+    close_position: '收盘位置',
+    turnover: '换手率',
+    macd_signal: 'MACD信号',
+    boll_position: '布林位置',
+    rsi: 'RSI',
+    volume: '成交量',
+    ma_status: '均线状态',
+    momentum: '动量',
+  };
+
+  const WINNER_FACTOR_COLORS = {
+    vol_ratio: '#ff7a45',
+    dif: '#1677ff',
+    close_position: '#a0d911',
+    turnover: '#ff4d4f',
+    macd_signal: '#597ef7',
+    boll_position: '#9254de',
+    rsi: '#36cfc9',
+    volume: '#ffc53d',
+    ma_status: '#73d13d',
+    momentum: '#ff85c0',
+  };
+
+  const renderWinnerTags = (val, status) => {
+    const tags = [];
+    // Show mode name first
+    const modeName = (status || '').replace(/^赢家模式[：:]/, '');
+    if (modeName) {
+      tags.push(
+        <Tag color="gold" key="mode" style={{ fontWeight: 'bold', fontSize: 13 }}>
+          {modeName}
+        </Tag>
+      );
+    }
+    if (!val) return <Space size={4}>{tags}</Space>;
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      Object.entries(parsed).forEach(([k, v]) => {
+        const label = WINNER_FACTOR_LABELS[k] || k;
+        const color = WINNER_FACTOR_COLORS[k] || 'default';
+        const displayVal = k === 'vol_ratio' && !isNaN(v) ? (parseFloat(v) * 10).toFixed(1) : v;
+        tags.push(
+          <Tag color={color} key={k} style={{ marginBottom: 4 }}>
+            {label}: {displayVal}
+          </Tag>
+        );
+      });
+    } catch (e) {
+      return <Space size={4}>{tags}</Space>;
+    }
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 280 }}>
+        {tags}
+      </div>
+    );
+  };
+
+  const winnerModeColumns = [
+    ...commonColumns.slice(0, 2),
+    {
+      title: '赢家效应',
+      dataIndex: 'status',
+      key: 'winner_effect',
+      render: (status) => {
+        const modeName = (status || '').replace(/^赢家模式[：:]/, '');
+        return (
+          <Tag color="gold" style={{ fontWeight: 'bold', fontSize: 13, padding: '2px 10px' }}>
+            {modeName || status}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '核心因子',
+      key: 'factors',
+      render: (_, record) => renderWinnerTags(record.tags, record.status),
+    },
+    {
+      title: '逻辑演绎 (Notes)',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => (
+        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {val || '-'}
+        </span>
+      ),
+    },
+    ...commonColumns.slice(2),
+  ];
+
+  const getColumns = () => {
+    switch (type) {
+      case 'short': return shortTermColumns;
+      case 'long': return longTermColumns;
+      case 'winner_mode': return winnerModeColumns;
+      default: return macdBollColumns;
+    }
+  };
+
   return (
     <Table
-      columns={type === 'short' ? shortTermColumns : type === 'long' ? longTermColumns : macdBollColumns}
+      columns={getColumns()}
       dataSource={data}
       loading={loading}
       rowKey="id"

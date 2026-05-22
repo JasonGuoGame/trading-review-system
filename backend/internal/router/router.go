@@ -92,8 +92,8 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		{
 			stockPool.GET("", handlers.StockPool.List)
 			stockPool.POST("", handlers.StockPool.Create)
-			stockPool.PUT("/:id", handlers.StockPool.UpdateStatus)
-			stockPool.DELETE("/:id", handlers.StockPool.Delete)
+			stockPool.PUT("/status", handlers.StockPool.UpdateStatus)
+			stockPool.DELETE("", handlers.StockPool.Delete)
 			stockPool.GET("/search", handlers.StockPool.Search)
 			stockPool.GET("/:symbol/detail", handlers.StockPool.GetDetail)
 		}
