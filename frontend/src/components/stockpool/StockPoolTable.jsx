@@ -122,27 +122,33 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
     ...commonColumns.slice(2),
   ];
 
+  const TAG_LABELS = { to: '换手率', qr: '量比' };
+
+  const renderTags = (val) => {
+    if (!val) return <span style={{ color: '#8b949e' }}>-</span>;
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      return (
+        <Space direction="vertical" size={2}>
+          {Object.entries(parsed).map(([k, v]) => {
+            const label = TAG_LABELS[k] || k;
+            const displayVal = k === 'to' ? ((parseFloat(v) || 0) * 10).toFixed(1) : v;
+            return <Tag color="purple" key={k}>{label}: {displayVal}</Tag>;
+          })}
+        </Space>
+      );
+    } catch (e) {
+      return <span>{val}</span>;
+    }
+  };
+
   const macdBollColumns = [
     ...commonColumns.slice(0, 2),
     {
       title: '指标数据 (Tags)',
       dataIndex: 'tags',
       key: 'tags',
-      render: (val) => {
-        if (!val) return <span style={{ color: '#8b949e' }}>-</span>;
-        try {
-          const parsed = typeof val === 'string' ? JSON.parse(val) : val;
-          return (
-            <Space direction="vertical" size={2}>
-              {Object.entries(parsed).map(([k, v]) => (
-                <Tag color="purple" key={k}>{k}: {v}</Tag>
-              ))}
-            </Space>
-          );
-        } catch (e) {
-          return <span>{val}</span>;
-        }
-      },
+      render: renderTags,
     },
     {
       title: '逻辑演绎 (Notes)',

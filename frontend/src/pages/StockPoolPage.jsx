@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
-import { Layout, Typography, Space, Button, InputNumber, message, Row, Col } from 'antd';
+import { Typography, Space, Button, InputNumber, Row, Col } from 'antd';
 import { PlusOutlined, CalendarOutlined } from '@ant-design/icons';
 import HeaderSummary from '../components/stockpool/HeaderSummary';
 import PoolTabs from '../components/stockpool/PoolTabs';
 import StockPoolTable from '../components/stockpool/StockPoolTable';
 import StockDetailDrawer from '../components/stockpool/StockDetailDrawer';
+import TradingPhaseGuide from '../components/stockpool/TradingPhaseGuide';
+import VolumePriceStrategy from '../components/stockpool/VolumePriceStrategy';
+import StockPoolSearch from '../components/stockpool/StockPoolSearch';
+import AddStockModal from '../components/stockpool/AddStockModal';
 import { useGetStockPoolQuery, useGetMarketBreadthQuery, useGetSectorFundFlowQuery } from '../app/api';
 import dayjs from 'dayjs';
 
-const { Content } = Layout;
 const { Title } = Typography;
 
 const StockPoolPage = () => {
   const [activeTab, setActiveTab] = useState('short');
   const [selectedStock, setSelectedStock] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [addStockOpen, setAddStockOpen] = useState(false);
   const [days, setDays] = useState(1);
 
   const today = dayjs().format('YYYY-MM-DD');
@@ -111,7 +115,7 @@ const StockPoolPage = () => {
             icon={<PlusOutlined />} 
             size="large"
             style={{ background: 'linear-gradient(135deg, #1677ff, #722ed1)', border: 'none' }}
-            onClick={() => message.info('添加股票功能开发中...')}
+            onClick={() => setAddStockOpen(true)}
           >
             添加股票
           </Button>
@@ -120,10 +124,14 @@ const StockPoolPage = () => {
 
       <HeaderSummary marketData={marketOverview} />
 
+      <StockPoolSearch />
+
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} />
         
         {renderShortTermStrategy()}
+        {activeTab === 'long' && <VolumePriceStrategy />}
+        {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
 
         <StockPoolTable 
           type={activeTab} 
@@ -133,10 +141,17 @@ const StockPoolPage = () => {
         />
       </div>
 
-      <StockDetailDrawer 
-        visible={drawerVisible} 
-        stock={selectedStock} 
-        onClose={handleCloseDrawer} 
+      <StockDetailDrawer
+        visible={drawerVisible}
+        stock={selectedStock}
+        onClose={handleCloseDrawer}
+      />
+
+      <AddStockModal
+        open={addStockOpen}
+        poolType={activeTab}
+        onClose={() => setAddStockOpen(false)}
+        onSuccess={refetch}
       />
     </div>
   );

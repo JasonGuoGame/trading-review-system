@@ -30,12 +30,15 @@ function TradeForm() {
   const [upsertExitPlan] = useUpsertExitPlanMutation()
   const { data: tradeDetail, isLoading } = useGetTradeDetailQuery(id, { skip: !isEdit })
   const [submitting, setSubmitting] = useState(false)
+  const [prefillName, setPrefillName] = useState('')
+  const [prefillSymbol, setPrefillSymbol] = useState('')
 
   useEffect(() => {
     if (!isEdit) {
       // Allow prefilling from URL query params (e.g. from Abnormal Capital module)
       const params = new URLSearchParams(location.search)
       const qSymbol = params.get('symbol')
+      const qName = params.get('name')
       const qStrategy = params.get('strategy')
       const qSignal = params.get('signal')
 
@@ -44,6 +47,11 @@ function TradeForm() {
         strategy: qStrategy || undefined,
         entry_signals: qSignal ? [qSignal] : [],
       })
+
+      if (qName) {
+        setPrefillName(qName)
+        setPrefillSymbol(qSymbol || '')
+      }
     }
   }, [isEdit, location.search, form])
 
@@ -203,6 +211,11 @@ function TradeForm() {
               <Form.Item name="symbol" label="股票代码" rules={[{ required: true, message: '请输入股票代码' }]}>
                 <Input placeholder="如 AAPL" size="large" />
               </Form.Item>
+              {prefillName && (
+                <div style={{ color: '#52c41a', fontSize: 14, fontWeight: 600, marginTop: 4 }}>
+                  {prefillName} {prefillSymbol}
+                </div>
+              )}
             </Col>
             <Col xs={24} md={8}>
               <Form.Item name="strategy" label="策略类型">

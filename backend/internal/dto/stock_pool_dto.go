@@ -20,6 +20,20 @@ type UpdateStockPoolStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
 
+type StockPoolSearchResult struct {
+	Symbol      string               `json:"symbol"`
+	StockName   string               `json:"stock_name"`
+	SectorName  string               `json:"sector_name"`
+	Pools       []StockPoolEntry     `json:"pools"`
+}
+
+type StockPoolEntry struct {
+	PoolType  models.StockPoolType `json:"pool_type"`
+	Status    string               `json:"status"`
+	Score     int                  `json:"score"`
+	TradeDate string               `json:"trade_date"`
+}
+
 type StockPoolDetailResponse struct {
 	Symbol     string               `json:"symbol"`
 	StockName  string               `json:"stock_name"`

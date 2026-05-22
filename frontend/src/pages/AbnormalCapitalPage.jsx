@@ -5,6 +5,7 @@ import FilterBar from '../components/abnormal/FilterBar'
 import SummaryBar from '../components/abnormal/SummaryBar'
 import StockTable from '../components/abnormal/StockTable'
 import DetailDrawer from '../components/abnormal/DetailDrawer'
+import AbnormalCapitalSearch from '../components/abnormal/AbnormalCapitalSearch'
 import { useGetAbnormalCapitalQuery } from '../app/api'
 
 const { Title } = Typography
@@ -17,6 +18,7 @@ export default function AbnormalCapitalPage() {
     min_surge_ret: 0,
     sector_name: '',
     sort: 'score',
+    keyword: '',
   })
   
   const { data, isLoading, refetch, isFetching } = useGetAbnormalCapitalQuery(filters, { 
@@ -38,6 +40,7 @@ export default function AbnormalCapitalPage() {
       min_surge_ret: 0,
       sector_name: '',
       sort: 'score',
+      keyword: '',
     })
   }
 
@@ -65,6 +68,11 @@ export default function AbnormalCapitalPage() {
         onReset={handleReset} 
         onRefresh={handleRefresh}
         loading={isFetching}
+      />
+
+      <AbnormalCapitalSearch
+        resultCount={data?.data?.length}
+        onFilterChange={handleFilterChange}
       />
 
       <SummaryBar summary={data?.summary} />

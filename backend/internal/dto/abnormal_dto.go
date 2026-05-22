@@ -10,6 +10,7 @@ type AbnormalCapitalQuery struct {
 	MinSurgeRet   float64 `form:"min_surge_ret,default=0"`
 	SectorName    string  `form:"sector_name"`
 	Sort          string  `form:"sort,default=score"` // vol_ratio, surge_count, max_surge_ret, score
+	Keyword       string  `form:"keyword"`             // search by symbol or name
 }
 
 type SectorStat struct {

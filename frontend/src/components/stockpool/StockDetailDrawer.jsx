@@ -1,11 +1,23 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Drawer, Descriptions, Tag, Space, Button, Divider, List, Typography, Badge } from 'antd';
 import { PlusCircleOutlined, StarOutlined, DeleteOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 const StockDetailDrawer = ({ visible, stock, onClose }) => {
+  const navigate = useNavigate();
+
   if (!stock) return null;
+
+  const handleAddToTrade = () => {
+    const params = new URLSearchParams();
+    if (stock.symbol) params.set('symbol', stock.symbol);
+    if (stock.stock_name) params.set('name', stock.stock_name);
+    params.set('strategy', '股票池');
+    params.set('signal', '股票池');
+    navigate(`/trades/new?${params.toString()}`);
+  };
 
   return (
     <Drawer
@@ -59,7 +71,13 @@ const StockDetailDrawer = ({ visible, stock, onClose }) => {
 
       <Title level={5} style={{ color: '#c9d1d9' }}>操作</Title>
       <Space direction="vertical" style={{ width: '100%' }}>
-        <Button type="primary" block icon={<PlusCircleOutlined />} style={{ background: '#238636', borderColor: '#238636' }}>
+        <Button
+          type="primary"
+          block
+          icon={<PlusCircleOutlined />}
+          style={{ background: '#238636', borderColor: '#238636' }}
+          onClick={handleAddToTrade}
+        >
           加入交易
         </Button>
         <Button block icon={<StarOutlined />}>

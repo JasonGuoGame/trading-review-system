@@ -299,6 +299,10 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
       providesTags: (result, error, symbol) => [{ type: 'StockPool', id: symbol }],
     }),
+    searchStockPool: builder.query({
+      query: (q) => `/stock-pool/search?q=${encodeURIComponent(q)}`,
+      transformResponse: (res) => res.data,
+    }),
     createStockPool: builder.mutation({
       query: (body) => ({
         url: '/stock-pool',
@@ -383,6 +387,7 @@ export const {
   useGetSectorFundFlowQuery,
   useGetSectorTrendQuery,
   useGetStockPoolQuery,
+  useSearchStockPoolQuery,
   useGetStockDetailQuery,
   useCreateStockPoolMutation,
   useUpdateStockPoolStatusMutation,

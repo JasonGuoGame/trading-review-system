@@ -111,6 +111,61 @@ func (s *StockPoolService) GetStockDetail(symbol string) (*dto.StockPoolDetailRe
 	}, nil
 }
 
+func (s *StockPoolService) SearchStockPools(query string) ([]dto.StockPoolSearchResult, error) {
+	stocks, err := s.repo.Search(query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Group by symbol, then collect unique pool_type entries (latest per pool_type)
+	type key struct {
+		symbol string
+		pool   models.StockPoolType
+	}
+	latest := make(map[key]models.StockPool)
+	symbolMeta := make(map[string]struct {
+		name   string
+		sector string
+	})
+
+	for _, st := range stocks {
+		k := key{symbol: st.Symbol, pool: st.PoolType}
+		if existing, ok := latest[k]; !ok || st.TradeDate.After(existing.TradeDate) {
+			latest[k] = st
+		}
+		if _, ok := symbolMeta[st.Symbol]; !ok {
+			symbolMeta[st.Symbol] = struct {
+				name   string
+				sector string
+			}{name: st.StockName, sector: st.SectorName}
+		}
+	}
+
+	// Group by symbol
+	symbolGroups := make(map[string][]dto.StockPoolEntry)
+	for k, st := range latest {
+		symbolGroups[k.symbol] = append(symbolGroups[k.symbol], dto.StockPoolEntry{
+			PoolType:  k.pool,
+			Status:    st.Status,
+			Score:     st.Score,
+			TradeDate: st.TradeDate.Format("2006-01-02"),
+		})
+	}
+
+	var results []dto.StockPoolSearchResult
+	for symbol, pools := range symbolGroups {
+		meta := symbolMeta[symbol]
+		results = append(results, dto.StockPoolSearchResult{
+			Symbol:     symbol,
+			StockName:  meta.name,
+			SectorName: meta.sector,
+			Pools:      pools,
+		})
+	}
+
+	return results, nil
+}
+
 func (s *StockPoolService) CalculateScore(stock *models.StockPool) {
 	// TODO: Implement actual scoring logic based on signals and market data
 	// Short-term: Fund inflow (30), Abnormal (20), Main theme (20), Technical (20), Sentiment (10)

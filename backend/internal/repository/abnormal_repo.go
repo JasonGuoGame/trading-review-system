@@ -66,6 +66,9 @@ func (r *AbnormalRepository) GetAbnormalCapital(query dto.AbnormalCapitalQuery) 
 	if query.SectorName != "" {
 		q = q.Where("sector_name LIKE ?", "%"+query.SectorName+"%")
 	}
+	if query.Keyword != "" {
+		q = q.Where("symbol = ? OR name LIKE ?", query.Keyword, "%"+query.Keyword+"%")
+	}
 
 	q = q.Select("*, (vol_ratio * 0.5 + surge_count * 0.3 + max_surge_ret * 0.2) as score")
 

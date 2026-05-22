@@ -66,6 +66,14 @@ func (r *StockPoolRepository) Delete(id uint) error {
 	return r.db.Delete(&models.StockPool{}, id).Error
 }
 
+func (r *StockPoolRepository) Search(query string) ([]models.StockPool, error) {
+	var stocks []models.StockPool
+	err := r.db.Where("symbol = ? OR stock_name LIKE ?", query, "%"+query+"%").
+		Order("trade_date DESC").
+		Find(&stocks).Error
+	return stocks, err
+}
+
 func (r *StockPoolRepository) GetSignals(symbol string) ([]models.StockPoolSignal, error) {
 	var signals []models.StockPoolSignal
 	err := r.db.Where("symbol = ?", symbol).Order("trade_date DESC").Limit(10).Find(&signals).Error

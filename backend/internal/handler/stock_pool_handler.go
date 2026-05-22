@@ -93,6 +93,26 @@ func (h *StockPoolHandler) GetDetail(c *gin.Context) {
 	})
 }
 
+func (h *StockPoolHandler) Search(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "query parameter 'q' is required"})
+		return
+	}
+
+	results, err := h.service.SearchStockPools(query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    results,
+	})
+}
+
 func (h *StockPoolHandler) Delete(c *gin.Context) {
 	idStr := c.Param("id")
 	id, _ := strconv.ParseUint(idStr, 10, 32)
