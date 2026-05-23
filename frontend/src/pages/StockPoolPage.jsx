@@ -24,7 +24,7 @@ const StockPoolPage = () => {
   const today = dayjs().format('YYYY-MM-DD');
   
   // Data fetching - pass days parameter
-  const { data: stocks = [], isFetching, refetch } = useGetStockPoolQuery({ type: activeTab, days: days || undefined });
+  const { data: stocks = [], isFetching, refetch } = useGetStockPoolQuery({ type: activeTab, days: days || undefined }, { refetchOnMountOrArgChange: true });
   const { data: marketBreadth } = useGetMarketBreadthQuery(today);
   const { data: sectorFlow } = useGetSectorFundFlowQuery({ limit: 5 });
 

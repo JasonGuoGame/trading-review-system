@@ -1,6 +1,5 @@
-import React from 'react';
+import { LineChartOutlined, SmallDashOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Tabs } from 'antd';
-import { ThunderboltOutlined, SmallDashOutlined, LineChartOutlined } from '@ant-design/icons';
 
 const PoolTabs = ({ activeKey, onChange }) => {
   const items = [
@@ -54,7 +53,7 @@ const PoolTabs = ({ activeKey, onChange }) => {
       label: (
         <span>
           <LineChartOutlined />
-          🏆 赢家模式
+          🏆 赚钱效应
         </span>
       ),
     },
