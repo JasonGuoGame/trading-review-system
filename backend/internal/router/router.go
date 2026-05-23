@@ -98,6 +98,9 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			stockPool.GET("/:symbol/detail", handlers.StockPool.GetDetail)
 		}
 
+		// Market Earning Effect
+		api.GET("/market-earning-effect", handlers.MarketEarning.GetLatest)
+
 		// Market Attack
 		marketAttack := api.Group("/market-attack")
 		{

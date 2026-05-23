@@ -17,6 +17,7 @@ type Services struct {
 	FundFlow      *FundFlowService
 	StockPool     *StockPoolService
 	MarketAttack  *MarketAttackService
+	MarketEarning *MarketEarningService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -32,5 +33,6 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		FundFlow:      NewFundFlowService(repos.FundFlow, cfg.SectorBlacklist),
 		StockPool:     NewStockPoolService(repos.StockPool, repos.FundFlow),
 		MarketAttack:  NewMarketAttackService(repos.MarketAttack, cfg.SectorBlacklist),
+		MarketEarning: NewMarketEarningService(repos.MarketEarning),
 	}
 }

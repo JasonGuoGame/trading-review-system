@@ -1,12 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Drawer, Descriptions, Tag, Space, Button, Divider, List, Typography, Badge } from 'antd';
+import { Drawer, Descriptions, Tag, Space, Button, Divider, List, Typography, Badge, message } from 'antd';
 import { PlusCircleOutlined, StarOutlined, DeleteOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { useDeleteStockPoolMutation } from '../../app/api';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
-const StockDetailDrawer = ({ visible, stock, onClose }) => {
+const StockDetailDrawer = ({ visible, stock, onClose, onDeleted }) => {
   const navigate = useNavigate();
+  const [deleteStock, { isLoading: deleting }] = useDeleteStockPoolMutation();
 
   if (!stock) return null;
 
@@ -17,6 +20,22 @@ const StockDetailDrawer = ({ visible, stock, onClose }) => {
     params.set('strategy', '股票池');
     params.set('signal', '股票池');
     navigate(`/trades/new?${params.toString()}`);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteStock({
+        symbol: stock.symbol,
+        trade_date: dayjs(stock.trade_date).format('YYYY-MM-DD'),
+        pool_type: stock.pool_type,
+        status: stock.status,
+      }).unwrap();
+      message.success('已移出股票池');
+      onClose();
+      if (onDeleted) onDeleted();
+    } catch (err) {
+      message.error(err?.data?.error || '操作失败');
+    }
   };
 
   return (
@@ -83,7 +102,7 @@ const StockDetailDrawer = ({ visible, stock, onClose }) => {
         <Button block icon={<StarOutlined />}>
           加入重点观察
         </Button>
-        <Button danger block icon={<DeleteOutlined />}>
+        <Button danger block icon={<DeleteOutlined />} loading={deleting} onClick={handleDelete}>
           移出股票池
         </Button>
       </Space>

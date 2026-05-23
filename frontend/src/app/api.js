@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -320,12 +320,20 @@ export const apiSlice = createApi({
       invalidatesTags: ['StockPool'],
     }),
     deleteStockPool: builder.mutation({
-      query: (id) => ({
-        url: `/stock-pool/${id}`,
+      query: (params) => ({
+        url: '/stock-pool',
         method: 'DELETE',
+        params,
       }),
       invalidatesTags: ['StockPool'],
     }),
+    // === Market Earning Effect ===
+    getMarketEarningEffect: builder.query({
+      query: () => '/market-earning-effect',
+      transformResponse: (res) => res.data,
+      providesTags: ['MarketEarning'],
+    }),
+
     // === Market Attack ===
     getTopMarketAttacks: builder.query({
       query: (params) => ({
@@ -392,6 +400,7 @@ export const {
   useCreateStockPoolMutation,
   useUpdateStockPoolStatusMutation,
   useDeleteStockPoolMutation,
+  useGetMarketEarningEffectQuery,
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,

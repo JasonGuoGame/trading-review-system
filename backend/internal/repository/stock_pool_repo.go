@@ -64,9 +64,16 @@ func (r *StockPoolRepository) Update(stock *models.StockPool) error {
 		stock.Symbol, stock.TradeDate, stock.PoolType, stock.Status).Updates(stock).Error
 }
 
-func (r *StockPoolRepository) Delete(symbol string, tradeDate time.Time, poolType models.StockPoolType, status string) error {
-	return r.db.Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
-		symbol, tradeDate, poolType, status).Delete(&models.StockPool{}).Error
+func (r *StockPoolRepository) Delete(symbol string, tradeDate string, poolType models.StockPoolType, status string) error {
+	result := r.db.Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
+		symbol, tradeDate, poolType, status).Delete(&models.StockPool{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *StockPoolRepository) Search(query string) ([]models.StockPool, error) {

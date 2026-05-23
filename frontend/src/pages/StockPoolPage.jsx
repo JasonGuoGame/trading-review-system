@@ -7,6 +7,7 @@ import StockPoolTable from '../components/stockpool/StockPoolTable';
 import StockDetailDrawer from '../components/stockpool/StockDetailDrawer';
 import TradingPhaseGuide from '../components/stockpool/TradingPhaseGuide';
 import VolumePriceStrategy from '../components/stockpool/VolumePriceStrategy';
+import WinnerModeHeader from '../components/stockpool/WinnerModeHeader';
 import StockPoolSearch from '../components/stockpool/StockPoolSearch';
 import AddStockModal from '../components/stockpool/AddStockModal';
 import { useGetStockPoolQuery, useGetMarketBreadthQuery, useGetSectorFundFlowQuery } from '../app/api';
@@ -132,6 +133,7 @@ const StockPoolPage = () => {
         {renderShortTermStrategy()}
         {activeTab === 'long' && <VolumePriceStrategy />}
         {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
+        {activeTab === 'winner_mode' && <WinnerModeHeader />}
 
         <StockPoolTable 
           type={activeTab} 
@@ -145,6 +147,7 @@ const StockPoolPage = () => {
         visible={drawerVisible}
         stock={selectedStock}
         onClose={handleCloseDrawer}
+        onDeleted={refetch}
       />
 
       <AddStockModal

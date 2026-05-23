@@ -72,7 +72,7 @@ func (s *StockPoolService) CreateStock(req dto.CreateStockPoolRequest) error {
 		Notes:      req.Notes,
 		Score:      80, // Default score
 	}
-	
+
 	// Initial scoring could happen here
 	s.CalculateScore(stock)
 
@@ -80,8 +80,7 @@ func (s *StockPoolService) CreateStock(req dto.CreateStockPoolRequest) error {
 }
 
 func (s *StockPoolService) UpdateStatus(symbol string, tradeDateStr, poolTypeStr, oldStatus, newStatus string) error {
-	tradeDate, err := time.Parse("2006-01-02", tradeDateStr)
-	if err != nil {
+	if _, err := time.Parse("2006-01-02", tradeDateStr); err != nil {
 		return err
 	}
 	poolType := models.StockPoolType(poolTypeStr)
@@ -96,16 +95,12 @@ func (s *StockPoolService) UpdateStatus(symbol string, tradeDateStr, poolTypeStr
 	if err := s.repo.Create(&newStock); err != nil {
 		return err
 	}
-	return s.repo.Delete(symbol, tradeDate, poolType, oldStatus)
+	return s.repo.Delete(symbol, tradeDateStr, poolType, oldStatus)
 }
 
 func (s *StockPoolService) DeleteStock(symbol string, tradeDateStr, poolTypeStr, status string) error {
-	tradeDate, err := time.Parse("2006-01-02", tradeDateStr)
-	if err != nil {
-		return err
-	}
 	poolType := models.StockPoolType(poolTypeStr)
-	return s.repo.Delete(symbol, tradeDate, poolType, status)
+	return s.repo.Delete(symbol, tradeDateStr, poolType, status)
 }
 
 func (s *StockPoolService) GetStockDetail(symbol string) (*dto.StockPoolDetailResponse, error) {
@@ -187,7 +182,7 @@ func (s *StockPoolService) CalculateScore(stock *models.StockPool) {
 	// TODO: Implement actual scoring logic based on signals and market data
 	// Short-term: Fund inflow (30), Abnormal (20), Main theme (20), Technical (20), Sentiment (10)
 	// Long-term: Sector space (30), Trend (30), Institutional fund (20), Valuation (10), Performance (10)
-	
+
 	// For now, keep it as it is or use a base score
 	if stock.Score == 0 {
 		stock.Score = 80
