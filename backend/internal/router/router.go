@@ -101,6 +101,9 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		// Market Earning Effect
 		api.GET("/market-earning-effect", handlers.MarketEarning.GetLatest)
 
+		// Strategy Performance
+		api.GET("/strategy-performance", handlers.StrategyPerf.GetDashboard)
+
 		// Market Attack
 		marketAttack := api.Group("/market-attack")
 		{

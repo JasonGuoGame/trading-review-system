@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import { Typography, Space, Button, InputNumber, Row, Col } from 'antd';
 import { PlusOutlined, CalendarOutlined } from '@ant-design/icons';
-import HeaderSummary from '../components/stockpool/HeaderSummary';
+import StrategyPerformanceHeader from '../components/stockpool/StrategyPerformanceHeader';
 import PoolTabs from '../components/stockpool/PoolTabs';
 import StockPoolTable from '../components/stockpool/StockPoolTable';
 import StockDetailDrawer from '../components/stockpool/StockDetailDrawer';
 import TradingPhaseGuide from '../components/stockpool/TradingPhaseGuide';
 import VolumePriceStrategy from '../components/stockpool/VolumePriceStrategy';
 import WinnerModeHeader from '../components/stockpool/WinnerModeHeader';
-import StockPoolSearch from '../components/stockpool/StockPoolSearch';
 import AddStockModal from '../components/stockpool/AddStockModal';
-import { useGetStockPoolQuery, useGetMarketBreadthQuery, useGetSectorFundFlowQuery } from '../app/api';
-import dayjs from 'dayjs';
+import { useGetStockPoolQuery } from '../app/api';
 
 const { Title } = Typography;
 
@@ -22,12 +20,7 @@ const StockPoolPage = () => {
   const [addStockOpen, setAddStockOpen] = useState(false);
   const [days, setDays] = useState(1);
 
-  const today = dayjs().format('YYYY-MM-DD');
-  
-  // Data fetching - pass days parameter
   const { data: stocks = [], isFetching, refetch } = useGetStockPoolQuery({ type: activeTab, days: days || undefined }, { refetchOnMountOrArgChange: true });
-  const { data: marketBreadth } = useGetMarketBreadthQuery(today);
-  const { data: sectorFlow } = useGetSectorFundFlowQuery({ limit: 5 });
 
   const handleRowClick = (stock) => {
     setSelectedStock(stock);
@@ -37,20 +30,6 @@ const StockPoolPage = () => {
   const handleCloseDrawer = () => {
     setDrawerVisible(false);
     setSelectedStock(null);
-  };
-
-  // Prepare market overview data
-  const marketOverview = {
-    status: marketBreadth ? (marketBreadth.advancers > marketBreadth.decliners ? '强势' : '分歧') : '强势',
-    advancers: marketBreadth?.advancers || 0,
-    decliners: marketBreadth?.decliners || 0,
-    mainThemes: sectorFlow?.strong_sectors?.slice(0, 3).map(s => s.sector_name) || ['机器人', 'AI', '电力'],
-    topFund: {
-      name: sectorFlow?.strong_sectors?.[0]?.sector_name || '机器人',
-      flow: sectorFlow?.strong_sectors?.[0] 
-        ? `+${(sectorFlow.strong_sectors[0].total_net_inflow / 100000000).toFixed(1)}亿` 
-        : '+82亿'
-    }
   };
 
   const renderShortTermStrategy = () => {
@@ -111,9 +90,9 @@ const StockPoolPage = () => {
           >
             刷新
           </Button>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
             size="large"
             style={{ background: 'linear-gradient(135deg, #1677ff, #722ed1)', border: 'none' }}
             onClick={() => setAddStockOpen(true)}
@@ -123,22 +102,20 @@ const StockPoolPage = () => {
         </Space>
       </header>
 
-      <HeaderSummary marketData={marketOverview} />
-
-      <StockPoolSearch />
+      <StrategyPerformanceHeader />
 
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} />
-        
+
         {renderShortTermStrategy()}
         {activeTab === 'long' && <VolumePriceStrategy />}
         {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
         {activeTab === 'winner_mode' && <WinnerModeHeader />}
 
-        <StockPoolTable 
-          type={activeTab} 
-          data={stocks} 
-          loading={isFetching} 
+        <StockPoolTable
+          type={activeTab}
+          data={stocks}
+          loading={isFetching}
           onRowClick={handleRowClick}
         />
       </div>
@@ -161,4 +138,3 @@ const StockPoolPage = () => {
 };
 
 export default StockPoolPage;
-

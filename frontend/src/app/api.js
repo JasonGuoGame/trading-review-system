@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -334,6 +334,13 @@ export const apiSlice = createApi({
       providesTags: ['MarketEarning'],
     }),
 
+    // === Strategy Performance ===
+    getStrategyPerformance: builder.query({
+      query: (days = 10) => `/strategy-performance?days=${days}`,
+      transformResponse: (res) => res.data,
+      providesTags: ['StrategyPerf'],
+    }),
+
     // === Market Attack ===
     getTopMarketAttacks: builder.query({
       query: (params) => ({
@@ -401,6 +408,7 @@ export const {
   useUpdateStockPoolStatusMutation,
   useDeleteStockPoolMutation,
   useGetMarketEarningEffectQuery,
+  useGetStrategyPerformanceQuery,
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,
