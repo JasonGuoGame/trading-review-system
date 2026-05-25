@@ -341,6 +341,12 @@ export const apiSlice = createApi({
       providesTags: ['StrategyPerf'],
     }),
 
+    // === Strategy Score Analysis ===
+    getStrategyScoreAnalysis: builder.query({
+      query: ({ strategy, days = 30 }) => `/strategy-analysis/trend?strategy=${encodeURIComponent(strategy)}&days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
+
     // === Market Attack ===
     getTopMarketAttacks: builder.query({
       query: (params) => ({
@@ -409,6 +415,7 @@ export const {
   useDeleteStockPoolMutation,
   useGetMarketEarningEffectQuery,
   useGetStrategyPerformanceQuery,
+  useGetStrategyScoreAnalysisQuery,
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,

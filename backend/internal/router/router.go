@@ -103,6 +103,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 
 		// Strategy Performance
 		api.GET("/strategy-performance", handlers.StrategyPerf.GetDashboard)
+		api.GET("/strategy-analysis/trend", handlers.ScoreAnalysis.GetTrend)
 
 		// Market Attack
 		marketAttack := api.Group("/market-attack")

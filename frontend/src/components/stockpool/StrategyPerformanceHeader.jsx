@@ -1,11 +1,12 @@
-import React from 'react';
-import { Typography, Spin, Card, Row, Col, Tag } from 'antd';
-import { CaretUpOutlined, CaretDownOutlined, MinusOutlined, TrophyOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Typography, Spin, Card, Row, Col, Tag, Button } from 'antd';
+import { CaretUpOutlined, CaretDownOutlined, MinusOutlined, TrophyOutlined, BarChartOutlined, StarFilled } from '@ant-design/icons';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
 import { useGetStrategyPerformanceQuery } from '../../app/api';
+import StrategyScoreAnalysisDrawer from './StrategyScoreAnalysisDrawer';
 
 const { Title, Text } = Typography;
 
@@ -45,7 +46,7 @@ const CARD_COLORS = {
   6: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
 };
 
-const StrategyCard = ({ s, rank }) => {
+const StrategyCard = ({ s, rank, onAnalyze }) => {
   const color = CARD_COLORS[rank] || CARD_COLORS[6];
   const isTop = rank === 1;
   const hasData = s.win_rate > 0 || s.avg_return !== 0 || s.signal_count > 0;
@@ -96,6 +97,14 @@ const StrategyCard = ({ s, rank }) => {
               </div>
             </Col>
           </Row>
+          {s.best_score_range && (
+            <div style={{ marginTop: 8, background: 'rgba(250,173,20,0.1)', borderRadius: 6, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <StarFilled style={{ color: '#faad14', fontSize: 11 }} />
+              <Text style={{ color: '#faad14', fontSize: 11 }}>
+                最强区间：{s.best_score_range}
+              </Text>
+            </div>
+          )}
           <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text type="secondary" style={{ fontSize: 11 }}>
               {s.signal_count} 信号
@@ -110,6 +119,15 @@ const StrategyCard = ({ s, rank }) => {
               )}
             </span>
           </div>
+          <Button
+            type="link"
+            size="small"
+            icon={<BarChartOutlined />}
+            onClick={(e) => { e.stopPropagation(); onAnalyze?.(s.name); }}
+            style={{ padding: 0, marginTop: 4, fontSize: 11, color: '#8b949e' }}
+          >
+            查看分数分析
+          </Button>
         </>
       ) : (
         <Text type="secondary" style={{ fontSize: 12 }}>暂无数据</Text>
@@ -154,7 +172,8 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const StrategyPerformanceHeader = () => {
-  const { data, isFetching } = useGetStrategyPerformanceQuery(10);
+  const { data, isFetching } = useGetStrategyPerformanceQuery(10, { refetchOnMountOrArgChange: true });
+  const [analysisStrategy, setAnalysisStrategy] = useState(null);
 
   if (isFetching) {
     return (
@@ -174,7 +193,7 @@ const StrategyPerformanceHeader = () => {
       <Row gutter={[12, 12]}>
         {strategies.map((s) => (
           <Col xs={12} sm={8} md={8} lg={4} key={s.name}>
-            <StrategyCard s={s} rank={s.rank} />
+            <StrategyCard s={s} rank={s.rank} onAnalyze={setAnalysisStrategy} />
           </Col>
         ))}
       </Row>
@@ -295,6 +314,14 @@ const StrategyPerformanceHeader = () => {
             {commentary}
           </Text>
         </Card>
+      )}
+
+      {/* Score Analysis Drawer */}
+      {analysisStrategy && (
+        <StrategyScoreAnalysisDrawer
+          strategyName={analysisStrategy}
+          onClose={() => setAnalysisStrategy(null)}
+        />
       )}
     </div>
   );

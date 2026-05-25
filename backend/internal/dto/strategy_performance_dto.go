@@ -1,14 +1,15 @@
 package dto
 
 type StrategyLatest struct {
-	Name        string  `json:"name"`
-	WinRate     float64 `json:"win_rate"`
-	AvgReturn   float64 `json:"avg_return"`
-	SignalCount int     `json:"signal_count"`
-	BestReturn  float64 `json:"best_return"`
-	WorstReturn float64 `json:"worst_return"`
-	Trend       string  `json:"trend"`
-	Rank        int     `json:"rank"`
+	Name              string  `json:"name"`
+	WinRate           float64 `json:"win_rate"`
+	AvgReturn         float64 `json:"avg_return"`
+	SignalCount       int     `json:"signal_count"`
+	BestReturn        float64 `json:"best_return"`
+	WorstReturn       float64 `json:"worst_return"`
+	Trend             string  `json:"trend"`
+	Rank              int     `json:"rank"`
+	BestScoreRange    string  `json:"best_score_range"`
 }
 
 type StrategyTrendPoint struct {

@@ -28,11 +28,12 @@ var strategyIcons = map[string]string{
 }
 
 type StrategyPerformanceService struct {
-	repo *repository.StrategyPerformanceRepository
+	repo      *repository.StrategyPerformanceRepository
+	scoreRepo *repository.StrategyScoreAnalysisRepository
 }
 
-func NewStrategyPerformanceService(repo *repository.StrategyPerformanceRepository) *StrategyPerformanceService {
-	return &StrategyPerformanceService{repo: repo}
+func NewStrategyPerformanceService(repo *repository.StrategyPerformanceRepository, scoreRepo *repository.StrategyScoreAnalysisRepository) *StrategyPerformanceService {
+	return &StrategyPerformanceService{repo: repo, scoreRepo: scoreRepo}
 }
 
 func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerformanceResponse, error) {
@@ -117,16 +118,23 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 	})
 
 	var result []dto.StrategyLatest
-	for i, s := range strategies {
+	for i, st := range strategies {
+		bestRange := ""
+		if s.scoreRepo != nil {
+			if bestBin, err := s.scoreRepo.GetBestBin(st.Name); err == nil && bestBin != nil {
+				bestRange = fmt.Sprintf("%d-%d", bestBin.ScoreRangeStart, bestBin.ScoreRangeEnd)
+			}
+		}
 		result = append(result, dto.StrategyLatest{
-			Name:        s.Name,
-			WinRate:     s.WinRate,
-			AvgReturn:   s.AvgReturn,
-			SignalCount: s.SignalCount,
-			BestReturn:  s.BestReturn,
-			WorstReturn: s.WorstReturn,
-			Trend:       s.Trend,
-			Rank:        i + 1,
+			Name:           st.Name,
+			WinRate:        st.WinRate,
+			AvgReturn:      st.AvgReturn,
+			SignalCount:    st.SignalCount,
+			BestReturn:     st.BestReturn,
+			WorstReturn:    st.WorstReturn,
+			Trend:          st.Trend,
+			Rank:           i + 1,
+			BestScoreRange: bestRange,
 		})
 	}
 

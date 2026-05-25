@@ -17,6 +17,7 @@ type Repositories struct {
 	MarketAttack   *MarketAttackRepository
 	MarketEarning  *MarketEarningRepository
 	StrategyPerf   *StrategyPerformanceRepository
+	ScoreAnalysis  *StrategyScoreAnalysisRepository
 }
 
 func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
@@ -35,5 +36,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		MarketAttack:  NewMarketAttackRepository(quantDb),
 		MarketEarning: NewMarketEarningRepository(quantDb),
 		StrategyPerf:  NewStrategyPerformanceRepository(db),
+		ScoreAnalysis: NewStrategyScoreAnalysisRepository(db),
 	}
 }

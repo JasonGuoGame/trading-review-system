@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
 import {
@@ -39,11 +40,19 @@ const menuItems = [
 function App() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [tick, setTick] = useState(0)
 
   const selectedKey = menuItems
     .map((item) => item.key)
     .filter((key) => location.pathname === key || (key !== '/' && location.pathname.startsWith(key)))
     .sort((a, b) => b.length - a.length)[0] || '/'
+
+  const handleMenuClick = ({ key }) => {
+    if (key === location.pathname) {
+      setTick((t) => t + 1)
+    }
+    navigate(key)
+  }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -83,7 +92,7 @@ function App() {
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
-          onClick={({ key }) => navigate(key)}
+          onClick={handleMenuClick}
           style={{ marginTop: 8 }}
         />
       </Sider>
@@ -99,7 +108,7 @@ function App() {
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
-            <Route path="/stock-pool" element={<StockPoolPage key={location.key} />} />
+            <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />
             <Route path="/analysis" element={<Analysis />} />
           </Routes>
         </Content>
