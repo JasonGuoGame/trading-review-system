@@ -99,7 +99,7 @@ function App() {
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
-            <Route path="/stock-pool" element={<StockPoolPage />} />
+            <Route path="/stock-pool" element={<StockPoolPage key={location.key} />} />
             <Route path="/analysis" element={<Analysis />} />
           </Routes>
         </Content>

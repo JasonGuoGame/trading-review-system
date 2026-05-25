@@ -15,7 +15,7 @@ var strategyNames = []string{
 	"3. 0轴金叉资金共振",
 	"4. MACD+BOLL趋势",
 	"5. 换手率+量比动能",
-	"6. 赚钱效应",
+	"6. 模式赢家跟随",
 }
 
 var strategyIcons = map[string]string{
@@ -24,7 +24,7 @@ var strategyIcons = map[string]string{
 	"3. 0轴金叉资金共振": "🔥",
 	"4. MACD+BOLL趋势":  "🧘",
 	"5. 换手率+量比动能": "🚀",
-	"6. 赚钱效应":       "🏆",
+	"6. 模式赢家跟随":   "🏆",
 }
 
 type StrategyPerformanceService struct {
@@ -113,7 +113,7 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 	}
 
 	sort.Slice(strategies, func(i, j int) bool {
-		return strategies[i].Score > strategies[j].Score
+		return strategies[i].WinRate > strategies[j].WinRate
 	})
 
 	var result []dto.StrategyLatest

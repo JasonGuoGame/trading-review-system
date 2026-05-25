@@ -8,6 +8,7 @@ import StockDetailDrawer from '../components/stockpool/StockDetailDrawer';
 import TradingPhaseGuide from '../components/stockpool/TradingPhaseGuide';
 import VolumePriceStrategy from '../components/stockpool/VolumePriceStrategy';
 import WinnerModeHeader from '../components/stockpool/WinnerModeHeader';
+import StockPoolSearch from '../components/stockpool/StockPoolSearch';
 import AddStockModal from '../components/stockpool/AddStockModal';
 import { useGetStockPoolQuery } from '../app/api';
 
@@ -105,6 +106,7 @@ const StockPoolPage = () => {
       <StrategyPerformanceHeader />
 
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
+        <StockPoolSearch />
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} />
 
         {renderShortTermStrategy()}
