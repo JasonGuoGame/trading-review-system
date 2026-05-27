@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Drawer, Typography, Spin, Table, Tag, Empty, Row, Col } from 'antd';
+import { Drawer, Typography, Spin, Table, Tag, Empty, Row, Col, Button } from 'antd';
 import { TrophyOutlined, RiseOutlined, FallOutlined } from '@ant-design/icons';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
-import { useGetStrategyScoreAnalysisQuery } from '../../app/api';
+import { useGetStrategyScoreAnalysisQuery, useGetStrategyStocksQuery } from '../../app/api';
 
 const { Title, Text } = Typography;
 
@@ -22,11 +22,44 @@ const heatColor = (value, min, max) => {
   return `rgba(255,77,79,${0.15 + t * 0.35})`;
 };
 
+const thStyle = {
+  padding: '8px 12px',
+  borderBottom: '1px solid #30363d',
+  color: '#8b949e',
+  fontWeight: 500,
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+};
+
+const tdStyle = {
+  padding: '8px 12px',
+  color: '#c9d1d9',
+};
+
 const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
   const [selectedBin, setSelectedBin] = useState(null);
+  const [selectedCell, setSelectedCell] = useState(null);
   const { data, isFetching } = useGetStrategyScoreAnalysisQuery(
     { strategy: strategyName, days: 30 },
   );
+
+  const cellBin = selectedCell?.bin || '';
+  const dashIdx = cellBin.indexOf('-');
+  const scoreMin = dashIdx > -1 ? parseInt(cellBin.slice(0, dashIdx), 10) : 0;
+  const scoreMax = dashIdx > -1 ? parseInt(cellBin.slice(dashIdx + 1), 10) : 0;
+
+  const { data: stocksData, isFetching: stocksLoading } = useGetStrategyStocksQuery(
+    { strategy: strategyName, trade_date: selectedCell?.date, score_min: scoreMin, score_max: scoreMax },
+    { skip: !selectedCell },
+  );
+
+  const handleCellClick = (date, bin) => {
+    if (selectedCell?.date === date && selectedCell?.bin === bin) {
+      setSelectedCell(null);
+    } else {
+      setSelectedCell({ date, bin });
+    }
+  };
 
   const heatmapData = useMemo(() => {
     if (!data) return { dates: [], bins: [], cells: {} };
@@ -158,14 +191,21 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                       </td>
                       {heatmapData.dates.map((d) => {
                         const cell = heatmapData.cells[`${d}|${bin}`];
+                        const isCellSelected = selectedCell?.date === d && selectedCell?.bin === bin;
                         return (
-                          <td key={d} style={{
-                            padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)',
-                            background: cell ? heatColor(cell.win_rate, heatmapData.minWr, heatmapData.maxWr) : 'rgba(255,255,255,0.01)',
-                            color: cell ? (cell.win_rate > 60 ? '#52c41a' : cell.win_rate > 40 ? '#faad14' : '#ff4d4f') : '#8b949e',
-                            fontWeight: cell ? 600 : 400, cursor: cell ? 'pointer' : 'default',
-                          }}
-                            title={cell ? `胜率:${cell.win_rate}% 收益:${cell.avg_return}% 信号:${cell.total_trades}` : ''}
+                          <td key={d}
+                            onClick={() => cell && handleCellClick(d, bin)}
+                            style={{
+                              padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                              background: cell ? heatColor(cell.win_rate, heatmapData.minWr, heatmapData.maxWr) : 'rgba(255,255,255,0.01)',
+                              color: cell ? (cell.win_rate > 60 ? '#52c41a' : cell.win_rate > 40 ? '#faad14' : '#ff4d4f') : '#8b949e',
+                              fontWeight: cell ? 600 : 400, cursor: cell ? 'pointer' : 'default',
+                              outline: isCellSelected ? '2px solid #fff' : 'none',
+                              outlineOffset: -2,
+                              position: 'relative',
+                              zIndex: isCellSelected ? 1 : 0,
+                            }}
+                            title={cell ? `点击查看当天股票明细 | 胜率:${cell.win_rate}% 收益:${cell.avg_return}% 信号:${cell.total_trades}` : ''}
                           >
                             {cell ? `${cell.win_rate.toFixed(0)}%` : '-'}
                           </td>
@@ -178,6 +218,86 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
             </div>
           ) : (
             <Empty description="暂无热力图数据" />
+          )}
+
+          {/* Selected Cell Stock Detail Panel */}
+          {selectedCell && (
+            <div style={{
+              marginBottom: 20,
+              background: '#141414',
+              border: '1px solid #30363d',
+              borderRadius: 10,
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                padding: '12px 20px',
+                borderBottom: '1px solid #30363d',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <Text strong style={{ color: '#fff', fontSize: 14 }}>
+                  当日选股明细 · {selectedCell.date} · {selectedCell.bin.replace('-', '-')}分 · {strategyName}
+                </Text>
+                <Button type="text" size="small" style={{ color: '#8b949e' }} onClick={() => setSelectedCell(null)}>
+                  收起
+                </Button>
+              </div>
+              {stocksLoading ? (
+                <div style={{ textAlign: 'center', padding: 24 }}><Spin size="small" /></div>
+              ) : !stocksData?.stocks?.length ? (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <Text type="secondary">该日期暂无符合条件的股票</Text>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <th style={thStyle}>股票代码</th>
+                      <th style={thStyle}>股票名称</th>
+                      <th style={thStyle}>板块</th>
+                      <th style={thStyle}>评分</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>当日收</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>次日开</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>次日收</th>
+                      <th style={thStyle}>胜负</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stocksData.stocks.map((s) => (
+                      <tr key={s.symbol} style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        background: s.is_win ? 'rgba(82,196,26,0.06)' : 'rgba(255,77,79,0.06)',
+                      }}>
+                        <td style={tdStyle}><Text style={{ color: '#8b949e', fontSize: 12 }}>{s.symbol}</Text></td>
+                        <td style={tdStyle}><Text style={{ color: '#fff', fontWeight: 500 }}>{s.stock_name}</Text></td>
+                        <td style={tdStyle}><Text style={{ color: '#8b949e' }}>{s.sector_name || '-'}</Text></td>
+                        <td style={tdStyle}>
+                          <span style={{ color: s.score > 90 ? '#ff4d4f' : s.score > 80 ? '#faad14' : '#52c41a', fontWeight: 600 }}>
+                            {s.score}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><Text style={{ color: '#fff' }}>{s.close_today.toFixed(2)}</Text></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><Text style={{ color: '#8b949e' }}>{s.open_next.toFixed(2)}</Text></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>
+                          <Text style={{
+                            color: s.close_next > s.close_today ? '#52c41a' : '#ff4d4f',
+                            fontWeight: 600,
+                          }}>
+                            {s.close_next.toFixed(2)}
+                          </Text>
+                        </td>
+                        <td style={tdStyle}>
+                          <Tag color={s.is_win ? 'success' : 'error'} style={{ margin: 0 }}>
+                            {s.is_win ? '胜' : '负'}
+                          </Tag>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           )}
 
           {/* Selected bin trend */}

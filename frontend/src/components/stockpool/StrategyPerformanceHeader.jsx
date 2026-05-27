@@ -3,7 +3,7 @@ import { Typography, Spin, Card, Row, Col, Tag, Button } from 'antd';
 import { CaretUpOutlined, CaretDownOutlined, MinusOutlined, TrophyOutlined, BarChartOutlined, StarFilled } from '@ant-design/icons';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
 import { useGetStrategyPerformanceQuery } from '../../app/api';
 import StrategyScoreAnalysisDrawer from './StrategyScoreAnalysisDrawer';
@@ -37,6 +37,11 @@ const LINE_COLORS = {
   '6. 模式赢家跟随': '#faad14',
 };
 
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}` : '255,255,255';
+};
+
 const CARD_COLORS = {
   1: { bg: 'rgba(250,173,20,0.12)', border: '#faad14' },
   2: { bg: 'rgba(255,255,255,0.06)', border: '#434343' },
@@ -46,21 +51,27 @@ const CARD_COLORS = {
   6: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
 };
 
-const StrategyCard = ({ s, rank, onAnalyze }) => {
+const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected }) => {
   const color = CARD_COLORS[rank] || CARD_COLORS[6];
   const isTop = rank === 1;
   const hasData = s.win_rate > 0 || s.avg_return !== 0 || s.signal_count > 0;
+  const lineColor = LINE_COLORS[s.name] || '#ccc';
+  const dimmed = anySelected && !isSelected;
 
   return (
     <div
+      onClick={() => onSelect?.(s.name)}
       style={{
-        background: color.bg,
-        border: `1px solid ${color.border}`,
+        background: isSelected ? `rgba(${hexToRgb(lineColor)}, 0.18)` : color.bg,
+        border: `1.5px solid ${isSelected ? lineColor : color.border}`,
         borderRadius: 10,
         padding: '12px 14px',
         position: 'relative',
         minWidth: 0,
-        opacity: hasData ? 1 : 0.5,
+        cursor: hasData ? 'pointer' : 'default',
+        opacity: dimmed ? 0.4 : hasData ? 1 : 0.5,
+        transition: 'all 0.2s',
+        boxShadow: isSelected ? `0 0 12px rgba(${hexToRgb(lineColor)}, 0.3)` : 'none',
       }}
     >
       {isTop && (
@@ -70,7 +81,7 @@ const StrategyCard = ({ s, rank, onAnalyze }) => {
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <Text style={{ fontSize: 16 }}>{ICONS[s.name] || '📊'}</Text>
-        <Text strong style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Text strong style={{ color: isSelected ? lineColor : 'rgba(255,255,255,0.85)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {SHORT_NAMES[s.name] || s.name}
         </Text>
         <Tag
@@ -171,9 +182,32 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-const StrategyPerformanceHeader = () => {
+const STRATEGY_TO_TAB = {
+  '1. 短线黑马股': 'short',
+  '2. 价值长线股': 'long',
+  '3. 0轴金叉资金共振': 'macd_boll',
+  '4. MACD+BOLL趋势': 'trend_following',
+  '5. 换手率+量比动能': 'turnover_vol',
+  '6. 模式赢家跟随': 'winner_mode',
+};
+
+const StrategyPerformanceHeader = ({ onOrderChange }) => {
   const { data, isFetching } = useGetStrategyPerformanceQuery(10, { refetchOnMountOrArgChange: true });
   const [analysisStrategy, setAnalysisStrategy] = useState(null);
+  const [selectedStrategy, setSelectedStrategy] = useState(null);
+
+  const handleSelect = (name) => {
+    setSelectedStrategy((prev) => prev === name ? null : name);
+  };
+
+  React.useEffect(() => {
+    if (data?.strategies) {
+      const orderedTabs = data.strategies
+        .map((s) => STRATEGY_TO_TAB[s.name])
+        .filter(Boolean);
+      onOrderChange?.(orderedTabs);
+    }
+  }, [data, onOrderChange]);
 
   if (isFetching) {
     return (
@@ -193,7 +227,14 @@ const StrategyPerformanceHeader = () => {
       <Row gutter={[12, 12]}>
         {strategies.map((s) => (
           <Col xs={12} sm={8} md={8} lg={4} key={s.name}>
-            <StrategyCard s={s} rank={s.rank} onAnalyze={setAnalysisStrategy} />
+            <StrategyCard
+              s={s}
+              rank={s.rank}
+              onAnalyze={setAnalysisStrategy}
+              isSelected={s.name === selectedStrategy}
+              onSelect={handleSelect}
+              anySelected={!!selectedStrategy}
+            />
           </Col>
         ))}
       </Row>
@@ -250,11 +291,12 @@ const StrategyPerformanceHeader = () => {
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fill: '#8b949e', fontSize: 12 }}
+              tick={{ fill: '#ffffff', fontSize: 12 }}
               tickFormatter={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`}
               tickLine={{ stroke: '#30363d' }}
-              label={{ value: '大盘涨幅', angle: 90, position: 'insideRight', fill: '#8b949e', fontSize: 12 }}
+              label={{ value: '大盘涨幅', angle: 90, position: 'insideRight', fill: '#ffffff', fontSize: 12 }}
             />
+            <ReferenceLine yAxisId="right" y={0} stroke="#ffffff" strokeOpacity={0.35} strokeDasharray="3 3" />
             <Tooltip content={<CustomTooltip />} />
             <Legend
               wrapperStyle={{ fontSize: 11 }}
@@ -262,12 +304,31 @@ const StrategyPerformanceHeader = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
                   {legendPayload
                     .filter((e) => e.dataKey !== 'market_pct_chg' && e.dataKey !== 'market_up_count')
-                    .map((e) => (
-                      <span key={e.dataKey} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
-                        <span style={{ width: 10, height: 2, background: e.color, display: 'inline-block', borderRadius: 1 }} />
-                        <span style={{ color: '#8b949e' }}>{SHORT_NAMES[e.value] || e.value}</span>
-                      </span>
-                    ))}
+                    .map((e) => {
+                      const isActive = e.value === selectedStrategy;
+                      const dimmed = selectedStrategy && !isActive;
+                      return (
+                        <span
+                          key={e.dataKey}
+                          onClick={() => handleSelect(e.value)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            opacity: dimmed ? 0.4 : 1,
+                            padding: '2px 4px',
+                            borderRadius: 3,
+                            background: isActive ? `rgba(${hexToRgb(e.color)}, 0.2)` : 'transparent',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <span style={{ width: 10, height: 2, background: e.color, display: 'inline-block', borderRadius: 1 }} />
+                          <span style={{ color: isActive ? e.color : '#8b949e' }}>{SHORT_NAMES[e.value] || e.value}</span>
+                        </span>
+                      );
+                    })}
                 </div>
               )}
             />
@@ -276,8 +337,13 @@ const StrategyPerformanceHeader = () => {
               yAxisId="right"
               dataKey="market_pct_chg"
               name="market_pct_chg"
-              fill="rgba(255,255,255,0.08)"
-              radius={[4, 4, 0, 0]}
+              shape={(props) => {
+                const { x, y, width, height, value } = props;
+                if (value == null || height == null) return null;
+                const fill = value >= 0 ? 'rgba(207,19,34,0.55)' : 'rgba(82,196,26,0.55)';
+                const rx = Math.min(width / 2, 4);
+                return <rect x={x} y={y} width={width} height={Math.max(height, 2)} fill={fill} rx={rx} />;
+              }}
               maxBarSize={40}
             />
             {/* Strategy lines on left axis */}
@@ -289,8 +355,9 @@ const StrategyPerformanceHeader = () => {
                 dataKey={(obj) => obj.values?.[s.name] ?? null}
                 name={s.name}
                 stroke={LINE_COLORS[s.name] || '#ccc'}
-                strokeWidth={s.rank === 1 ? 3 : 1.5}
-                dot={{ r: 3, fill: LINE_COLORS[s.name] }}
+                strokeWidth={s.name === selectedStrategy ? 3 : s.rank === 1 ? 2 : 1.5}
+                strokeOpacity={selectedStrategy && s.name !== selectedStrategy ? 0.15 : 1}
+                dot={{ r: s.name === selectedStrategy ? 5 : 3, fill: LINE_COLORS[s.name] }}
                 activeDot={{ r: 6 }}
                 connectNulls
               />

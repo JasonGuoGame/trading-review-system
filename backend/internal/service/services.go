@@ -33,7 +33,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		MarketBreadth: NewMarketBreadthService(repos.MarketBreadth),
 		Abnormal:      NewAbnormalService(repos.Abnormal, cfg.SectorBlacklist),
 		FundFlow:      NewFundFlowService(repos.FundFlow, cfg.SectorBlacklist),
-		StockPool:     NewStockPoolService(repos.StockPool, repos.FundFlow),
+		StockPool:     NewStockPoolService(repos.StockPool, repos.FundFlow, repos.Kline),
 		MarketAttack:  NewMarketAttackService(repos.MarketAttack, cfg.SectorBlacklist),
 		MarketEarning: NewMarketEarningService(repos.MarketEarning),
 		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis),

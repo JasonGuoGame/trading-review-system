@@ -91,8 +91,10 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		stockPool := api.Group("/stock-pool")
 		{
 			stockPool.GET("", handlers.StockPool.List)
+			stockPool.GET("/counts", handlers.StockPool.GetTypeCounts)
 			stockPool.POST("", handlers.StockPool.Create)
 			stockPool.PUT("/status", handlers.StockPool.UpdateStatus)
+			stockPool.PUT("/watch-focus", handlers.StockPool.SetWatchFocus)
 			stockPool.DELETE("", handlers.StockPool.Delete)
 			stockPool.GET("/search", handlers.StockPool.Search)
 			stockPool.GET("/:symbol/detail", handlers.StockPool.GetDetail)
@@ -104,6 +106,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		// Strategy Performance
 		api.GET("/strategy-performance", handlers.StrategyPerf.GetDashboard)
 		api.GET("/strategy-analysis/trend", handlers.ScoreAnalysis.GetTrend)
+		api.GET("/strategy-analysis/stocks", handlers.StockPool.GetStrategyStocks)
 
 		// Market Attack
 		marketAttack := api.Group("/market-attack")

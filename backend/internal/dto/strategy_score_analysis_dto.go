@@ -28,6 +28,25 @@ type ScoreTrendPoint struct {
 	MaxDrawdown float64 `json:"max_drawdown"`
 }
 
+type StrategyStockDetail struct {
+	Symbol     string  `json:"symbol"`
+	StockName  string  `json:"stock_name"`
+	SectorName string  `json:"sector_name"`
+	Score      int64   `json:"score"`
+	Status     string  `json:"status"`
+	CloseToday float64 `json:"close_today"`
+	OpenNext   float64 `json:"open_next"`
+	CloseNext  float64 `json:"close_next"`
+	IsWin      bool    `json:"is_win"`
+}
+
+type StrategyStocksResponse struct {
+	StrategyName string                `json:"strategy_name"`
+	TradeDate    string                `json:"trade_date"`
+	BinKey       string                `json:"bin_key"`
+	Stocks       []StrategyStockDetail `json:"stocks"`
+}
+
 type StrategyScoreAnalysisResponse struct {
 	StrategyName string                         `json:"strategy_name"`
 	BestBin      *ScoreBinSummary               `json:"best_bin"`

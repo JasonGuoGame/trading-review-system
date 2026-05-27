@@ -18,28 +18,11 @@ func NewStockPoolRepository(db *gorm.DB) *StockPoolRepository {
 
 func (r *StockPoolRepository) List(poolType models.StockPoolType, days int) ([]models.StockPool, error) {
 	var stocks []models.StockPool
-	var query *gorm.DB
-
-	if poolType == "macd_boll" {
-		query = r.db.Where("status = ?", "资金共振金叉")
-	} else if poolType == "trend_following" {
-		query = r.db.Where("status IN ?", []string{"趋势确立", "共振买点"})
-	} else if poolType == "turnover_vol" {
-		query = r.db.Where("status IN ?", []string{"主升接力", "启动突破"})
-	} else if poolType == "short" {
-		query = r.db.Where("pool_type = ? AND status = ?", poolType, "短线爆发黑马")
-	} else if poolType == "long" {
-		query = r.db.Where("pool_type = ? AND status = ?", poolType, "长线牛")
-	} else if poolType == "winner_mode" {
-		query = r.db.Where("status LIKE ?", "赢家模式:%")
-	} else {
-		query = r.db.Where("pool_type = ?", poolType)
-	}
-
+	query := r.applyPoolTypeFilter(poolType)
 	if days > 0 {
 		query = query.Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days-1)
 	}
-	err := query.Order("score DESC").Find(&stocks).Error
+	err := query.Order("is_watch_focus DESC, score DESC").Find(&stocks).Error
 	return stocks, err
 }
 
@@ -64,6 +47,13 @@ func (r *StockPoolRepository) Update(stock *models.StockPool) error {
 		stock.Symbol, stock.TradeDate, stock.PoolType, stock.Status).Updates(stock).Error
 }
 
+func (r *StockPoolRepository) SetWatchFocus(symbol string, tradeDate string, poolType models.StockPoolType, status string, focus int) error {
+	return r.db.Model(&models.StockPool{}).
+		Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
+			symbol, tradeDate, poolType, status).
+		Update("is_watch_focus", focus).Error
+}
+
 func (r *StockPoolRepository) Delete(symbol string, tradeDate string, poolType models.StockPoolType, status string) error {
 	result := r.db.Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
 		symbol, tradeDate, poolType, status).Delete(&models.StockPool{})
@@ -81,6 +71,43 @@ func (r *StockPoolRepository) Search(query string) ([]models.StockPool, error) {
 	err := r.db.Where("symbol = ? OR stock_name LIKE ?", query, "%"+query+"%").
 		Order("trade_date DESC").
 		Find(&stocks).Error
+	return stocks, err
+}
+
+func (r *StockPoolRepository) CountByType(poolType models.StockPoolType, days int) (int64, error) {
+	query := r.applyPoolTypeFilter(poolType)
+	if days > 0 {
+		query = query.Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days-1)
+	}
+	var count int64
+	err := query.Model(&models.StockPool{}).Count(&count).Error
+	return count, err
+}
+
+func (r *StockPoolRepository) applyPoolTypeFilter(poolType models.StockPoolType) *gorm.DB {
+	switch poolType {
+	case "macd_boll":
+		return r.db.Where("status = ?", "资金共振金叉")
+	case "trend_following":
+		return r.db.Where("status IN ?", []string{"趋势确立", "共振买点"})
+	case "turnover_vol":
+		return r.db.Where("status IN ?", []string{"主升接力", "启动突破"})
+	case "short":
+		return r.db.Where("pool_type = ? AND status = ?", poolType, "短线爆发黑马")
+	case "long":
+		return r.db.Where("pool_type = ? AND status = ?", poolType, "长线牛")
+	case "winner_mode":
+		return r.db.Where("status LIKE ?", "赢家模式:%")
+	default:
+		return r.db.Where("pool_type = ?", poolType)
+	}
+}
+
+func (r *StockPoolRepository) ListByScoreRange(poolType models.StockPoolType, tradeDate string, scoreMin int, scoreMax int) ([]models.StockPool, error) {
+	var stocks []models.StockPool
+	query := r.applyPoolTypeFilter(poolType).
+		Where("trade_date = ? AND score >= ? AND score <= ?", tradeDate, scoreMin, scoreMax)
+	err := query.Order("score DESC").Find(&stocks).Error
 	return stocks, err
 }
 

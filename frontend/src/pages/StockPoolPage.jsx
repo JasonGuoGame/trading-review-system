@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Typography, Space, Button, InputNumber, Row, Col } from 'antd';
 import { PlusOutlined, CalendarOutlined } from '@ant-design/icons';
 import StrategyPerformanceHeader from '../components/stockpool/StrategyPerformanceHeader';
@@ -10,18 +10,28 @@ import VolumePriceStrategy from '../components/stockpool/VolumePriceStrategy';
 import WinnerModeHeader from '../components/stockpool/WinnerModeHeader';
 import StockPoolSearch from '../components/stockpool/StockPoolSearch';
 import AddStockModal from '../components/stockpool/AddStockModal';
-import { useGetStockPoolQuery } from '../app/api';
+import { useGetStockPoolQuery, useGetStockPoolCountsQuery } from '../app/api';
 
 const { Title } = Typography;
 
 const StockPoolPage = () => {
-  const [activeTab, setActiveTab] = useState('short');
+  const [activeTab, setActiveTab] = useState(null);
+  const [tabOrder, setTabOrder] = useState(null);
+  const defaultSet = React.useRef(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [addStockOpen, setAddStockOpen] = useState(false);
   const [days, setDays] = useState(1);
 
   const { data: stocks = [], isFetching, refetch } = useGetStockPoolQuery({ type: activeTab, days: days || undefined }, { refetchOnMountOrArgChange: true });
+  const { data: counts = {} } = useGetStockPoolCountsQuery(undefined, { refetchOnMountOrArgChange: true });
+
+  useEffect(() => {
+    if (tabOrder && tabOrder.length > 0 && !defaultSet.current) {
+      setActiveTab(tabOrder[0]);
+      defaultSet.current = true;
+    }
+  }, [tabOrder]);
 
   const handleRowClick = (stock) => {
     setSelectedStock(stock);
@@ -103,11 +113,11 @@ const StockPoolPage = () => {
         </Space>
       </header>
 
-      <StrategyPerformanceHeader />
+      <StrategyPerformanceHeader onOrderChange={setTabOrder} />
 
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
         <StockPoolSearch />
-        <PoolTabs activeKey={activeTab} onChange={setActiveTab} />
+        <PoolTabs activeKey={activeTab} onChange={setActiveTab} counts={counts} tabOrder={tabOrder} />
 
         {renderShortTermStrategy()}
         {activeTab === 'long' && <VolumePriceStrategy />}
@@ -119,6 +129,7 @@ const StockPoolPage = () => {
           data={stocks}
           loading={isFetching}
           onRowClick={handleRowClick}
+          onRefresh={refetch}
         />
       </div>
 

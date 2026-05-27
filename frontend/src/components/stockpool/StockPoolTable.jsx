@@ -1,9 +1,28 @@
 import React from 'react';
-import { Table, Tag, Progress, Space, Button } from 'antd';
-import { EyeOutlined, EditOutlined } from '@ant-design/icons';
+import { Table, Tag, Progress, Space, Button, message } from 'antd';
+import { EyeOutlined, EditOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useSetWatchFocusMutation } from '../../app/api';
 
-const StockPoolTable = ({ type, data, loading, onRowClick }) => {
+const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
+  const [setWatchFocus] = useSetWatchFocusMutation();
+
+  const handleWatchFocus = (e, record) => {
+    e.stopPropagation();
+    const newFocus = record.is_watch_focus ? 0 : 1;
+    setWatchFocus({
+      symbol: record.symbol,
+      trade_date: dayjs(record.trade_date).format('YYYY-MM-DD'),
+      pool_type: record.pool_type,
+      status: record.status,
+      focus: newFocus,
+    }).then(() => {
+      message.success(newFocus ? '已加入重点观察' : '已取消重点观察');
+      onRefresh?.();
+    }).catch(() => {
+      message.error('操作失败');
+    });
+  };
   const getStatusColor = (status) => {
     switch (status) {
       case '买点': return 'error';
@@ -69,8 +88,17 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Space size="middle">
-          <Button type="text" icon={<EyeOutlined />} onClick={() => onRowClick(record)} />
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={record.is_watch_focus ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
+            onClick={(e) => handleWatchFocus(e, record)}
+            style={{ color: record.is_watch_focus ? '#faad14' : '#8b949e' }}
+          >
+            {record.is_watch_focus ? '已关注' : '关注'}
+          </Button>
+          <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => onRowClick(record)} />
         </Space>
       ),
     },
@@ -266,22 +294,37 @@ const StockPoolTable = ({ type, data, loading, onRowClick }) => {
   };
 
   return (
-    <Table
-      columns={getColumns()}
-      dataSource={data}
-      loading={loading}
-      rowKey="id"
-      onRow={(record) => ({
-        onClick: () => onRowClick(record),
-      })}
-      style={{
-        background: '#141414',
-        border: '1px solid #30363d',
-        borderRadius: 8,
-        overflow: 'hidden'
-      }}
-      pagination={false}
-    />
+    <>
+      <style>{`
+        .watch-focus-row td {
+          background: rgba(250,173,20,0.1) !important;
+          border-left: 3px solid #faad14;
+        }
+        .watch-focus-row td:first-child {
+          border-left: 3px solid #faad14;
+        }
+        .watch-focus-row:hover td {
+          background: rgba(250,173,20,0.15) !important;
+        }
+      `}</style>
+      <Table
+        columns={getColumns()}
+        dataSource={data}
+        loading={loading}
+        rowKey="id"
+        onRow={(record) => ({
+          onClick: () => onRowClick(record),
+        })}
+        rowClassName={(record) => record.is_watch_focus ? 'watch-focus-row' : ''}
+        style={{
+          background: '#141414',
+          border: '1px solid #30363d',
+          borderRadius: 8,
+          overflow: 'hidden'
+        }}
+        pagination={false}
+      />
+    </>
   );
 };
 

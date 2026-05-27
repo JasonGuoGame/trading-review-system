@@ -115,6 +115,81 @@ func (h *StockPoolHandler) Search(c *gin.Context) {
 	})
 }
 
+func (h *StockPoolHandler) GetTypeCounts(c *gin.Context) {
+	counts, err := h.service.GetTypeCounts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    counts,
+	})
+}
+
+func (h *StockPoolHandler) SetWatchFocus(c *gin.Context) {
+	symbol := c.Query("symbol")
+	tradeDate := c.Query("trade_date")
+	poolType := c.Query("pool_type")
+	status := c.Query("status")
+
+	// Normalize trade_date to "2006-01-02" format in case frontend sends ISO 8601
+	if len(tradeDate) > 10 {
+		tradeDate = tradeDate[:10]
+	}
+
+	var req struct {
+		Focus int `json:"focus"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.SetWatchFocus(symbol, tradeDate, poolType, status, req.Focus); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+}
+
+func (h *StockPoolHandler) GetStrategyStocks(c *gin.Context) {
+	strategy := c.Query("strategy")
+	tradeDate := c.Query("trade_date")
+	scoreMinStr := c.Query("score_min")
+	scoreMaxStr := c.Query("score_max")
+
+	if strategy == "" || tradeDate == "" || scoreMinStr == "" || scoreMaxStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "strategy, trade_date, score_min, score_max are required"})
+		return
+	}
+
+	scoreMin, err := strconv.Atoi(scoreMinStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score_min"})
+		return
+	}
+	scoreMax, err := strconv.Atoi(scoreMaxStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score_max"})
+		return
+	}
+
+	result, err := h.service.GetStrategyStocks(strategy, tradeDate, scoreMin, scoreMax)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
 func (h *StockPoolHandler) Delete(c *gin.Context) {
 	symbol := c.Query("symbol")
 	tradeDate := c.Query("trade_date")

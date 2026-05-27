@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sort"
 	"time"
 	"trading-review-system/backend/internal/dto"
@@ -9,14 +10,16 @@ import (
 )
 
 type StockPoolService struct {
-	repo      *repository.StockPoolRepository
-	fundRepo  *repository.FundFlowRepository
+	repo     *repository.StockPoolRepository
+	fundRepo *repository.FundFlowRepository
+	klineRepo *repository.KlineRepository
 }
 
-func NewStockPoolService(repo *repository.StockPoolRepository, fundRepo *repository.FundFlowRepository) *StockPoolService {
+func NewStockPoolService(repo *repository.StockPoolRepository, fundRepo *repository.FundFlowRepository, klineRepo *repository.KlineRepository) *StockPoolService {
 	return &StockPoolService{
-		repo:     repo,
-		fundRepo: fundRepo,
+		repo:      repo,
+		fundRepo:  fundRepo,
+		klineRepo: klineRepo,
 	}
 }
 
@@ -98,6 +101,11 @@ func (s *StockPoolService) UpdateStatus(symbol string, tradeDateStr, poolTypeStr
 	return s.repo.Delete(symbol, tradeDateStr, poolType, oldStatus)
 }
 
+func (s *StockPoolService) SetWatchFocus(symbol string, tradeDateStr, poolTypeStr, status string, focus int) error {
+	poolType := models.StockPoolType(poolTypeStr)
+	return s.repo.SetWatchFocus(symbol, tradeDateStr, poolType, status, focus)
+}
+
 func (s *StockPoolService) DeleteStock(symbol string, tradeDateStr, poolTypeStr, status string) error {
 	poolType := models.StockPoolType(poolTypeStr)
 	return s.repo.Delete(symbol, tradeDateStr, poolType, status)
@@ -176,6 +184,96 @@ func (s *StockPoolService) SearchStockPools(query string) ([]dto.StockPoolSearch
 	}
 
 	return results, nil
+}
+
+var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode"}
+
+func (s *StockPoolService) GetTypeCounts() (map[string]int64, error) {
+	counts := make(map[string]int64)
+	for _, pt := range poolTypeKeys {
+		count, err := s.repo.CountByType(pt, 1)
+		if err != nil {
+			return nil, err
+		}
+		counts[string(pt)] = count
+	}
+	return counts, nil
+}
+
+var strategyToPoolType = map[string]models.StockPoolType{
+	"1. 短线黑马股":     "short",
+	"2. 价值长线股":     "long",
+	"3. 0轴金叉资金共振": "macd_boll",
+	"4. MACD+BOLL趋势":  "trend_following",
+	"5. 换手率+量比动能": "turnover_vol",
+	"6. 模式赢家跟随":   "winner_mode",
+}
+
+func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate string, scoreMin int, scoreMax int) (*dto.StrategyStocksResponse, error) {
+	poolType, ok := strategyToPoolType[strategyName]
+	if !ok {
+		poolType = models.StockPoolType(strategyName)
+	}
+
+	stocks, err := s.repo.ListByScoreRange(poolType, tradeDate, scoreMin, scoreMax)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stocks) == 0 {
+		return &dto.StrategyStocksResponse{
+			StrategyName: strategyName,
+			TradeDate:    tradeDate,
+			BinKey:       "",
+			Stocks:       []dto.StrategyStockDetail{},
+		}, nil
+	}
+
+	targetDate, err := time.Parse("2006-01-02", tradeDate)
+	if err != nil {
+		return nil, err
+	}
+
+	symbols := make([]string, len(stocks))
+	for i, st := range stocks {
+		symbols[i] = st.Symbol
+	}
+
+	klines, err := s.klineRepo.GetNextTwoKlines(symbols, targetDate)
+	if err != nil {
+		return nil, err
+	}
+
+	var details []dto.StrategyStockDetail
+	for _, st := range stocks {
+		rows := klines[st.Symbol]
+		if len(rows) < 2 {
+			continue
+		}
+		todayKline := rows[0]
+		nextKline := rows[1]
+
+		details = append(details, dto.StrategyStockDetail{
+			Symbol:     st.Symbol,
+			StockName:  st.StockName,
+			SectorName: st.SectorName,
+			Score:      st.Score,
+			Status:     st.Status,
+			CloseToday: todayKline.Close,
+			OpenNext:   nextKline.Open,
+			CloseNext:  nextKline.Close,
+			IsWin:      nextKline.Close > todayKline.Close,
+		})
+	}
+
+	binKey := fmt.Sprintf("%d-%d", scoreMin, scoreMax)
+
+	return &dto.StrategyStocksResponse{
+		StrategyName: strategyName,
+		TradeDate:    tradeDate,
+		BinKey:       binKey,
+		Stocks:       details,
+	}, nil
 }
 
 func (s *StockPoolService) CalculateScore(stock *models.StockPool) {

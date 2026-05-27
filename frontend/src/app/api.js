@@ -294,6 +294,11 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
       providesTags: ['StockPool'],
     }),
+    getStockPoolCounts: builder.query({
+      query: () => '/stock-pool/counts',
+      transformResponse: (res) => res.data,
+      providesTags: ['StockPool'],
+    }),
     getStockDetail: builder.query({
       query: (symbol) => `/stock-pool/${symbol}/detail`,
       transformResponse: (res) => res.data,
@@ -316,6 +321,20 @@ export const apiSlice = createApi({
         url: `/stock-pool/${id}`,
         method: 'PUT',
         body: { status },
+      }),
+      invalidatesTags: ['StockPool'],
+    }),
+    setWatchFocus: builder.mutation({
+      query: (params) => ({
+        url: '/stock-pool/watch-focus',
+        method: 'PUT',
+        params: {
+          symbol: params.symbol,
+          trade_date: params.trade_date,
+          pool_type: params.pool_type,
+          status: params.status,
+        },
+        body: { focus: params.focus },
       }),
       invalidatesTags: ['StockPool'],
     }),
@@ -344,6 +363,14 @@ export const apiSlice = createApi({
     // === Strategy Score Analysis ===
     getStrategyScoreAnalysis: builder.query({
       query: ({ strategy, days = 30 }) => `/strategy-analysis/trend?strategy=${encodeURIComponent(strategy)}&days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
+
+    getStrategyStocks: builder.query({
+      query: (params) => ({
+        url: '/strategy-analysis/stocks',
+        params,
+      }),
       transformResponse: (res) => res.data,
     }),
 
@@ -408,14 +435,17 @@ export const {
   useGetSectorFundFlowQuery,
   useGetSectorTrendQuery,
   useGetStockPoolQuery,
+  useGetStockPoolCountsQuery,
   useSearchStockPoolQuery,
   useGetStockDetailQuery,
   useCreateStockPoolMutation,
   useUpdateStockPoolStatusMutation,
+  useSetWatchFocusMutation,
   useDeleteStockPoolMutation,
   useGetMarketEarningEffectQuery,
   useGetStrategyPerformanceQuery,
   useGetStrategyScoreAnalysisQuery,
+  useGetStrategyStocksQuery,
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,
