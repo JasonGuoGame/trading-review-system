@@ -62,8 +62,8 @@ const TradePlaybook = () => {
 
   const { data: breadth } = useGetMarketBreadthQuery(selectedDateStr);
   const { data: recentTrades } = useGetRecentTradesQuery();
-  const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 5, date: selectedDateStr });
-  const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 5, trade_date: selectedDateStr });
+  const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 10, date: selectedDateStr });
+  const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 10, trade_date: selectedDateStr });
   const { data: stockPool } = useGetStockPoolQuery({ trade_date: selectedDateStr });
   const { data: earningEffect } = useGetMarketEarningEffectQuery();
   const { data: checklist, isFetching: checklistLoading } = useGetTradeChecklistQuery(selectedDateStr);
@@ -219,7 +219,7 @@ const TradePlaybook = () => {
           <Row gutter={[16, 16]}>
             <Col span={12}>
               <Text strong style={{ color: '#fff', display: 'block', marginBottom: 8 }}>
-                <FundOutlined /> 板块资金流入 TOP5
+                <FundOutlined /> 板块资金流入 TOP10
               </Text>
               {topSectors.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -233,7 +233,7 @@ const TradePlaybook = () => {
                         <Text style={{ color: '#fff' }}>{s.sector_name || s.name || '--'}</Text>
                       </span>
                       <Text style={{ color: s.total_net_inflow > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-                        {s.total_net_inflow > 0 ? '+' : ''}{(s.total_net_inflow / 1e8).toFixed(2)}亿
+                        {s.total_net_inflow > 0 ? '+' : ''}{s.total_net_inflow.toFixed(2)}亿
                       </Text>
                     </div>
                   ))}
@@ -248,7 +248,7 @@ const TradePlaybook = () => {
               </Text>
               {attackList.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {attackList.slice(0, 5).map((a, i) => (
+                  {attackList.slice(0, 10).map((a, i) => (
                     <div key={a.sector_name || i} style={{
                       display: 'flex', justifyContent: 'space-between', padding: '8px 12px',
                       background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)',
