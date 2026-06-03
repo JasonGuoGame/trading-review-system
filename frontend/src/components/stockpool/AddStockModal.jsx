@@ -10,6 +10,7 @@ const POOL_OPTIONS = [
   { value: 'macd_boll', label: '📈 0轴金叉资金共振' },
   { value: 'trend_following', label: '📈 MACD+BOLL' },
   { value: 'turnover_vol', label: '📈 换手率+量比' },
+  { value: 'mf_entry', label: '🎯 主力资金入场' },
 ]
 
 export default function AddStockModal({ open, poolType, onClose, onSuccess }) {

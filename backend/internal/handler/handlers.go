@@ -17,7 +17,8 @@ type Handlers struct {
 	MarketAttack  *MarketAttackHandler
 	MarketEarning *MarketEarningHandler
 	StrategyPerf  *StrategyPerformanceHandler
-	ScoreAnalysis *StrategyScoreAnalysisHandler
+	ScoreAnalysis  *StrategyScoreAnalysisHandler
+	TradeChecklist *TradeChecklistHandler
 }
 
 func NewHandlers(services *service.Services) *Handlers {
@@ -36,6 +37,7 @@ func NewHandlers(services *service.Services) *Handlers {
 		MarketAttack:  NewMarketAttackHandler(services.MarketAttack),
 		MarketEarning: NewMarketEarningHandler(services.MarketEarning),
 		StrategyPerf:  NewStrategyPerformanceHandler(services.StrategyPerf),
-		ScoreAnalysis: NewStrategyScoreAnalysisHandler(services.ScoreAnalysis),
+		ScoreAnalysis:  NewStrategyScoreAnalysisHandler(services.ScoreAnalysis),
+		TradeChecklist: NewTradeChecklistHandler(services.TradeChecklist),
 	}
 }

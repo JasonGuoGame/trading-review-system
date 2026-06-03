@@ -108,6 +108,10 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		api.GET("/strategy-analysis/trend", handlers.ScoreAnalysis.GetTrend)
 		api.GET("/strategy-analysis/stocks", handlers.StockPool.GetStrategyStocks)
 
+		// Trade Checklist
+		api.GET("/trade-checklist/:date", handlers.TradeChecklist.GetByDate)
+		api.PUT("/trade-checklist/:date", handlers.TradeChecklist.Upsert)
+
 		// Market Attack
 		marketAttack := api.Group("/market-attack")
 		{

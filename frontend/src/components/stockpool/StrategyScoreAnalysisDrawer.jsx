@@ -236,9 +236,28 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
-                <Text strong style={{ color: '#fff', fontSize: 14 }}>
-                  当日选股明细 · {selectedCell.date} · {selectedCell.bin.replace('-', '-')}分 · {strategyName}
-                </Text>
+                {(() => {
+                  const winCount = stocksData?.stocks?.filter((s) => s.is_win).length || 0;
+                  const total = stocksData?.stocks?.length || 0;
+                  const lossCount = total - winCount;
+                  const liveWR = total > 0 ? ((winCount / total) * 100).toFixed(0) : 0;
+                  return (
+                    <div>
+                      <Text strong style={{ color: '#fff', fontSize: 14 }}>
+                        当日选股明细 · {selectedCell.date} · {selectedCell.bin.replace('-', '-')}分 · {strategyName}
+                      </Text>
+                      {total > 0 && (
+                        <span style={{ marginLeft: 12, fontSize: 13 }}>
+                          <Tag color="success" style={{ margin: 0 }}>{winCount}胜</Tag>
+                          <Tag color="error" style={{ margin: '0 4px' }}>{lossCount}负</Tag>
+                          <Text style={{ color: liveWR > 50 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                            胜率 {liveWR}%
+                          </Text>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <Button type="text" size="small" style={{ color: '#8b949e' }} onClick={() => setSelectedCell(null)}>
                   收起
                 </Button>

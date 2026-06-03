@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"time"
 	"trading-review-system/backend/internal/models"
 
 	"gorm.io/gorm"
@@ -22,6 +23,48 @@ func (r *StrategyPerformanceRepository) GetHistory(strategyNames []string, days 
 	}
 	err := query.Find(&records).Error
 	return records, err
+}
+
+func (r *StrategyPerformanceRepository) AggregateFromScoreAnalysis(strategyName string) ([]models.StrategyPerformanceHistory, error) {
+	mappedName := mapToScoreAnalysisName(strategyName)
+	// Compute daily aggregate stats from strategy_score_analysis
+	type aggRow struct {
+		TradeDate    time.Time
+		SignalCount  int
+		WinRate      float64
+		AvgReturn    float64
+		BestReturn   float64
+		WorstReturn  float64
+	}
+	var rows []aggRow
+	err := r.db.Table("strategy_score_analysis").
+		Select(`trade_date,
+			SUM(total_trades) as signal_count,
+			SUM(win_rate * total_trades) / SUM(total_trades) as win_rate,
+			SUM(avg_return * total_trades) / SUM(total_trades) as avg_return,
+			MAX(max_return) as best_return,
+			MIN(max_drawdown) as worst_return`).
+		Where("strategy_name = ?", mappedName).
+		Group("trade_date").
+		Order("trade_date ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var results []models.StrategyPerformanceHistory
+	for _, row := range rows {
+		results = append(results, models.StrategyPerformanceHistory{
+			TradeDate:    row.TradeDate,
+			StrategyName: strategyName,
+			SignalCount:  row.SignalCount,
+			WinRate:      row.WinRate,
+			AvgReturn:    row.AvgReturn,
+			BestReturn:   row.BestReturn,
+			WorstReturn:  row.WorstReturn,
+		})
+	}
+	return results, nil
 }
 
 func (r *StrategyPerformanceRepository) GetLatest(strategyNames []string) ([]models.StrategyPerformanceHistory, error) {

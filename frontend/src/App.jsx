@@ -11,6 +11,7 @@ import {
   FundOutlined,
   FireOutlined,
   AimOutlined,
+  ReadOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -22,12 +23,14 @@ import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
 import MarketAttackPage from './pages/MarketAttackPage'
 import SectorFundFlowPage from './pages/SectorFundFlowPage'
 import StockPoolPage from './pages/StockPoolPage'
+import TradePlaybook from './pages/TradePlaybook'
 
 const { Sider, Content } = Layout
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
   { key: '/stock-pool', icon: <FireOutlined />, label: '股票池' },
+  { key: '/trade-playbook', icon: <ReadOutlined />, label: '规则手册' },
   { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
@@ -109,6 +112,7 @@ function App() {
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />
+            <Route path="/trade-playbook" element={<TradePlaybook key={`trade-playbook-${tick}`} />} />
             <Route path="/analysis" element={<Analysis />} />
           </Routes>
         </Content>

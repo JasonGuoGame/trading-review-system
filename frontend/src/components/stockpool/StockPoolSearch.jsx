@@ -11,6 +11,7 @@ const POOL_LABELS = {
   macd_boll: '📈 0轴金叉',
   trend_following: '📈 MACD+BOLL',
   turnover_vol: '📈 换手率+量比',
+  mf_entry: '🎯 主力入场',
 }
 
 const POOL_COLORS = {
@@ -19,15 +20,17 @@ const POOL_COLORS = {
   macd_boll: 'purple',
   trend_following: 'green',
   turnover_vol: 'orange',
+  mf_entry: 'magenta',
 }
 
-export default function StockPoolSearch() {
+export default function StockPoolSearch({ days = 1 }) {
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
 
-  const { data: results, isFetching } = useSearchStockPoolQuery(search, {
-    skip: !search,
-  })
+  const { data: results, isFetching } = useSearchStockPoolQuery(
+    { q: search, days },
+    { skip: !search },
+  )
 
   const handleSearch = (value) => {
     const trimmed = value.trim()

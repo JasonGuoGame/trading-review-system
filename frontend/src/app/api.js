@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf', 'TradeChecklist'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -305,7 +305,10 @@ export const apiSlice = createApi({
       providesTags: (result, error, symbol) => [{ type: 'StockPool', id: symbol }],
     }),
     searchStockPool: builder.query({
-      query: (q) => `/stock-pool/search?q=${encodeURIComponent(q)}`,
+      query: (params) => ({
+        url: '/stock-pool/search',
+        params,
+      }),
       transformResponse: (res) => res.data,
     }),
     createStockPool: builder.mutation({
@@ -358,6 +361,21 @@ export const apiSlice = createApi({
       query: (days = 10) => `/strategy-performance?days=${days}`,
       transformResponse: (res) => res.data,
       providesTags: ['StrategyPerf'],
+    }),
+
+    // === Trade Checklist ===
+    getTradeChecklist: builder.query({
+      query: (date) => `/trade-checklist/${date}`,
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, date) => [{ type: 'TradeChecklist', id: date }],
+    }),
+    upsertTradeChecklist: builder.mutation({
+      query: ({ date, ...body }) => ({
+        url: `/trade-checklist/${date}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { date }) => [{ type: 'TradeChecklist', id: date }],
     }),
 
     // === Strategy Score Analysis ===
@@ -446,6 +464,8 @@ export const {
   useGetStrategyPerformanceQuery,
   useGetStrategyScoreAnalysisQuery,
   useGetStrategyStocksQuery,
+  useGetTradeChecklistQuery,
+  useUpsertTradeChecklistMutation,
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,

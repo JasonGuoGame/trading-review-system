@@ -63,6 +63,7 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		&models.MarketBreadth{},
 		&models.StockPool{},
 		&models.StockPoolSignal{},
+		&models.TradeChecklist{},
 	)
 	if err != nil {
 		log.Printf("Warning: failed to auto migrate: %v", err)

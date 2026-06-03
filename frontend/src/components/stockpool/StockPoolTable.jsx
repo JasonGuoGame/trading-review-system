@@ -160,7 +160,7 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
         <Space direction="vertical" size={2}>
           {Object.entries(parsed).map(([k, v]) => {
             const label = TAG_LABELS[k] || k;
-            const displayVal = k === 'to' ? ((parseFloat(v) || 0) * 10).toFixed(1) : v;
+            const displayVal = k === 'to' ? ((parseFloat(v) || 0) * 100).toFixed(1) : v;
             return <Tag color="purple" key={k}>{label}: {displayVal}</Tag>;
           })}
         </Space>
@@ -182,11 +182,15 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       title: '逻辑演绎 (Notes)',
       dataIndex: 'notes',
       key: 'notes',
-      render: (val) => (
-        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
-          {val || '-'}
-        </span>
-      ),
+      render: (val) => {
+        if (!val) return <span>-</span>;
+        const display = String(val).replace(/换手率([\d.]+)%/g, (_, n) => `换手率${(parseFloat(n) * 100).toFixed(1)}%`);
+        return (
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {display}
+          </span>
+        );
+      },
     },
     ...commonColumns.slice(2),
   ];
@@ -275,11 +279,92 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       title: '逻辑演绎 (Notes)',
       dataIndex: 'notes',
       key: 'notes',
-      render: (val) => (
-        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
-          {val || '-'}
-        </span>
+      render: (val) => {
+        if (!val) return <span>-</span>;
+        const display = String(val).replace(/换手率([\d.]+)%/g, (_, n) => `换手率${(parseFloat(n) * 100).toFixed(1)}%`);
+        return (
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {display}
+          </span>
+        );
+      },
+    },
+    ...commonColumns.slice(2),
+  ];
+
+  const MF_ENTRY_FACTOR_LABELS = {
+    bias: '偏离主力',
+    mf_cost: '主力成本',
+    surge_cnt: '脉冲次数',
+    market_vwap: '市场均价',
+  };
+
+  const MF_ENTRY_FACTOR_COLORS = {
+    bias: '#ff7a45',
+    mf_cost: '#1677ff',
+    surge_cnt: '#ff4d4f',
+    market_vwap: '#a0d911',
+  };
+
+  const renderMfEntryTags = (val) => {
+    const tags = [];
+    if (!val) return <Space size={4}>{tags}</Space>;
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      Object.entries(parsed).forEach(([k, v]) => {
+        const label = MF_ENTRY_FACTOR_LABELS[k] || k;
+        const color = MF_ENTRY_FACTOR_COLORS[k] || 'default';
+        let displayVal = v;
+        if (k === 'bias') {
+          displayVal = `${(parseFloat(v) || 0) > 0 ? '+' : ''}${(parseFloat(v) || 0).toFixed(2)}%`;
+        } else if (k === 'mf_cost' || k === 'market_vwap') {
+          displayVal = (parseFloat(v) || 0).toFixed(2);
+        }
+        tags.push(
+          <Tag color={color} key={k} style={{ marginBottom: 4, fontSize: 12 }}>
+            {label}: {displayVal}
+          </Tag>
+        );
+      });
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 280 }}>
+          {tags}
+        </div>
+      );
+    } catch (e) {
+      return <span>{val}</span>;
+    }
+  };
+
+  const mfEntryColumns = [
+    ...commonColumns.slice(0, 2),
+    {
+      title: '主力状态',
+      dataIndex: 'status',
+      key: 'mf_status',
+      render: (status) => (
+        <Tag color="magenta" style={{ fontWeight: 'bold', fontSize: 13, padding: '2px 10px' }}>
+          🎯 {status || '主力入场'}
+        </Tag>
       ),
+    },
+    {
+      title: '主力指标',
+      key: 'mf_factors',
+      render: (_, record) => renderMfEntryTags(record.tags),
+    },
+    {
+      title: '逻辑演绎 (Notes)',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => {
+        if (!val) return <span>-</span>;
+        return (
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {val}
+          </span>
+        );
+      },
     },
     ...commonColumns.slice(2),
   ];
@@ -289,6 +374,7 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       case 'short': return shortTermColumns;
       case 'long': return longTermColumns;
       case 'winner_mode': return winnerModeColumns;
+      case 'mf_entry': return mfEntryColumns;
       default: return macdBollColumns;
     }
   };

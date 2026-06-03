@@ -19,7 +19,8 @@ type Services struct {
 	MarketAttack  *MarketAttackService
 	MarketEarning *MarketEarningService
 	StrategyPerf  *StrategyPerformanceService
-	ScoreAnalysis *StrategyScoreAnalysisService
+	ScoreAnalysis  *StrategyScoreAnalysisService
+	TradeChecklist *TradeChecklistService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -37,6 +38,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		MarketAttack:  NewMarketAttackService(repos.MarketAttack, cfg.SectorBlacklist),
 		MarketEarning: NewMarketEarningService(repos.MarketEarning),
 		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis),
-		ScoreAnalysis: NewStrategyScoreAnalysisService(repos.ScoreAnalysis),
+		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis),
+		TradeChecklist: NewTradeChecklistService(repos.TradeChecklist),
 	}
 }

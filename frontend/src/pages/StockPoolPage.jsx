@@ -116,7 +116,7 @@ const StockPoolPage = () => {
       <StrategyPerformanceHeader onOrderChange={setTabOrder} />
 
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
-        <StockPoolSearch />
+        <StockPoolSearch days={days} />
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} counts={counts} tabOrder={tabOrder} />
 
         {renderShortTermStrategy()}

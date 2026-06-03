@@ -23,8 +23,8 @@ func NewStockPoolService(repo *repository.StockPoolRepository, fundRepo *reposit
 	}
 }
 
-func (s *StockPoolService) GetStockPool(poolType models.StockPoolType, days int) ([]dto.StockPoolResponse, error) {
-	stocks, err := s.repo.List(poolType, days)
+func (s *StockPoolService) GetStockPool(poolType models.StockPoolType, days int, tradeDate string) ([]dto.StockPoolResponse, error) {
+	stocks, err := s.repo.List(poolType, days, tradeDate)
 	if err != nil {
 		return nil, err
 	}
@@ -131,16 +131,17 @@ func (s *StockPoolService) GetStockDetail(symbol string) (*dto.StockPoolDetailRe
 	}, nil
 }
 
-func (s *StockPoolService) SearchStockPools(query string) ([]dto.StockPoolSearchResult, error) {
-	stocks, err := s.repo.Search(query)
+func (s *StockPoolService) SearchStockPools(query string, days int) ([]dto.StockPoolSearchResult, error) {
+	stocks, err := s.repo.Search(query, days)
 	if err != nil {
 		return nil, err
 	}
 
-	// Group by symbol, then collect unique pool_type entries (latest per pool_type)
+	// Group by symbol+pool_type+status, keep latest per group
 	type key struct {
 		symbol string
 		pool   models.StockPoolType
+		status string
 	}
 	latest := make(map[key]models.StockPool)
 	symbolMeta := make(map[string]struct {
@@ -149,7 +150,7 @@ func (s *StockPoolService) SearchStockPools(query string) ([]dto.StockPoolSearch
 	})
 
 	for _, st := range stocks {
-		k := key{symbol: st.Symbol, pool: st.PoolType}
+		k := key{symbol: st.Symbol, pool: st.PoolType, status: st.Status}
 		if existing, ok := latest[k]; !ok || st.TradeDate.After(existing.TradeDate) {
 			latest[k] = st
 		}
@@ -186,7 +187,7 @@ func (s *StockPoolService) SearchStockPools(query string) ([]dto.StockPoolSearch
 	return results, nil
 }
 
-var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode"}
+var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry"}
 
 func (s *StockPoolService) GetTypeCounts() (map[string]int64, error) {
 	counts := make(map[string]int64)
@@ -207,6 +208,7 @@ var strategyToPoolType = map[string]models.StockPoolType{
 	"4. MACD+BOLL趋势":  "trend_following",
 	"5. 换手率+量比动能": "turnover_vol",
 	"6. 模式赢家跟随":   "winner_mode",
+	"7. 主力资金入场":   "mf_entry",
 }
 
 func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate string, scoreMin int, scoreMax int) (*dto.StrategyStocksResponse, error) {

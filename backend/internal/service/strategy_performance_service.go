@@ -16,6 +16,7 @@ var strategyNames = []string{
 	"4. MACD+BOLL趋势",
 	"5. 换手率+量比动能",
 	"6. 模式赢家跟随",
+	"7. 主力资金入场",
 }
 
 var strategyIcons = map[string]string{
@@ -25,6 +26,7 @@ var strategyIcons = map[string]string{
 	"4. MACD+BOLL趋势":  "🧘",
 	"5. 换手率+量比动能": "🚀",
 	"6. 模式赢家跟随":   "🏆",
+	"7. 主力资金入场":   "🎯",
 }
 
 type StrategyPerformanceService struct {
@@ -56,6 +58,27 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 	for _, rec := range latest {
 		rec.WinRate = rec.WinRate / 100.0 // Normalize: 100.0 → 1.0
 		latestMap[rec.StrategyName] = rec
+	}
+
+	// Fallback: for strategies missing from performance_history, aggregate from strategy_score_analysis
+	historyStrategySet := make(map[string]bool)
+	for _, h := range history {
+		historyStrategySet[h.StrategyName] = true
+	}
+	for _, name := range strategyNames {
+		if historyStrategySet[name] {
+			continue
+		}
+		aggregated, err := s.repo.AggregateFromScoreAnalysis(name)
+		if err != nil || len(aggregated) == 0 {
+			continue
+		}
+		// Use last entry as "latest" — normalize win_rate (score_analysis stores as % e.g. 33.33)
+		latestAgg := aggregated[len(aggregated)-1]
+		latestAgg.WinRate = latestAgg.WinRate / 100.0
+		latestMap[name] = latestAgg
+		// Add all entries to history (trend loop below divides win_rate by 100)
+		history = append(history, aggregated...)
 	}
 
 	// Build trend data grouped by date, capture market-wide data once per date

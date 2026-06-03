@@ -17,6 +17,7 @@ const ICONS = {
   '4. MACD+BOLL趋势': '🧘',
   '5. 换手率+量比动能': '🚀',
   '6. 模式赢家跟随': '🏆',
+  '7. 主力资金入场': '🎯',
 };
 
 const SHORT_NAMES = {
@@ -26,6 +27,7 @@ const SHORT_NAMES = {
   '4. MACD+BOLL趋势': 'MACD+BOLL',
   '5. 换手率+量比动能': '换手率量比',
   '6. 模式赢家跟随': '赢家跟随',
+  '7. 主力资金入场': '主力入场',
 };
 
 const LINE_COLORS = {
@@ -35,6 +37,7 @@ const LINE_COLORS = {
   '4. MACD+BOLL趋势': '#a0d911',
   '5. 换手率+量比动能': '#722ed1',
   '6. 模式赢家跟随': '#faad14',
+  '7. 主力资金入场': '#eb2f96',
 };
 
 const hexToRgb = (hex) => {
@@ -49,6 +52,7 @@ const CARD_COLORS = {
   4: { bg: 'rgba(255,255,255,0.03)', border: '#30363d' },
   5: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
   6: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
+  7: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
 };
 
 const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected }) => {
@@ -65,7 +69,7 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected })
         background: isSelected ? `rgba(${hexToRgb(lineColor)}, 0.18)` : color.bg,
         border: `1.5px solid ${isSelected ? lineColor : color.border}`,
         borderRadius: 10,
-        padding: '12px 14px',
+        padding: '10px 10px',
         position: 'relative',
         minWidth: 0,
         cursor: hasData ? 'pointer' : 'default',
@@ -189,6 +193,7 @@ const STRATEGY_TO_TAB = {
   '4. MACD+BOLL趋势': 'trend_following',
   '5. 换手率+量比动能': 'turnover_vol',
   '6. 模式赢家跟随': 'winner_mode',
+  '7. 主力资金入场': 'mf_entry',
 };
 
 const StrategyPerformanceHeader = ({ onOrderChange }) => {
@@ -226,7 +231,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
       {/* Strategy Cards Row */}
       <Row gutter={[12, 12]}>
         {strategies.map((s) => (
-          <Col xs={12} sm={8} md={8} lg={4} key={s.name}>
+          <Col xs={12} sm={8} md={6} lg={Math.floor(24 / strategies.length)} key={s.name}>
             <StrategyCard
               s={s}
               rank={s.rank}

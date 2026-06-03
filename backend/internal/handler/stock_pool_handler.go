@@ -31,7 +31,9 @@ func (h *StockPoolHandler) List(c *gin.Context) {
 		}
 	}
 
-	stocks, err := h.service.GetStockPool(models.StockPoolType(poolType), days)
+	tradeDate := c.Query("trade_date")
+
+	stocks, err := h.service.GetStockPool(models.StockPoolType(poolType), days, tradeDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -102,7 +104,14 @@ func (h *StockPoolHandler) Search(c *gin.Context) {
 		return
 	}
 
-	results, err := h.service.SearchStockPools(query)
+	days := 0
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+
+	results, err := h.service.SearchStockPools(query, days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
