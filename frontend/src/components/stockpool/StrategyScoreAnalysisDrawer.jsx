@@ -276,6 +276,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                       <th style={thStyle}>股票名称</th>
                       <th style={thStyle}>板块</th>
                       <th style={thStyle}>评分</th>
+                      <th style={thStyle}>逻辑演绎</th>
                       <th style={{ ...thStyle, textAlign: 'right' }}>当日收</th>
                       <th style={{ ...thStyle, textAlign: 'right' }}>次日开</th>
                       <th style={{ ...thStyle, textAlign: 'right' }}>次日收</th>
@@ -295,6 +296,9 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                           <span style={{ color: s.score > 90 ? '#ff4d4f' : s.score > 80 ? '#faad14' : '#52c41a', fontWeight: 600 }}>
                             {s.score}
                           </span>
+                        </td>
+                        <td style={{ ...tdStyle, maxWidth: 200, whiteSpace: 'normal', wordWrap: 'break-word', fontSize: 12 }}>
+                          <Text style={{ color: '#8b949e' }}>{s.notes || '-'}</Text>
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><Text style={{ color: '#fff' }}>{s.close_today.toFixed(2)}</Text></td>
                         <td style={{ ...tdStyle, textAlign: 'right' }}><Text style={{ color: '#8b949e' }}>{s.open_next.toFixed(2)}</Text></td>

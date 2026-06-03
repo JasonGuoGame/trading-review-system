@@ -261,6 +261,7 @@ func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate stri
 			SectorName: st.SectorName,
 			Score:      st.Score,
 			Status:     st.Status,
+			Notes:      st.Notes,
 			CloseToday: todayKline.Close,
 			OpenNext:   nextKline.Open,
 			CloseNext:  nextKline.Close,

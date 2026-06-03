@@ -34,6 +34,7 @@ type StrategyStockDetail struct {
 	SectorName string  `json:"sector_name"`
 	Score      int64   `json:"score"`
 	Status     string  `json:"status"`
+	Notes      string  `json:"notes"`
 	CloseToday float64 `json:"close_today"`
 	OpenNext   float64 `json:"open_next"`
 	CloseNext  float64 `json:"close_next"`

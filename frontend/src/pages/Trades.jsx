@@ -105,6 +105,7 @@ function Trades() {
       dataIndex: 'status',
       key: 'status',
       width: 80,
+      defaultSortOrder: 'ascend',
       sorter: (a, b) => a.status === b.status ? 0 : a.status === 'open' ? -1 : 1,
       render: (v) => (
         <Tag color={v === 'open' ? 'processing' : 'default'}>
