@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 // Format currency
 export const formatMoney = (value) => {
   if (value == null) return '--'
-  const prefix = value >= 0 ? '+' : ''
+  const prefix = value >= 0 ? '+' : '-'
   return `${prefix}$${Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
