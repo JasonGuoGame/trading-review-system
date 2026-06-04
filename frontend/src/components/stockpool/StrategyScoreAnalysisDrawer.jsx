@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
-import { useGetStrategyScoreAnalysisQuery, useGetStrategyStocksQuery } from '../../app/api';
+import { useGetStrategyScoreAnalysisQuery, useGetStrategyStocksQuery, useGetStatusHeatmapQuery, useGetModeRankingQuery, useGetStatusRankingQuery } from '../../app/api';
 
 const { Title, Text } = Typography;
 
@@ -39,6 +39,7 @@ const tdStyle = {
 const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
   const [selectedBin, setSelectedBin] = useState(null);
   const [selectedCell, setSelectedCell] = useState(null);
+  const [selectedStatusCell, setSelectedStatusCell] = useState(null);
   const { data, isFetching } = useGetStrategyScoreAnalysisQuery(
     { strategy: strategyName, days: 30 },
   );
@@ -52,6 +53,35 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
     { strategy: strategyName, trade_date: selectedCell?.date, score_min: scoreMin, score_max: scoreMax },
     { skip: !selectedCell },
   );
+
+  const isTurnoverVol = strategyName === '5. 换手率+量比动能';
+  const { data: statusHeatmap } = useGetStatusHeatmapQuery(
+    { days: 30 },
+    { skip: !isTurnoverVol },
+  );
+  const { data: statusRanking } = useGetStatusRankingQuery(
+    { strategy: 'turnover_vol', days: 30 },
+    { skip: !isTurnoverVol },
+  );
+
+  const { data: statusStocksData, isFetching: statusStocksLoading } = useGetStrategyStocksQuery(
+    { strategy: strategyName, trade_date: selectedStatusCell?.date, score_min: 0, score_max: 100, status: selectedStatusCell?.status },
+    { skip: !selectedStatusCell },
+  );
+
+  const isWinnerMode = strategyName === '6. 模式赢家跟随';
+  const { data: modeRanking } = useGetModeRankingQuery(
+    { days: 30 },
+    { skip: !isWinnerMode },
+  );
+
+  const handleStatusCellClick = (date, status) => {
+    if (selectedStatusCell?.date === date && selectedStatusCell?.status === status) {
+      setSelectedStatusCell(null);
+    } else {
+      setSelectedStatusCell({ date, status });
+    }
+  };
 
   const handleCellClick = (date, bin) => {
     if (selectedCell?.date === date && selectedCell?.bin === bin) {
@@ -220,6 +250,220 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
             <Empty description="暂无热力图数据" />
           )}
 
+          {/* Status Heatmap (turnover_vol only) */}
+          {isTurnoverVol && statusHeatmap && (statusHeatmap.dates || []).length > 0 && (
+            <>
+              <Title level={5} style={{ color: '#c9d1d9', marginTop: 24 }}>
+                交易状态稳定性热力图（胜率%）
+              </Title>
+              <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '6px 10px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'left' }}>状态</th>
+                      {statusHeatmap.dates.map((d) => (
+                        <th key={d} style={{ padding: '6px 8px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {d.slice(5)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statusHeatmap.statuses.map((status) => (
+                      <tr key={status}>
+                        <td style={{
+                          padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          color: '#fff', fontWeight: 500,
+                        }}>
+                          {status}
+                        </td>
+                        {statusHeatmap.dates.map((d) => {
+                          const cell = statusHeatmap.heatmap?.find((h) => h.trade_date === d && h.status === status);
+                          const wr = cell?.win_rate || 0;
+                          const trades = cell?.total_trades || 0;
+                          const isSel = selectedStatusCell?.date === d && selectedStatusCell?.status === status;
+                          const bgColor = trades === 0 ? 'rgba(255,255,255,0.01)'
+                            : wr > 60 ? `rgba(82,196,26,${0.2 + wr / 200})`
+                            : wr > 40 ? `rgba(250,173,20,${0.2 + wr / 200})`
+                            : `rgba(255,77,79,${0.15 + wr / 200})`;
+                          const textColor = trades === 0 ? '#8b949e'
+                            : wr > 60 ? '#52c41a' : wr > 40 ? '#faad14' : '#ff4d4f';
+                          return (
+                            <td key={d}
+                              onClick={() => trades > 0 && handleStatusCellClick(d, status)}
+                              style={{
+                                padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                background: bgColor,
+                                color: textColor,
+                                fontWeight: trades > 0 ? 600 : 400,
+                                cursor: trades > 0 ? 'pointer' : 'default',
+                                outline: isSel ? '2px solid #fff' : 'none',
+                                outlineOffset: -2,
+                                position: 'relative',
+                                zIndex: isSel ? 1 : 0,
+                              }}
+                              title={trades > 0 ? `点击查看当天股票明细 | ${status} | 胜率:${wr.toFixed(1)}% | 信号:${trades}` : ''}
+                            >
+                              {trades > 0 ? `${wr.toFixed(0)}%` : '-'}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Status Power Ranking */}
+              {statusRanking && (statusRanking.items || []).length > 0 && (
+                <>
+                  <Title level={5} style={{ color: '#c9d1d9', marginTop: 20 }}>交易状态战力排行榜</Title>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20 }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                        <th style={thStyle}>排名</th>
+                        <th style={thStyle}>状态</th>
+                        <th style={thStyle}>信号数</th>
+                        <th style={thStyle}>平均胜率</th>
+                        <th style={thStyle}>最佳分数段</th>
+                        <th style={thStyle}>最佳段胜率</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statusRanking.items.map((r, i) => (
+                        <tr key={r.status} style={{
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        }}>
+                          <td style={tdStyle}>
+                            <Text strong style={{ color: i === 0 ? '#faad14' : '#8b949e' }}>#{i + 1}</Text>
+                          </td>
+                          <td style={tdStyle}><Text strong style={{ color: '#fff' }}>{r.status}</Text></td>
+                          <td style={tdStyle}><Text style={{ color: '#ff4d4f', fontWeight: 600 }}>{r.total_trades}</Text></td>
+                          <td style={tdStyle}>
+                            <Text style={{ color: r.win_rate > 60 ? '#52c41a' : r.win_rate > 40 ? '#faad14' : '#ff4d4f', fontWeight: 600 }}>
+                              {r.win_rate.toFixed(1)}%
+                            </Text>
+                          </td>
+                          <td style={tdStyle}>
+                            <Tag color="purple">{r.best_score_range}</Tag>
+                          </td>
+                          <td style={tdStyle}>
+                            <Text style={{ color: r.best_score_win_rate > 60 ? '#52c41a' : r.best_score_win_rate > 40 ? '#faad14' : '#ff4d4f', fontWeight: 600 }}>
+                              {r.best_score_win_rate > 0 ? `${r.best_score_win_rate.toFixed(1)}%` : '-'}
+                            </Text>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Status Cell Stock Detail Panel */}
+          {selectedStatusCell && (
+            <div style={{
+              marginBottom: 20,
+              background: '#141414',
+              border: '1px solid #30363d',
+              borderRadius: 10,
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                padding: '12px 20px',
+                borderBottom: '1px solid #30363d',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                {(() => {
+                  const winCount = statusStocksData?.stocks?.filter((s) => s.is_win).length || 0;
+                  const total = statusStocksData?.stocks?.length || 0;
+                  const lossCount = total - winCount;
+                  const liveWR = total > 0 ? ((winCount / total) * 100).toFixed(0) : 0;
+                  return (
+                    <div>
+                      <Text strong style={{ color: '#fff', fontSize: 14 }}>
+                        状态选股明细 · {selectedStatusCell.date} · {selectedStatusCell.status} · {strategyName}
+                      </Text>
+                      {total > 0 && (
+                        <span style={{ marginLeft: 12, fontSize: 13 }}>
+                          <Tag color="success" style={{ margin: 0 }}>{winCount}胜</Tag>
+                          <Tag color="error" style={{ margin: '0 4px' }}>{lossCount}负</Tag>
+                          <Text style={{ color: liveWR > 50 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                            胜率 {liveWR}%
+                          </Text>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+                <Button type="text" size="small" style={{ color: '#8b949e' }} onClick={() => setSelectedStatusCell(null)}>
+                  收起
+                </Button>
+              </div>
+              {statusStocksLoading ? (
+                <div style={{ textAlign: 'center', padding: 24 }}><Spin size="small" /></div>
+              ) : !statusStocksData?.stocks?.length ? (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <Text type="secondary">该日期暂无符合条件的股票</Text>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <th style={thStyle}>股票代码</th>
+                      <th style={thStyle}>股票名称</th>
+                      <th style={thStyle}>板块</th>
+                      <th style={thStyle}>评分</th>
+                      <th style={thStyle}>逻辑演绎</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>当日收</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>次日开</th>
+                      <th style={{ ...thStyle, textAlign: 'right' }}>次日收</th>
+                      <th style={thStyle}>胜负</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statusStocksData.stocks.map((s) => (
+                      <tr key={s.symbol} style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        background: s.is_win ? 'rgba(82,196,26,0.06)' : 'rgba(255,77,79,0.06)',
+                      }}>
+                        <td style={tdStyle}><Text style={{ color: '#8b949e', fontSize: 12 }}>{s.symbol}</Text></td>
+                        <td style={tdStyle}><Text style={{ color: '#fff', fontWeight: 500 }}>{s.stock_name}</Text></td>
+                        <td style={tdStyle}><Text style={{ color: '#8b949e' }}>{s.sector_name || '-'}</Text></td>
+                        <td style={tdStyle}>
+                          <span style={{ color: s.score > 90 ? '#ff4d4f' : s.score > 80 ? '#faad14' : '#52c41a', fontWeight: 600 }}>
+                            {s.score}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, maxWidth: 180, whiteSpace: 'normal', wordWrap: 'break-word', fontSize: 12 }}>
+                          <Text style={{ color: '#8b949e' }}>{s.notes || '-'}</Text>
+                        </td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><Text style={{ color: '#fff' }}>{s.close_today.toFixed(2)}</Text></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}><Text style={{ color: '#8b949e' }}>{s.open_next.toFixed(2)}</Text></td>
+                        <td style={{ ...tdStyle, textAlign: 'right' }}>
+                          <Text style={{
+                            color: s.close_next > s.close_today ? '#52c41a' : '#ff4d4f',
+                            fontWeight: 600,
+                          }}>
+                            {s.close_next.toFixed(2)}
+                          </Text>
+                        </td>
+                        <td style={tdStyle}>
+                          <Tag color={s.is_win ? 'success' : 'error'} style={{ margin: 0 }}>
+                            {s.is_win ? '胜' : '负'}
+                          </Tag>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
           {/* Selected Cell Stock Detail Panel */}
           {selectedCell && (
             <div style={{
@@ -357,6 +601,53 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                   </ResponsiveContainer>
                 </Col>
               </Row>
+            </>
+          )}
+
+          {/* Mode Ranking (winner_mode only) */}
+          {isWinnerMode && modeRanking && (modeRanking.items || []).length > 0 && (
+            <>
+              <Title level={5} style={{ color: '#c9d1d9', marginTop: 20 }}>
+                赚钱效应状态战力排行榜
+              </Title>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 20 }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <th style={thStyle}>排名</th>
+                    <th style={thStyle}>赚钱模式</th>
+                    <th style={thStyle}>信号数</th>
+                    <th style={thStyle}>胜率</th>
+                    <th style={thStyle}>最佳分数段</th>
+                    <th style={thStyle}>最佳段胜率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modeRanking.items.map((r, i) => (
+                    <tr key={r.status} style={{
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    }}>
+                      <td style={tdStyle}>
+                        <Text strong style={{ color: i === 0 ? '#faad14' : '#8b949e' }}>#{i + 1}</Text>
+                      </td>
+                      <td style={tdStyle}><Text strong style={{ color: '#fff' }}>{r.status}</Text></td>
+                      <td style={tdStyle}><Text style={{ color: '#ff4d4f', fontWeight: 600 }}>{r.total_trades}</Text></td>
+                      <td style={tdStyle}>
+                        <Text style={{ color: r.win_rate > 60 ? '#52c41a' : r.win_rate > 40 ? '#faad14' : '#ff4d4f', fontWeight: 600 }}>
+                          {r.win_rate.toFixed(1)}%
+                        </Text>
+                      </td>
+                      <td style={tdStyle}>
+                        <Tag color="purple">{r.best_score_range}</Tag>
+                      </td>
+                      <td style={tdStyle}>
+                        <Text style={{ color: r.best_score_win_rate > 60 ? '#52c41a' : r.best_score_win_rate > 40 ? '#faad14' : '#ff4d4f', fontWeight: 600 }}>
+                          {r.best_score_win_rate > 0 ? `${r.best_score_win_rate.toFixed(1)}%` : '-'}
+                        </Text>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </>
           )}
 

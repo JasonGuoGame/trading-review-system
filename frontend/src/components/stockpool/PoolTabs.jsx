@@ -8,6 +8,7 @@ const TAB_CONFIG = [
   { key: 'turnover_vol', emoji: '🚀', label: '换手率量比' },
   { key: 'winner_mode', emoji: '🏆', label: '赢家跟随' },
   { key: 'mf_entry', emoji: '🎯', label: '主力入场' },
+  { key: 'divergence_reversal', emoji: '🔄', label: '分歧反包' },
 ];
 
 const PoolTabs = ({ activeKey, onChange, counts = {}, tabOrder }) => {

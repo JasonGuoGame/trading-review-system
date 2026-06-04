@@ -24,6 +24,7 @@ func mapToScoreAnalysisName(fullName string) string {
 		"5. 换手率+量比动能": "2. 换手率量比",
 		"6. 模式赢家跟随":   "6. 赢家跟随",
 		"7. 主力资金入场":   "主力入场",
+		"8. 分歧反包策略":   "分歧反包",
 	}
 	if mapped, ok := mapping[fullName]; ok {
 		return mapped

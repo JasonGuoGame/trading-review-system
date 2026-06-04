@@ -98,6 +98,8 @@ func (r *StockPoolRepository) applyPoolTypeFilter(poolType models.StockPoolType)
 		return r.db.Where("status IN ?", []string{"主升接力", "启动突破"})
 	case "mf_entry":
 		return r.db.Where("pool_type = ? AND status = ?", "short", "主力入场")
+	case "divergence_reversal":
+		return r.db.Where("pool_type = ? AND status = ?", "short", "分歧反包")
 	case "short":
 		return r.db.Where("pool_type = ? AND status = ?", poolType, "短线爆发黑马")
 	case "long":

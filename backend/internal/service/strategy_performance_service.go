@@ -17,6 +17,7 @@ var strategyNames = []string{
 	"5. 换手率+量比动能",
 	"6. 模式赢家跟随",
 	"7. 主力资金入场",
+	"8. 分歧反包策略",
 }
 
 var strategyIcons = map[string]string{
@@ -27,6 +28,7 @@ var strategyIcons = map[string]string{
 	"5. 换手率+量比动能": "🚀",
 	"6. 模式赢家跟随":   "🏆",
 	"7. 主力资金入场":   "🎯",
+	"8. 分歧反包策略":   "🔄",
 }
 
 type StrategyPerformanceService struct {

@@ -1,9 +1,8 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Drawer, Descriptions, Tag, Space, Button, Divider, List, Typography, Badge, message } from 'antd';
-import { PlusCircleOutlined, StarOutlined, DeleteOutlined, WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { useDeleteStockPoolMutation } from '../../app/api';
+import { DeleteOutlined, PlusCircleOutlined, StarOutlined } from '@ant-design/icons';
+import { Button, Descriptions, Divider, Drawer, message, Space, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
+import { useDeleteStockPoolMutation } from '../../app/api';
 
 const { Title, Text } = Typography;
 
@@ -68,10 +67,10 @@ const StockDetailDrawer = ({ visible, stock, onClose, onDeleted }) => {
 
       <Title level={5} style={{ color: '#c9d1d9' }}>资金情况</Title>
       <Text type="secondary">连续 3 日净流入，主力吸筹明显</Text>
-      
+
       <Divider style={{ borderColor: '#30363d' }} />
 
-      <Title level={5} style={{ color: '#c9d1d9' }}>技术形态</Title>
+      {/* <Title level={5} style={{ color: '#c9d1d9' }}>技术形态</Title>
       <Space direction="vertical" style={{ width: '100%' }}>
         <Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> <Text>长下影确认</Text></Space>
         <Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> <Text>二次放量</Text></Space>
@@ -84,7 +83,7 @@ const StockDetailDrawer = ({ visible, stock, onClose, onDeleted }) => {
       <Space>
         <WarningOutlined style={{ color: '#faad14' }} />
         <Text style={{ color: '#faad14' }}>高位分歧，注意回撤风险</Text>
-      </Space>
+      </Space> */}
 
       <Divider style={{ borderColor: '#30363d' }} />
 

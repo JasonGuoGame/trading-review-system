@@ -57,3 +57,30 @@ type StrategyScoreAnalysisResponse struct {
 	Dates        []string                       `json:"dates"`
 	BinLabels    []string                       `json:"bin_labels"`
 }
+
+type StatusHeatmapCell struct {
+	TradeDate   string  `json:"trade_date"`
+	Status      string  `json:"status"`
+	WinRate     float64 `json:"win_rate"`
+	TotalTrades int     `json:"total_trades"`
+}
+
+type StatusHeatmapResponse struct {
+	StrategyName string             `json:"strategy_name"`
+	Dates        []string           `json:"dates"`
+	Statuses     []string           `json:"statuses"`
+	Heatmap      []StatusHeatmapCell `json:"heatmap"`
+}
+
+type ModeRankingItem struct {
+	Status           string  `json:"status"`
+	TotalTrades      int     `json:"total_trades"`
+	WinRate          float64 `json:"win_rate"`
+	BestScoreRange   string  `json:"best_score_range"`
+	BestScoreWinRate float64 `json:"best_score_win_rate"`
+}
+
+type ModeRankingResponse struct {
+	StrategyName string            `json:"strategy_name"`
+	Items        []ModeRankingItem `json:"items"`
+}

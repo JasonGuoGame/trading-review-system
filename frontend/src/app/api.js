@@ -392,6 +392,21 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    getStatusHeatmap: builder.query({
+      query: ({ days = 30 }) => `/strategy-analysis/status-heatmap?days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
+
+    getModeRanking: builder.query({
+      query: ({ days = 30 }) => `/strategy-analysis/mode-ranking?days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
+
+    getStatusRanking: builder.query({
+      query: ({ strategy, days = 30 }) => `/strategy-analysis/status-ranking?strategy=${encodeURIComponent(strategy)}&days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
+
     // === Market Attack ===
     getTopMarketAttacks: builder.query({
       query: (params) => ({
@@ -464,6 +479,9 @@ export const {
   useGetStrategyPerformanceQuery,
   useGetStrategyScoreAnalysisQuery,
   useGetStrategyStocksQuery,
+  useGetStatusHeatmapQuery,
+  useGetModeRankingQuery,
+  useGetStatusRankingQuery,
   useGetTradeChecklistQuery,
   useUpsertTradeChecklistMutation,
   useGetTopMarketAttacksQuery,

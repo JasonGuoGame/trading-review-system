@@ -169,6 +169,7 @@ func (h *StockPoolHandler) GetStrategyStocks(c *gin.Context) {
 	tradeDate := c.Query("trade_date")
 	scoreMinStr := c.Query("score_min")
 	scoreMaxStr := c.Query("score_max")
+	status := c.Query("status")
 
 	if strategy == "" || tradeDate == "" || scoreMinStr == "" || scoreMaxStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "strategy, trade_date, score_min, score_max are required"})
@@ -186,7 +187,74 @@ func (h *StockPoolHandler) GetStrategyStocks(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.GetStrategyStocks(strategy, tradeDate, scoreMin, scoreMax)
+	result, err := h.service.GetStrategyStocks(strategy, tradeDate, scoreMin, scoreMax, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
+func (h *StockPoolHandler) GetModeRanking(c *gin.Context) {
+	days := 30
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+
+	result, err := h.service.GetModeRanking(days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
+func (h *StockPoolHandler) GetStatusRanking(c *gin.Context) {
+	days := 30
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+	strategy := c.Query("strategy")
+	if strategy == "" {
+		strategy = "turnover_vol"
+	}
+
+	result, err := h.service.GetStatusRanking(strategy, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
+func (h *StockPoolHandler) GetStatusHeatmap(c *gin.Context) {
+	days := 30
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+
+	result, err := h.service.GetStatusHeatmap(days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { Typography, Spin, Card, Row, Col, Tag, Button } from 'antd';
-import { CaretUpOutlined, CaretDownOutlined, MinusOutlined, TrophyOutlined, BarChartOutlined, StarFilled } from '@ant-design/icons';
+import { Typography, Spin, Card, Row, Col, Tag, Button, Space } from 'antd';
+import {
+  CaretUpOutlined, CaretDownOutlined, MinusOutlined, TrophyOutlined,
+  BarChartOutlined, StarFilled, EyeInvisibleOutlined, EyeOutlined,
+  FolderFilled, DownOutlined, UpOutlined
+} from '@ant-design/icons';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
@@ -18,6 +22,7 @@ const ICONS = {
   '5. 换手率+量比动能': '🚀',
   '6. 模式赢家跟随': '🏆',
   '7. 主力资金入场': '🎯',
+  '8. 分歧反包策略': '🔄',
 };
 
 const SHORT_NAMES = {
@@ -28,6 +33,7 @@ const SHORT_NAMES = {
   '5. 换手率+量比动能': '换手率量比',
   '6. 模式赢家跟随': '赢家跟随',
   '7. 主力资金入场': '主力入场',
+  '8. 分歧反包策略': '分歧反包',
 };
 
 const LINE_COLORS = {
@@ -38,6 +44,7 @@ const LINE_COLORS = {
   '5. 换手率+量比动能': '#722ed1',
   '6. 模式赢家跟随': '#faad14',
   '7. 主力资金入场': '#eb2f96',
+  '8. 分歧反包策略': '#13c2c2',
 };
 
 const hexToRgb = (hex) => {
@@ -53,9 +60,10 @@ const CARD_COLORS = {
   5: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
   6: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
   7: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
+  8: { bg: 'rgba(255,255,255,0.02)', border: '#30363d' },
 };
 
-const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected }) => {
+const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected, onHide }) => {
   const color = CARD_COLORS[rank] || CARD_COLORS[6];
   const isTop = rank === 1;
   const hasData = s.win_rate > 0 || s.avg_return !== 0 || s.signal_count > 0;
@@ -65,6 +73,7 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected })
   return (
     <div
       onClick={() => onSelect?.(s.name)}
+      className="strategy-card"
       style={{
         background: isSelected ? `rgba(${hexToRgb(lineColor)}, 0.18)` : color.bg,
         border: `1.5px solid ${isSelected ? lineColor : color.border}`,
@@ -78,6 +87,22 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected })
         boxShadow: isSelected ? `0 0 12px rgba(${hexToRgb(lineColor)}, 0.3)` : 'none',
       }}
     >
+      <style>{`
+        .strategy-card {
+          position: relative;
+        }
+        .strategy-card .hide-btn {
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .strategy-card:hover .hide-btn {
+          opacity: 0.6;
+        }
+        .strategy-card .hide-btn:hover {
+          opacity: 1 !important;
+          color: #ff4d4f !important;
+        }
+      `}</style>
       {isTop && (
         <div style={{ position: 'absolute', top: -10, right: 8 }}>
           <TrophyOutlined style={{ color: '#faad14', fontSize: 16 }} />
@@ -85,12 +110,31 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected })
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <Text style={{ fontSize: 16 }}>{ICONS[s.name] || '📊'}</Text>
-        <Text strong style={{ color: isSelected ? lineColor : 'rgba(255,255,255,0.85)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Text strong style={{ color: isSelected ? lineColor : 'rgba(255,255,255,0.85)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
           {SHORT_NAMES[s.name] || s.name}
         </Text>
+        <Button
+          type="text"
+          size="small"
+          icon={<EyeInvisibleOutlined style={{ fontSize: 12 }} />}
+          onClick={(e) => {
+            e.stopPropagation();
+            onHide?.(s.name);
+          }}
+          style={{
+            color: 'rgba(255,255,255,0.45)',
+            padding: '0 4px',
+            height: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          className="hide-btn"
+          title="归档/封存此策略"
+        />
         <Tag
           color={rank === 1 ? 'gold' : 'default'}
-          style={{ marginLeft: 'auto', fontSize: 11, lineHeight: '18px', padding: '0 6px' }}
+          style={{ fontSize: 11, lineHeight: '18px', padding: '0 6px', margin: 0 }}
         >
           #{rank}
         </Tag>
@@ -194,12 +238,42 @@ const STRATEGY_TO_TAB = {
   '5. 换手率+量比动能': 'turnover_vol',
   '6. 模式赢家跟随': 'winner_mode',
   '7. 主力资金入场': 'mf_entry',
+  '8. 分歧反包策略': 'divergence_reversal',
 };
 
 const StrategyPerformanceHeader = ({ onOrderChange }) => {
   const { data, isFetching } = useGetStrategyPerformanceQuery(10, { refetchOnMountOrArgChange: true });
   const [analysisStrategy, setAnalysisStrategy] = useState(null);
   const [selectedStrategy, setSelectedStrategy] = useState(null);
+
+  const [hiddenStrategies, setHiddenStrategies] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hidden_strategies');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [archiveExpanded, setArchiveExpanded] = useState(false);
+
+  const handleHide = (name) => {
+    setHiddenStrategies((prev) => {
+      const next = [...prev, name];
+      localStorage.setItem('hidden_strategies', JSON.stringify(next));
+      return next;
+    });
+    if (selectedStrategy === name) {
+      setSelectedStrategy(null);
+    }
+  };
+
+  const handleShow = (name) => {
+    setHiddenStrategies((prev) => {
+      const next = prev.filter((n) => n !== name);
+      localStorage.setItem('hidden_strategies', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const handleSelect = (name) => {
     setSelectedStrategy((prev) => prev === name ? null : name);
@@ -208,11 +282,12 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
   React.useEffect(() => {
     if (data?.strategies) {
       const orderedTabs = data.strategies
+        .filter((s) => !hiddenStrategies.includes(s.name))
         .map((s) => STRATEGY_TO_TAB[s.name])
         .filter(Boolean);
       onOrderChange?.(orderedTabs);
     }
-  }, [data, onOrderChange]);
+  }, [data, onOrderChange, hiddenStrategies]);
 
   if (isFetching) {
     return (
@@ -226,12 +301,14 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
 
   const { strategies = [], trend_data = [], commentary = '' } = data;
 
+  const visibleStrategies = strategies.filter((s) => !hiddenStrategies.includes(s.name));
+
   return (
     <div style={{ marginBottom: 16 }}>
       {/* Strategy Cards Row */}
       <Row gutter={[12, 12]}>
-        {strategies.map((s) => (
-          <Col xs={12} sm={8} md={6} lg={Math.floor(24 / strategies.length)} key={s.name}>
+        {visibleStrategies.map((s) => (
+          <Col xs={12} sm={8} md={6} lg={visibleStrategies.length > 0 ? Math.floor(24 / visibleStrategies.length) : 3} key={s.name}>
             <StrategyCard
               s={s}
               rank={s.rank}
@@ -239,10 +316,92 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
               isSelected={s.name === selectedStrategy}
               onSelect={handleSelect}
               anySelected={!!selectedStrategy}
+              onHide={handleHide}
             />
           </Col>
         ))}
       </Row>
+
+      {/* Archive Collapse Panel */}
+      {hiddenStrategies.length > 0 && (
+        <div style={{
+          marginTop: 12,
+          background: '#141414',
+          border: '1px solid #30363d',
+          borderRadius: 10,
+          overflow: 'hidden',
+        }}>
+          <div
+            onClick={() => setArchiveExpanded(!archiveExpanded)}
+            style={{
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              userSelect: 'none',
+              background: '#1f1f1f',
+            }}
+          >
+            <Space>
+              <FolderFilled style={{ color: '#8b949e' }} />
+              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500 }}>
+                📁 已封存策略 ({hiddenStrategies.length})
+              </span>
+            </Space>
+            {archiveExpanded ? <UpOutlined style={{ color: '#8b949e', fontSize: 12 }} /> : <DownOutlined style={{ color: '#8b949e', fontSize: 12 }} />}
+          </div>
+
+          {archiveExpanded && (
+            <div style={{ padding: '12px', borderTop: '1px solid #30363d', background: '#0d1117' }}>
+              <Row gutter={[10, 10]}>
+                {hiddenStrategies.map((name) => {
+                  const s = strategies.find((st) => st.name === name) || { name, avg_return: 0 };
+                  const icon = ICONS[name] || '📊';
+                  const shortName = SHORT_NAMES[name] || name;
+                  const lineColor = LINE_COLORS[name] || '#8b949e';
+                  return (
+                    <Col xs={12} sm={8} md={6} lg={4} key={name}>
+                      <div
+                        onClick={() => handleShow(name)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1.5px dashed #30363d',
+                          borderRadius: 8,
+                          padding: '8px 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          opacity: 0.5,
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = '1';
+                          e.currentTarget.style.borderColor = lineColor;
+                          e.currentTarget.style.background = `rgba(${hexToRgb(lineColor)}, 0.08)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = '0.5';
+                          e.currentTarget.style.borderColor = '#30363d';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                        }}
+                        title="点击恢复此策略"
+                      >
+                        <Space size={6} style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 14 }}>{icon}</span>
+                          <span style={{ color: '#8b949e', fontSize: 12, fontWeight: 500 }}>{shortName}</span>
+                        </Space>
+                        <EyeOutlined style={{ color: '#8b949e', fontSize: 12, marginLeft: 6 }} />
+                      </div>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Win-Rate Drift Line Chart */}
       <Card
@@ -308,7 +467,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
               content={({ payload: legendPayload }) => (
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
                   {legendPayload
-                    .filter((e) => e.dataKey !== 'market_pct_chg' && e.dataKey !== 'market_up_count')
+                    .filter((e) => e.dataKey !== 'market_pct_chg' && e.dataKey !== 'market_up_count' && !hiddenStrategies.includes(e.value))
                     .map((e) => {
                       const isActive = e.value === selectedStrategy;
                       const dimmed = selectedStrategy && !isActive;
@@ -351,8 +510,8 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
               }}
               maxBarSize={40}
             />
-            {/* Strategy lines on left axis */}
-            {strategies.map((s) => (
+            {/* Strategy lines on left axis — hidden strategies are excluded */}
+            {visibleStrategies.map((s) => (
               <Line
                 key={s.name}
                 yAxisId="left"

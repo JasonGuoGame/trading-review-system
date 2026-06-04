@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/models"
@@ -187,7 +188,7 @@ func (s *StockPoolService) SearchStockPools(query string, days int) ([]dto.Stock
 	return results, nil
 }
 
-var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry"}
+var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry", "divergence_reversal"}
 
 func (s *StockPoolService) GetTypeCounts() (map[string]int64, error) {
 	counts := make(map[string]int64)
@@ -209,9 +210,10 @@ var strategyToPoolType = map[string]models.StockPoolType{
 	"5. 换手率+量比动能": "turnover_vol",
 	"6. 模式赢家跟随":   "winner_mode",
 	"7. 主力资金入场":   "mf_entry",
+	"8. 分歧反包策略":   "divergence_reversal",
 }
 
-func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate string, scoreMin int, scoreMax int) (*dto.StrategyStocksResponse, error) {
+func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate string, scoreMin int, scoreMax int, status string) (*dto.StrategyStocksResponse, error) {
 	poolType, ok := strategyToPoolType[strategyName]
 	if !ok {
 		poolType = models.StockPoolType(strategyName)
@@ -248,6 +250,9 @@ func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate stri
 
 	var details []dto.StrategyStockDetail
 	for _, st := range stocks {
+		if status != "" && st.Status != status {
+			continue
+		}
 		rows := klines[st.Symbol]
 		if len(rows) < 2 {
 			continue
@@ -277,6 +282,247 @@ func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate stri
 		BinKey:       binKey,
 		Stocks:       details,
 	}, nil
+}
+
+func (s *StockPoolService) GetStatusHeatmap(days int) (*dto.StatusHeatmapResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+
+	stocks, err := s.repo.List("turnover_vol", days, "")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stocks) == 0 {
+		return &dto.StatusHeatmapResponse{
+			StrategyName: "turnover_vol",
+			Dates:        []string{},
+			Statuses:     []string{"启动突破", "主升接力"},
+			Heatmap:      []dto.StatusHeatmapCell{},
+		}, nil
+	}
+
+	// Collect symbols and dates
+	symbolDateMap := make(map[string]string) // symbol → trade_date
+	symbols := make([]string, 0, len(stocks))
+	seen := make(map[string]bool)
+	for _, st := range stocks {
+		key := st.Symbol + "|" + st.TradeDate.Format("2006-01-02")
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		symbolDateMap[st.Symbol] = st.TradeDate.Format("2006-01-02")
+		symbols = append(symbols, st.Symbol)
+	}
+
+	// Get klines for each stock on its trade date
+	type result struct {
+		symbol string
+		isWin  bool
+		err    error
+	}
+
+	// Group stocks by trade_date and status
+	type key struct {
+		date   string
+		status string
+	}
+	stats := make(map[key]struct {
+		total int
+		wins  int
+	})
+
+	// Process each stock
+	for _, st := range stocks {
+		if st.Status != "启动突破" && st.Status != "主升接力" {
+			continue
+		}
+		ds := st.TradeDate.Format("2006-01-02")
+		targetDate, err := time.Parse("2006-01-02", ds)
+		if err != nil {
+			continue
+		}
+
+		klines, err := s.klineRepo.GetNextTwoKlines([]string{st.Symbol}, targetDate)
+		if err != nil || len(klines[st.Symbol]) < 2 {
+			continue
+		}
+
+		rows := klines[st.Symbol]
+		isWin := rows[1].Close > rows[0].Close
+
+		k := key{date: ds, status: st.Status}
+		entry := stats[k]
+		entry.total++
+		if isWin {
+			entry.wins++
+		}
+		stats[k] = entry
+	}
+
+	// Collect unique dates and statuses
+	dateSet := make(map[string]bool)
+	statusSet := make(map[string]bool)
+	for k := range stats {
+		dateSet[k.date] = true
+		statusSet[k.status] = true
+	}
+
+	var dates []string
+	for d := range dateSet {
+		dates = append(dates, d)
+	}
+	sort.Strings(dates)
+
+	statuses := []string{"启动突破", "主升接力"} // fixed order
+
+	var cells []dto.StatusHeatmapCell
+	for _, d := range dates {
+		for _, s := range statuses {
+			k := key{date: d, status: s}
+			if entry, ok := stats[k]; ok {
+				wr := 0.0
+				if entry.total > 0 {
+					wr = float64(entry.wins) / float64(entry.total) * 100
+				}
+				cells = append(cells, dto.StatusHeatmapCell{
+					TradeDate:   d,
+					Status:      s,
+					WinRate:     wr,
+					TotalTrades: entry.total,
+				})
+			} else {
+				cells = append(cells, dto.StatusHeatmapCell{
+					TradeDate:   d,
+					Status:      s,
+					WinRate:     0,
+					TotalTrades: 0,
+				})
+			}
+		}
+	}
+
+	return &dto.StatusHeatmapResponse{
+		StrategyName: "turnover_vol",
+		Dates:        dates,
+		Statuses:     statuses,
+		Heatmap:      cells,
+	}, nil
+}
+
+func (s *StockPoolService) GetStatusRanking(rawStrategy string, days int) (*dto.ModeRankingResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+
+	poolType := models.StockPoolType(rawStrategy)
+	stocks, err := s.repo.List(poolType, days, "")
+	if err != nil {
+		return nil, err
+	}
+
+	type statusStat struct {
+		total    int
+		wins     int
+		buckets  map[int]struct{ total, wins int }
+	}
+	statusMap := make(map[string]*statusStat)
+
+	for _, st := range stocks {
+		status := st.Status
+		// Strip "赢家模式:" prefix if present
+		status = strings.TrimPrefix(status, "赢家模式:")
+		status = strings.TrimPrefix(status, "赢家模式：")
+		if status == "" {
+			continue
+		}
+
+		ds := st.TradeDate.Format("2006-01-02")
+		targetDate, err := time.Parse("2006-01-02", ds)
+		if err != nil {
+			continue
+		}
+
+		klines, err := s.klineRepo.GetNextTwoKlines([]string{st.Symbol}, targetDate)
+		if err != nil || len(klines[st.Symbol]) < 2 {
+			continue
+		}
+
+		rows := klines[st.Symbol]
+		isWin := rows[1].Close > rows[0].Close
+
+		ss, ok := statusMap[status]
+		if !ok {
+			ss = &statusStat{buckets: make(map[int]struct{ total, wins int })}
+			statusMap[status] = ss
+		}
+		ss.total++
+		if isWin {
+			ss.wins++
+		}
+
+		// Bucket by 10-point score range
+		bucket := int(st.Score/10) * 10
+		b := ss.buckets[bucket]
+		b.total++
+		if isWin {
+			b.wins++
+		}
+		ss.buckets[bucket] = b
+	}
+
+	var items []dto.ModeRankingItem
+	for status, ss := range statusMap {
+		overallWR := 0.0
+		if ss.total > 0 {
+			overallWR = float64(ss.wins) / float64(ss.total) * 100
+		}
+
+		// Find best score bucket for this status
+		bestBucket := 0
+		bestBucketWR := 0.0
+		bestBucketTotal := 0
+		for bucket, b := range ss.buckets {
+			if b.total < 2 { // require at least 2 trades in bucket
+				continue
+			}
+			wr := float64(b.wins) / float64(b.total) * 100
+			if wr > bestBucketWR || (wr == bestBucketWR && b.total > bestBucketTotal) {
+				bestBucketWR = wr
+				bestBucket = bucket
+				bestBucketTotal = b.total
+			}
+		}
+
+		bestRange := "-"
+		if bestBucketTotal > 0 {
+			bestRange = fmt.Sprintf("%d-%d", bestBucket, bestBucket+10)
+		}
+
+		items = append(items, dto.ModeRankingItem{
+			Status:           status,
+			TotalTrades:      ss.total,
+			WinRate:          overallWR,
+			BestScoreRange:   bestRange,
+			BestScoreWinRate: bestBucketWR,
+		})
+	}
+
+	// Sort by total_trades desc
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].TotalTrades > items[j].TotalTrades
+	})
+
+	return &dto.ModeRankingResponse{
+		StrategyName: rawStrategy,
+		Items:        items,
+	}, nil
+}
+
+func (s *StockPoolService) GetModeRanking(days int) (*dto.ModeRankingResponse, error) {
+	return s.GetStatusRanking("winner_mode", days)
 }
 
 func (s *StockPoolService) CalculateScore(stock *models.StockPool) {

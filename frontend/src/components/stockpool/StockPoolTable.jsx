@@ -78,6 +78,7 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
+      sorter: (a, b) => (a.status || '').localeCompare(b.status || '', 'zh'),
       render: (status) => (
         <Tag color={getStatusColor(status)} style={{ borderRadius: 4 }}>
           {status === '买点' ? '🔥 ' : status === '观察' ? '⚡ ' : ''}{status}
@@ -369,12 +370,86 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
     ...commonColumns.slice(2),
   ];
 
+  const DIVERGENCE_REVERSAL_LABELS = {
+    status: '反包状态',
+    yest_vol: '昨量比',
+    repair_depth: '修复深度',
+  };
+
+  const DIVERGENCE_REVERSAL_COLORS = {
+    status: '#faad14',
+    yest_vol: '#1677ff',
+    repair_depth: '#ff4d4f',
+  };
+
+  const renderDivergenceReversalTags = (val) => {
+    const tags = [];
+    if (!val) return <Space size={4}>{tags}</Space>;
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      Object.entries(parsed).forEach(([k, v]) => {
+        const label = DIVERGENCE_REVERSAL_LABELS[k] || k;
+        const color = DIVERGENCE_REVERSAL_COLORS[k] || 'default';
+        let displayVal = v;
+        if (k === 'status' && v === 'Divergence_Confirm') {
+          displayVal = '分歧确认';
+        }
+        tags.push(
+          <Tag color={color} key={k} style={{ marginBottom: 4, fontSize: 12 }}>
+            {label}: {displayVal}
+          </Tag>
+        );
+      });
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 280 }}>
+          {tags}
+        </div>
+      );
+    } catch (e) {
+      return <span>{val}</span>;
+    }
+  };
+
+  const divergenceReversalColumns = [
+    ...commonColumns.slice(0, 2),
+    {
+      title: '策略状态',
+      dataIndex: 'status',
+      key: 'divergence_status',
+      render: (status) => (
+        <Tag color="orange" style={{ fontWeight: 'bold', fontSize: 13, padding: '2px 10px' }}>
+          🔄 {status || '分歧反包'}
+        </Tag>
+      ),
+    },
+    {
+      title: '反包指标',
+      key: 'divergence_factors',
+      render: (_, record) => renderDivergenceReversalTags(record.tags),
+    },
+    {
+      title: '逻辑演绎 (Notes)',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => {
+        if (!val) return <span>-</span>;
+        return (
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {val}
+          </span>
+        );
+      },
+    },
+    ...commonColumns.slice(2),
+  ];
+
   const getColumns = () => {
     switch (type) {
       case 'short': return shortTermColumns;
       case 'long': return longTermColumns;
       case 'winner_mode': return winnerModeColumns;
       case 'mf_entry': return mfEntryColumns;
+      case 'divergence_reversal': return divergenceReversalColumns;
       default: return macdBollColumns;
     }
   };

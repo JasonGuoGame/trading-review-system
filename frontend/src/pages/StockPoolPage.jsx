@@ -27,11 +27,12 @@ const StockPoolPage = () => {
   const { data: counts = {} } = useGetStockPoolCountsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   useEffect(() => {
-    if (tabOrder && tabOrder.length > 0 && !defaultSet.current) {
-      setActiveTab(tabOrder[0]);
-      defaultSet.current = true;
+    if (tabOrder && tabOrder.length > 0) {
+      if (!activeTab || !tabOrder.includes(activeTab)) {
+        setActiveTab(tabOrder[0]);
+      }
     }
-  }, [tabOrder]);
+  }, [tabOrder, activeTab]);
 
   const handleRowClick = (stock) => {
     setSelectedStock(stock);
@@ -57,6 +58,21 @@ const StockPoolPage = () => {
           <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>7. <Typography.Text type="danger" strong>中高位缩量洗盘</Typography.Text>：强势股中高位缩量震荡（筹码锁定良好），可择机低吸。</Typography.Text></Col>
           <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>4. <Typography.Text type="success" strong>大幅低开弱势</Typography.Text>：低开超-3%且5分钟内未翻红（弱势确立），坚决离场。</Typography.Text></Col>
           <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>8. <Typography.Text type="success" strong>高位放量滞涨</Typography.Text>：放量巨震但股价停滞不前（主力出货），立刻清仓离场。</Typography.Text></Col>
+        </Row>
+      </div>
+    );
+  };
+
+  const renderDivergenceReversalStrategy = () => {
+    if (activeTab !== 'divergence_reversal') return null;
+    return (
+      <div style={{ marginBottom: 16, padding: '16px', background: 'rgba(19, 194, 194, 0.05)', border: '1px solid #13c2c2', borderRadius: 8 }}>
+        <Typography.Title level={5} style={{ color: '#13c2c2', marginTop: 0 }}>🔄 分歧反包作战纪律 (Key Rules)</Typography.Title>
+        <Row gutter={[16, 12]}>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>1. <Typography.Text type="danger" strong>分歧低吸承接</Typography.Text>：早盘急跌至均线附近企稳，展现强承接，可分批轻仓低吸。</Typography.Text></Col>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>3. <Typography.Text type="danger" strong>反包放量突破</Typography.Text>：突破昨日分歧高点（或最高价），且分时量能明显放大，是接力买点。</Typography.Text></Col>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>2. <Typography.Text type="success" strong>修复不及预期</Typography.Text>：缩量反弹且受阻于均线（修复无力），应果断冲高离场。</Typography.Text></Col>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>4. <Typography.Text type="success" strong>防守破位止损</Typography.Text>：若跌破昨日分歧低点支撑（反包失败），坚决止损，锁定风险。</Typography.Text></Col>
         </Row>
       </div>
     );
@@ -112,14 +128,15 @@ const StockPoolPage = () => {
           </Button>
         </Space>
       </header>
-
+ 
       <StrategyPerformanceHeader onOrderChange={setTabOrder} />
-
+ 
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
         <StockPoolSearch days={days} />
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} counts={counts} tabOrder={tabOrder} />
-
+ 
         {renderShortTermStrategy()}
+        {renderDivergenceReversalStrategy()}
         {activeTab === 'long' && <VolumePriceStrategy />}
         {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
         {activeTab === 'winner_mode' && <WinnerModeHeader />}
