@@ -79,6 +79,7 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       dataIndex: 'status',
       key: 'status',
       sorter: (a, b) => (a.status || '').localeCompare(b.status || '', 'zh'),
+      defaultSortOrder: 'ascend',
       render: (status) => (
         <Tag color={getStatusColor(status)} style={{ borderRadius: 4 }}>
           {status === '买点' ? '🔥 ' : status === '观察' ? '⚡ ' : ''}{status}
@@ -108,22 +109,14 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
   const shortTermColumns = [
     ...commonColumns.slice(0, 2),
     {
-      title: '资金',
-      dataIndex: 'fund_flow',
-      key: 'fund_flow',
-      render: (val) => <span style={{ color: '#ff4d4f' }}>{val || '+5亿'}</span>,
-    },
-    {
-      title: '异动',
-      dataIndex: 'surge_count',
-      key: 'surge_count',
-      render: (val) => <Tag color="blue">{val || 5}</Tag>,
-    },
-    {
-      title: '形态',
-      dataIndex: 'pattern',
-      key: 'pattern',
-      render: (val) => <span>{val || '二次启动'}</span>,
+      title: '逻辑演绎',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => (
+        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {val || '-'}
+        </span>
+      ),
     },
     ...commonColumns.slice(2),
   ];
@@ -131,22 +124,14 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
   const longTermColumns = [
     ...commonColumns.slice(0, 2),
     {
-      title: '趋势',
-      dataIndex: 'trend',
-      key: 'trend',
-      render: (val) => <Tag color="orange">{val || 'MA多头'}</Tag>,
-    },
-    {
-      title: '机构资金',
-      dataIndex: 'inst_flow',
-      key: 'inst_flow',
-      render: (val) => <span style={{ color: '#ff4d4f' }}>{val || '持续流入'}</span>,
-    },
-    {
-      title: '估值',
-      dataIndex: 'valuation',
-      key: 'valuation',
-      render: (val) => <span>{val || '合理'}</span>,
+      title: '逻辑演绎',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => (
+        <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+          {val || '-'}
+        </span>
+      ),
     },
     ...commonColumns.slice(2),
   ];

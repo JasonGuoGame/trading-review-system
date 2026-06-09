@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
-import { useGetStrategyScoreAnalysisQuery, useGetStrategyStocksQuery, useGetStatusHeatmapQuery, useGetModeRankingQuery, useGetStatusRankingQuery } from '../../app/api';
+import { useGetStrategyScoreAnalysisQuery, useGetStrategyStocksQuery, useGetStatusHeatmapQuery, useGetModeRankingQuery, useGetStatusRankingQuery, useGetStatusScoreTrendQuery } from '../../app/api';
 
 const { Title, Text } = Typography;
 
@@ -40,6 +40,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
   const [selectedBin, setSelectedBin] = useState(null);
   const [selectedCell, setSelectedCell] = useState(null);
   const [selectedStatusCell, setSelectedStatusCell] = useState(null);
+  const [selectedRankingStatus, setSelectedRankingStatus] = useState(null);
   const { data, isFetching } = useGetStrategyScoreAnalysisQuery(
     { strategy: strategyName, days: 30 },
   );
@@ -64,6 +65,14 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
     { skip: !isTurnoverVol },
   );
 
+  const statusBinDash = (selectedRankingStatus?.best_score_range || '').indexOf('-');
+  const statusScoreMin = statusBinDash > -1 ? parseInt(selectedRankingStatus?.best_score_range?.slice(0, statusBinDash), 10) : 0;
+  const statusScoreMax = statusBinDash > -1 ? parseInt(selectedRankingStatus?.best_score_range?.slice(statusBinDash + 1), 10) : 0;
+  const { data: statusScoreTrend } = useGetStatusScoreTrendQuery(
+    { strategy: 'turnover_vol', status: selectedRankingStatus?.status, score_min: statusScoreMin, score_max: statusScoreMax, days: 30 },
+    { skip: !selectedRankingStatus },
+  );
+
   const { data: statusStocksData, isFetching: statusStocksLoading } = useGetStrategyStocksQuery(
     { strategy: strategyName, trade_date: selectedStatusCell?.date, score_min: 0, score_max: 100, status: selectedStatusCell?.status },
     { skip: !selectedStatusCell },
@@ -82,6 +91,20 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
       setSelectedStatusCell({ date, status });
     }
   };
+
+  const bestStatusItem = useMemo(() => {
+    if (!statusRanking?.items?.length) return null;
+    return statusRanking.items.reduce((a, b) =>
+      b.best_score_win_rate > a.best_score_win_rate ? b : a
+    );
+  }, [statusRanking]);
+
+  const bestModeItem = useMemo(() => {
+    if (!modeRanking?.items?.length) return null;
+    return modeRanking.items.reduce((a, b) =>
+      b.best_score_win_rate > a.best_score_win_rate ? b : a
+    );
+  }, [modeRanking]);
 
   const handleCellClick = (date, bin) => {
     if (selectedCell?.date === date && selectedCell?.bin === bin) {
@@ -114,6 +137,16 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
     const pts = data.bin_trends?.[selectedBin] || [];
     return pts;
   }, [data, selectedBin]);
+
+  const activeTrendData = useMemo(() => {
+    if (selectedRankingStatus && statusScoreTrend?.trend?.length > 0) {
+      return { type: 'status', data: statusScoreTrend.trend, label: `${selectedRankingStatus.status} · 分数段 [${selectedBin}]` };
+    }
+    if (trendChartData.length > 0) {
+      return { type: 'generic', data: trendChartData, label: `分数段 [${selectedBin}]` };
+    }
+    return null;
+  }, [selectedRankingStatus, statusScoreTrend, trendChartData, selectedBin]);
 
   // Auto-select best bin
   React.useEffect(() => {
@@ -148,7 +181,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
       placement="right"
       onClose={onClose}
       open={true}
-      width={820}
+      width={960}
       headerStyle={{ background: '#141414', borderBottom: '1px solid #30363d' }}
       bodyStyle={{ background: '#0d1117', color: '#c9d1d9', padding: '20px' }}
     >
@@ -159,7 +192,69 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
       ) : (
         <>
           {/* KPI Overview */}
-          {data.best_bin && (
+          {isTurnoverVol && bestStatusItem ? (
+            <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+              <Col span={6}>
+                <div style={{ background: 'rgba(250,173,20,0.08)', border: '1px solid rgba(250,173,20,0.2)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>最强状态</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#faad14' }}>
+                    {bestStatusItem.status} <TrophyOutlined style={{ fontSize: 14 }} />
+                  </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ background: 'rgba(22,119,255,0.06)', border: '1px solid rgba(22,119,255,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>最佳分数段</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#1677ff' }}>
+                    {bestStatusItem.best_score_range}
+                  </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ background: 'rgba(82,196,26,0.06)', border: '1px solid rgba(82,196,26,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>最佳段胜率</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#52c41a' }}>{bestStatusItem.best_score_win_rate.toFixed(1)}%</div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ background: 'rgba(255,77,79,0.06)', border: '1px solid rgba(255,77,79,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>信号数</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>{bestStatusItem.total_trades}</div>
+                </div>
+              </Col>
+            </Row>
+          ) : isWinnerMode && bestModeItem ? (
+            <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+              <Col span={6}>
+                <div style={{ background: 'rgba(250,173,20,0.08)', border: '1px solid rgba(250,173,20,0.2)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>最强模式</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#faad14' }}>
+                    {bestModeItem.status} <TrophyOutlined style={{ fontSize: 14 }} />
+                  </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ background: 'rgba(22,119,255,0.06)', border: '1px solid rgba(22,119,255,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>最佳分数段</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#1677ff' }}>
+                    {bestModeItem.best_score_range}
+                  </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ background: 'rgba(82,196,26,0.06)', border: '1px solid rgba(82,196,26,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>最佳段胜率</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#52c41a' }}>{bestModeItem.best_score_win_rate.toFixed(1)}%</div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ background: 'rgba(255,77,79,0.06)', border: '1px solid rgba(255,77,79,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>信号数</Text>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>{bestModeItem.total_trades}</div>
+                </div>
+              </Col>
+            </Row>
+          ) : data.best_bin && (
             <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
               <Col span={6}>
                 <div style={{ background: 'rgba(250,173,20,0.08)', border: '1px solid rgba(250,173,20,0.2)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
@@ -215,7 +310,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                         color: '#fff', fontWeight: 500, cursor: 'pointer',
                         background: selectedBin === bin ? 'rgba(22,119,255,0.15)' : 'transparent',
                       }}
-                        onClick={() => setSelectedBin(bin)}
+                        onClick={() => { setSelectedBin(bin); setSelectedRankingStatus(null); }}
                       >
                         {bin.replace('-', '-')}
                       </td>
@@ -331,8 +426,10 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                     </thead>
                     <tbody>
                       {statusRanking.items.map((r, i) => (
-                        <tr key={r.status} style={{
+                        <tr key={r.status} onClick={() => { if (r.best_score_range !== '-') { setSelectedBin(r.best_score_range); setSelectedRankingStatus(r); } }} style={{
                           borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          cursor: r.best_score_range !== '-' ? 'pointer' : 'default',
+                          background: selectedRankingStatus?.status === r.status ? 'rgba(22,119,255,0.1)' : 'transparent',
                         }}>
                           <td style={tdStyle}>
                             <Text strong style={{ color: i === 0 ? '#faad14' : '#8b949e' }}>#{i + 1}</Text>
@@ -568,16 +665,31 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
           )}
 
           {/* Selected bin trend */}
-          {selectedBin && trendChartData.length > 0 && (
+          {activeTrendData && activeTrendData.type === 'status' && (
             <>
-              <Title level={5} style={{ color: '#c9d1d9' }}>
-                分数段 [{selectedBin}] 趋势
-              </Title>
+              <Title level={5} style={{ color: '#c9d1d9' }}>{activeTrendData.label} 趋势</Title>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={activeTrendData.data}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+                  <XAxis dataKey="trade_date" tick={{ fill: '#8b949e', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#8b949e', fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #30363d', borderRadius: 8 }}
+                    formatter={(value) => [`${Number(value).toFixed(1)}%`, '胜率']}
+                  />
+                  <ReferenceLine y={50} stroke="rgba(255,255,255,0.12)" strokeDasharray="3 3" />
+                  <Line type="monotone" dataKey="win_rate" stroke="#eb2f96" strokeWidth={2} dot={{ r: 4, fill: '#eb2f96' }} name="胜率%" />
+                </LineChart>
+              </ResponsiveContainer>
+            </>
+          )}
+          {activeTrendData && activeTrendData.type === 'generic' && (
+            <>
+              <Title level={5} style={{ color: '#c9d1d9' }}>{activeTrendData.label} 趋势</Title>
               <Row gutter={[16, 16]}>
                 <Col span={12}>
                   <Text type="secondary" style={{ fontSize: 12 }}>胜率走势</Text>
                   <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={trendChartData}>
+                    <LineChart data={activeTrendData.data}>
                       <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
                       <XAxis dataKey="trade_date" tick={{ fill: '#8b949e', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#8b949e', fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
@@ -590,7 +702,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                 <Col span={12}>
                   <Text type="secondary" style={{ fontSize: 12 }}>收益走势</Text>
                   <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={trendChartData}>
+                    <LineChart data={activeTrendData.data}>
                       <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
                       <XAxis dataKey="trade_date" tick={{ fill: '#8b949e', fontSize: 11 }} />
                       <YAxis tick={{ fill: '#8b949e', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
@@ -663,7 +775,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
             pagination={false}
             style={{ background: '#141414' }}
             onRow={(record) => ({
-              onClick: () => setSelectedBin(`${record.range_start}-${record.range_end}`),
+              onClick: () => { setSelectedBin(`${record.range_start}-${record.range_end}`); setSelectedRankingStatus(null); },
               style: {
                 cursor: 'pointer',
                 background: selectedBin === `${record.range_start}-${record.range_end}` ? 'rgba(22,119,255,0.1)' : 'transparent',

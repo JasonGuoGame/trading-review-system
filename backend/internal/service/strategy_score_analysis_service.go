@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/repository"
 )
 
 type StrategyScoreAnalysisService struct {
-	repo *repository.StrategyScoreAnalysisRepository
+	repo      *repository.StrategyScoreAnalysisRepository
+	stockRepo *repository.StockPoolRepository
+	klineRepo *repository.KlineRepository
 }
 
-func NewStrategyScoreAnalysisService(repo *repository.StrategyScoreAnalysisRepository) *StrategyScoreAnalysisService {
-	return &StrategyScoreAnalysisService{repo: repo}
+func NewStrategyScoreAnalysisService(repo *repository.StrategyScoreAnalysisRepository, stockRepo *repository.StockPoolRepository, klineRepo *repository.KlineRepository) *StrategyScoreAnalysisService {
+	return &StrategyScoreAnalysisService{repo: repo, stockRepo: stockRepo, klineRepo: klineRepo}
 }
 
 // Map full strategy names (from strategy_performance_history) to short names (in strategy_score_analysis)
@@ -97,6 +100,53 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 		ba.maxReturns = append(ba.maxReturns, rec.MaxReturn)
 		ba.drawdowns = append(ba.drawdowns, rec.MaxDrawdown)
 		ba.trades += rec.TotalTrades
+	}
+
+	// Compute live win rates from stock_pool + kline where available
+	poolType, hasPoolType := strategyToPoolType[strategyName]
+	if hasPoolType && s.stockRepo != nil && s.klineRepo != nil {
+		for i := range heatmap {
+			cell := &heatmap[i]
+			if cell.TotalTrades > 0 {
+				targetDate, err := time.Parse("2006-01-02", cell.TradeDate)
+				if err != nil {
+					continue
+				}
+				// Extract score range
+				var si, ei int
+				fmt.Sscanf(cell.BinKey, "%d-%d", &si, &ei)
+				if si == 0 && ei == 0 {
+					continue
+				}
+				stocks, err := s.stockRepo.ListByScoreRange(poolType, cell.TradeDate, si, ei)
+				if err != nil || len(stocks) == 0 {
+					continue
+				}
+				symbols := make([]string, len(stocks))
+				for j, st := range stocks {
+					symbols[j] = st.Symbol
+				}
+				klines, err := s.klineRepo.GetNextTwoKlines(symbols, targetDate)
+				if err != nil {
+					continue
+				}
+				var wins, total int
+				for _, st := range stocks {
+					rows := klines[st.Symbol]
+					if len(rows) < 2 {
+						continue
+					}
+					total++
+					if rows[1].Close > rows[0].Close {
+						wins++
+					}
+				}
+				if total > 0 {
+					cell.WinRate = float64(wins) / float64(total) * 100
+					cell.TotalTrades = total
+				}
+			}
+		}
 	}
 
 	// Build sorted dates and bins

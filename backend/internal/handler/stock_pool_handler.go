@@ -267,6 +267,48 @@ func (h *StockPoolHandler) GetStatusHeatmap(c *gin.Context) {
 	})
 }
 
+func (h *StockPoolHandler) GetStatusScoreTrend(c *gin.Context) {
+	strategy := c.Query("strategy")
+	status := c.Query("status")
+	scoreMinStr := c.Query("score_min")
+	scoreMaxStr := c.Query("score_max")
+	daysStr := c.Query("days")
+
+	if strategy == "" || status == "" || scoreMinStr == "" || scoreMaxStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "strategy, status, score_min, score_max are required"})
+		return
+	}
+
+	scoreMin, err := strconv.Atoi(scoreMinStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score_min"})
+		return
+	}
+	scoreMax, err := strconv.Atoi(scoreMaxStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid score_max"})
+		return
+	}
+	days := 30
+	if daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+
+	result, err := h.service.GetStatusScoreTrend(strategy, status, scoreMin, scoreMax, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    result,
+	})
+}
+
 func (h *StockPoolHandler) Delete(c *gin.Context) {
 	symbol := c.Query("symbol")
 	tradeDate := c.Query("trade_date")

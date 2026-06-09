@@ -110,6 +110,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		api.GET("/strategy-analysis/status-heatmap", handlers.StockPool.GetStatusHeatmap)
 		api.GET("/strategy-analysis/mode-ranking", handlers.StockPool.GetModeRanking)
 		api.GET("/strategy-analysis/status-ranking", handlers.StockPool.GetStatusRanking)
+		api.GET("/strategy-analysis/status-score-trend", handlers.StockPool.GetStatusScoreTrend)
 
 		// Trade Checklist
 		api.GET("/trade-checklist/:date", handlers.TradeChecklist.GetByDate)

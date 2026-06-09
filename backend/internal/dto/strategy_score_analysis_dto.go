@@ -84,3 +84,17 @@ type ModeRankingResponse struct {
 	StrategyName string            `json:"strategy_name"`
 	Items        []ModeRankingItem `json:"items"`
 }
+
+type StatusScoreTrendPoint struct {
+	TradeDate string  `json:"trade_date"`
+	WinRate   float64 `json:"win_rate"`
+	AvgReturn float64 `json:"avg_return"`
+	Total     int     `json:"total"`
+}
+
+type StatusScoreTrendResponse struct {
+	StrategyName  string                 `json:"strategy_name"`
+	Status        string                 `json:"status"`
+	ScoreRange    string                 `json:"score_range"`
+	Trend         []StatusScoreTrendPoint `json:"trend"`
+}

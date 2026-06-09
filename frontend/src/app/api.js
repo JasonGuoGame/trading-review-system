@@ -407,6 +407,14 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    getStatusScoreTrend: builder.query({
+      query: (params) => ({
+        url: '/strategy-analysis/status-score-trend',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
+
     // === Market Attack ===
     getTopMarketAttacks: builder.query({
       query: (params) => ({
@@ -482,6 +490,7 @@ export const {
   useGetStatusHeatmapQuery,
   useGetModeRankingQuery,
   useGetStatusRankingQuery,
+  useGetStatusScoreTrendQuery,
   useGetTradeChecklistQuery,
   useUpsertTradeChecklistMutation,
   useGetTopMarketAttacksQuery,

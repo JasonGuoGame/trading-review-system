@@ -3,7 +3,13 @@
     "allow": [
       "Bash(go build *)",
       "Bash(npx tsc *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:3000/api/strategy-analysis/stocks?strategy=8.%20%E5%88%86%E6%AD%A7%E5%8F%8D%E5%8C%85%E7%AD%96%E7%95%A5&trade_date=2026-06-05&score_min=70&score_max=80\"; $d = $r.data; \"Total stocks: $\\($d.stocks.Count\\)\"; $d.stocks | ForEach-Object { \"$\\($_.symbol\\) $\\($_.stock_name\\): score=$\\($_.score\\) win=$\\($_.is_win\\) close_today=$\\($_.close_today\\) close_next=$\\($_.close_next\\)\" } } catch { \"Error: $_\" })",
+      "PowerShell(docker compose build --no-cache backend 2>&1)",
+      "PowerShell(docker compose up -d backend 2>&1)",
+      "PowerShell(docker compose build --no-cache frontend 2>&1)",
+      "PowerShell(docker compose up -d frontend 2>&1)",
+      "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:3000/api/strategy-analysis/status-score-trend?strategy=turnover_vol&status=%E5%90%AF%E5%8A%A8%E7%AA%81%E7%A0%B4&score_min=10&score_max=20&days=30\"; \"Status: $\\($r.data.status\\)\"; \"Score range: $\\($r.data.score_range\\)\"; \"Trend points: $\\($r.data.trend.Count\\)\"; $r.data.trend | ForEach-Object { \"$\\($_.trade_date\\): win_rate=$\\([math]::Round\\($_.win_rate,1\\)\\)% total=$\\($_.total\\)\" } } catch { \"Error: $_\" })"
     ]
   }
 }

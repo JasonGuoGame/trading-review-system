@@ -1,12 +1,20 @@
+import { EyeOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import {
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Input,
+  Row,
+  Select,
+  Table,
+  Tag
+} from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Table, Card, Tag, Button, Input, Select, DatePicker, Space, Row, Col,
-} from 'antd'
-import { PlusOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons'
 import { useGetTradesQuery } from '../app/api'
-import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor } from '../utils/format'
-import { STRATEGIES, SCORES } from '../utils/constants'
+import { SCORES, STRATEGIES } from '../utils/constants'
+import { formatDate, formatMoney, formatPercent, getPnlClass, getScoreColor } from '../utils/format'
 
 const { RangePicker } = DatePicker
 
@@ -43,17 +51,17 @@ function Trades() {
       key: 'strategy',
       width: 100,
     },
-    {
-      title: '方向',
-      dataIndex: 'direction',
-      key: 'direction',
-      width: 80,
-      render: (v) => (
-        <Tag color={v === 'long' ? 'green' : 'red'}>
-          {v === 'long' ? '做多' : '做空'}
-        </Tag>
-      ),
-    },
+    // {
+    //   title: '方向',
+    //   dataIndex: 'direction',
+    //   key: 'direction',
+    //   width: 80,
+    //   render: (v) => (
+    //     <Tag color={v === 'long' ? 'green' : 'red'}>
+    //       {v === 'long' ? '做多' : '做空'}
+    //     </Tag>
+    //   ),
+    // },
     {
       title: '盈亏',
       dataIndex: 'total_pnl',
@@ -111,6 +119,15 @@ function Trades() {
         <Tag color={v === 'open' ? 'processing' : 'default'}>
           {v === 'open' ? '持仓中' : '已平仓'}
         </Tag>
+      ),
+    },
+    {
+      title: '模拟',
+      dataIndex: 'is_simulated',
+      key: 'is_simulated',
+      width: 60,
+      render: (v) => (
+        <Tag color={v ? 'orange' : 'default'}>{v ? '模拟' : '实盘'}</Tag>
       ),
     },
     {

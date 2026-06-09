@@ -197,8 +197,10 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected, o
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
+  const srcData = payload[0]?.payload || {};
+  const marketPct = srcData.market_pct_chg;
+  const upCount = srcData.market_up_count;
   const marketPayload = payload.find((p) => p.dataKey === 'market_pct_chg');
-  const countPayload = payload.find((p) => p.dataKey === 'market_up_count');
   const strategyPayloads = payload.filter((p) => p.dataKey !== 'market_pct_chg' && p.dataKey !== 'market_up_count');
 
   return (
@@ -210,14 +212,14 @@ const CustomTooltip = ({ active, payload, label }) => {
     }}>
       <div style={{ marginBottom: 6, borderBottom: '1px solid #30363d', paddingBottom: 6 }}>
         <Text type="secondary" style={{ fontSize: 12 }}>{label}</Text>
-        {countPayload && (
+        {upCount != null && (
           <Text style={{ color: '#8b949e', fontSize: 11, marginLeft: 8 }}>
-            上涨 {countPayload.value?.toLocaleString()} 家
+            上涨 {upCount.toLocaleString()} 家
           </Text>
         )}
-        {marketPayload && (
-          <Text style={{ color: marketPayload.value > 0 ? '#52c41a' : '#ff4d4f', fontSize: 12, marginLeft: 8, fontWeight: 600 }}>
-            大盘 {marketPayload.value > 0 ? '+' : ''}{marketPayload.value?.toFixed(2)}%
+        {marketPct != null && (
+          <Text style={{ color: marketPct > 0 ? '#52c41a' : '#ff4d4f', fontSize: 12, marginLeft: 8, fontWeight: 600 }}>
+            大盘 {marketPct > 0 ? '+' : ''}{marketPct.toFixed(2)}%
           </Text>
         )}
       </div>

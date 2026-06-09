@@ -525,6 +525,87 @@ func (s *StockPoolService) GetModeRanking(days int) (*dto.ModeRankingResponse, e
 	return s.GetStatusRanking("winner_mode", days)
 }
 
+func (s *StockPoolService) GetStatusScoreTrend(rawStrategy string, status string, scoreMin int, scoreMax int, days int) (*dto.StatusScoreTrendResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+	poolType := models.StockPoolType(rawStrategy)
+	// Use List (which doesn't require exact trade_date) and filter by score range
+	stocks, err := s.repo.List(poolType, days, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter by score range in code
+	var filtered []models.StockPool
+	for _, st := range stocks {
+		if st.Score >= int64(scoreMin) && st.Score <= int64(scoreMax) {
+			filtered = append(filtered, st)
+		}
+	}
+	stocks = filtered
+
+	// Filter by status and group by date
+	type dayStat struct{ total, wins int }
+	dayMap := make(map[string]*dayStat)
+	var dates []string
+	dateSet := make(map[string]bool)
+
+	for _, st := range stocks {
+		if st.Status != status {
+			continue
+		}
+		ds := st.TradeDate.Format("2006-01-02")
+		if !dateSet[ds] {
+			dates = append(dates, ds)
+			dateSet[ds] = true
+		}
+
+		targetDate, err := time.Parse("2006-01-02", ds)
+		if err != nil {
+			continue
+		}
+		klines, err := s.klineRepo.GetNextTwoKlines([]string{st.Symbol}, targetDate)
+		if err != nil || len(klines[st.Symbol]) < 2 {
+			continue
+		}
+		isWin := klines[st.Symbol][1].Close > klines[st.Symbol][0].Close
+
+		stat := dayMap[ds]
+		if stat == nil {
+			stat = &dayStat{}
+			dayMap[ds] = stat
+		}
+		stat.total++
+		if isWin {
+			stat.wins++
+		}
+	}
+
+	sort.Strings(dates)
+	var trend []dto.StatusScoreTrendPoint
+	for _, d := range dates {
+		stat := dayMap[d]
+		if stat == nil || stat.total == 0 {
+			continue
+		}
+		wr := float64(stat.wins) / float64(stat.total) * 100
+		trend = append(trend, dto.StatusScoreTrendPoint{
+			TradeDate: d,
+			WinRate:   wr,
+			Total:     stat.total,
+		})
+	}
+
+	scoreRange := fmt.Sprintf("%d-%d", scoreMin, scoreMax)
+	return &dto.StatusScoreTrendResponse{
+		StrategyName: rawStrategy,
+		Status:       status,
+		ScoreRange:   scoreRange,
+		Trend:        trend,
+	}, nil
+}
+
 func (s *StockPoolService) CalculateScore(stock *models.StockPool) {
 	// TODO: Implement actual scoring logic based on signals and market data
 	// Short-term: Fund inflow (30), Abnormal (20), Main theme (20), Technical (20), Sentiment (10)
