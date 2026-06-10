@@ -8,11 +8,12 @@ import (
 )
 
 type StrategyPerformanceRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	quantDb *gorm.DB
 }
 
-func NewStrategyPerformanceRepository(db *gorm.DB) *StrategyPerformanceRepository {
-	return &StrategyPerformanceRepository{db: db}
+func NewStrategyPerformanceRepository(db *gorm.DB, quantDb *gorm.DB) *StrategyPerformanceRepository {
+	return &StrategyPerformanceRepository{db: db, quantDb: quantDb}
 }
 
 func (r *StrategyPerformanceRepository) GetHistory(strategyNames []string, days int) ([]models.StrategyPerformanceHistory, error) {
@@ -37,7 +38,7 @@ func (r *StrategyPerformanceRepository) AggregateFromScoreAnalysis(strategyName 
 		WorstReturn  float64
 	}
 	var rows []aggRow
-	err := r.db.Table("strategy_score_analysis").
+	err := r.quantDb.Table("strategy_score_analysis").
 		Select(`trade_date,
 			SUM(total_trades) as signal_count,
 			SUM(win_rate * total_trades) / SUM(total_trades) as win_rate,

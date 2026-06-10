@@ -74,6 +74,7 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected, o
     <div
       onClick={() => onSelect?.(s.name)}
       className="strategy-card"
+      title={s.name}
       style={{
         background: isSelected ? `rgba(${hexToRgb(lineColor)}, 0.18)` : color.bg,
         border: `1.5px solid ${isSelected ? lineColor : color.border}`,

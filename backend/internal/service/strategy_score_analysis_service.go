@@ -120,6 +120,8 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 				}
 				stocks, err := s.stockRepo.ListByScoreRange(poolType, cell.TradeDate, si, ei)
 				if err != nil || len(stocks) == 0 {
+					cell.WinRate = 0
+					cell.TotalTrades = 0
 					continue
 				}
 				symbols := make([]string, len(stocks))
@@ -144,6 +146,10 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 				if total > 0 {
 					cell.WinRate = float64(wins) / float64(total) * 100
 					cell.TotalTrades = total
+				} else {
+					// Pre-computed data is stale; no live stocks found
+					cell.WinRate = 0
+					cell.TotalTrades = 0
 				}
 			}
 		}

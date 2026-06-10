@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/models"
 	"trading-review-system/backend/internal/repository"
@@ -62,25 +63,40 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 		latestMap[rec.StrategyName] = rec
 	}
 
-	// Fallback: for strategies missing from performance_history, aggregate from strategy_score_analysis
-	historyStrategySet := make(map[string]bool)
+	// Fallback: fill missing/recent data from strategy_score_analysis
+	historyMaxDate := make(map[string]time.Time)
 	for _, h := range history {
-		historyStrategySet[h.StrategyName] = true
-	}
-	for _, name := range strategyNames {
-		if historyStrategySet[name] {
-			continue
+		if t, ok := historyMaxDate[h.StrategyName]; !ok || h.TradeDate.After(t) {
+			historyMaxDate[h.StrategyName] = h.TradeDate
 		}
+	}
+
+	for _, name := range strategyNames {
+		maxD, ok := historyMaxDate[name]
+		maxDStr := maxD.Format("2006-01-02")
 		aggregated, err := s.repo.AggregateFromScoreAnalysis(name)
 		if err != nil || len(aggregated) == 0 {
 			continue
 		}
-		// Use last entry as "latest" — normalize win_rate (score_analysis stores as % e.g. 33.33)
-		latestAgg := aggregated[len(aggregated)-1]
-		latestAgg.WinRate = latestAgg.WinRate / 100.0
-		latestMap[name] = latestAgg
-		// Add all entries to history (trend loop below divides win_rate by 100)
-		history = append(history, aggregated...)
+		if !ok {
+			// New strategy with no history
+			latestAgg := aggregated[len(aggregated)-1]
+			latestAgg.WinRate = latestAgg.WinRate / 100.0
+			latestMap[name] = latestAgg
+			history = append(history, aggregated...)
+		} else {
+			// Merge dates newer than existing history
+			for _, agg := range aggregated {
+				if agg.TradeDate.Format("2006-01-02") > maxDStr {
+					history = append(history, agg)
+				}
+			}
+			lastAgg := aggregated[len(aggregated)-1]
+			if lastAgg.TradeDate.Format("2006-01-02") > maxDStr {
+				lastAgg.WinRate = lastAgg.WinRate / 100.0
+				latestMap[name] = lastAgg
+			}
+		}
 	}
 
 	// Build trend data grouped by date, capture market-wide data once per date

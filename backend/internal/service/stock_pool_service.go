@@ -507,6 +507,7 @@ func (s *StockPoolService) GetStatusRanking(rawStrategy string, days int) (*dto.
 			WinRate:          overallWR,
 			BestScoreRange:   bestRange,
 			BestScoreWinRate: bestBucketWR,
+			BestScoreTrades:  bestBucketTotal,
 		})
 	}
 
@@ -536,10 +537,10 @@ func (s *StockPoolService) GetStatusScoreTrend(rawStrategy string, status string
 		return nil, err
 	}
 
-	// Filter by score range in code
+	// Filter by score range in code (top bin: score >= scoreMin, no upper bound)
 	var filtered []models.StockPool
 	for _, st := range stocks {
-		if st.Score >= int64(scoreMin) && st.Score <= int64(scoreMax) {
+		if st.Score >= int64(scoreMin) && (scoreMax >= 100 || st.Score <= int64(scoreMax)) {
 			filtered = append(filtered, st)
 		}
 	}

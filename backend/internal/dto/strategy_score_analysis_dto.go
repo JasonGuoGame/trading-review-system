@@ -73,11 +73,12 @@ type StatusHeatmapResponse struct {
 }
 
 type ModeRankingItem struct {
-	Status           string  `json:"status"`
-	TotalTrades      int     `json:"total_trades"`
-	WinRate          float64 `json:"win_rate"`
-	BestScoreRange   string  `json:"best_score_range"`
-	BestScoreWinRate float64 `json:"best_score_win_rate"`
+	Status            string  `json:"status"`
+	TotalTrades       int     `json:"total_trades"`
+	WinRate           float64 `json:"win_rate"`
+	BestScoreRange    string  `json:"best_score_range"`
+	BestScoreWinRate  float64 `json:"best_score_win_rate"`
+	BestScoreTrades   int     `json:"best_score_trades"`
 }
 
 type ModeRankingResponse struct {

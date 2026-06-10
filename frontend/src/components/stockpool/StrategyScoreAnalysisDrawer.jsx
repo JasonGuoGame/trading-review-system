@@ -219,7 +219,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
               <Col span={6}>
                 <div style={{ background: 'rgba(255,77,79,0.06)', border: '1px solid rgba(255,77,79,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>信号数</Text>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>{bestStatusItem.total_trades}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>{bestStatusItem.best_score_trades || bestStatusItem.total_trades}</div>
                 </div>
               </Col>
             </Row>
@@ -421,6 +421,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                         <th style={thStyle}>信号数</th>
                         <th style={thStyle}>平均胜率</th>
                         <th style={thStyle}>最佳分数段</th>
+                        <th style={thStyle}>最佳段信号数</th>
                         <th style={thStyle}>最佳段胜率</th>
                       </tr>
                     </thead>
@@ -444,6 +445,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                           <td style={tdStyle}>
                             <Tag color="purple">{r.best_score_range}</Tag>
                           </td>
+                          <td style={tdStyle}><Text style={{ color: '#8b949e', fontWeight: 600 }}>{r.best_score_trades || 0}</Text></td>
                           <td style={tdStyle}>
                             <Text style={{ color: r.best_score_win_rate > 60 ? '#52c41a' : r.best_score_win_rate > 40 ? '#faad14' : '#ff4d4f', fontWeight: 600 }}>
                               {r.best_score_win_rate > 0 ? `${r.best_score_win_rate.toFixed(1)}%` : '-'}

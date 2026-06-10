@@ -114,7 +114,11 @@ func (r *StockPoolRepository) applyPoolTypeFilter(poolType models.StockPoolType)
 func (r *StockPoolRepository) ListByScoreRange(poolType models.StockPoolType, tradeDate string, scoreMin int, scoreMax int) ([]models.StockPool, error) {
 	var stocks []models.StockPool
 	query := r.applyPoolTypeFilter(poolType).
-		Where("trade_date = ? AND score >= ? AND score <= ?", tradeDate, scoreMin, scoreMax)
+		Where("trade_date = ? AND score >= ?", tradeDate, scoreMin)
+	// Cap upper bound — scores above max go into the top bin
+	if scoreMax < 100 {
+		query = query.Where("score <= ?", scoreMax)
+	}
 	err := query.Order("score DESC").Find(&stocks).Error
 	return stocks, err
 }
