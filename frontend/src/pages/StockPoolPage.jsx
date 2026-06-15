@@ -78,6 +78,50 @@ const StockPoolPage = () => {
     );
   };
 
+  const renderMacdBollStrategy = () => {
+    if (activeTab !== 'trend_following') return null;
+    return (
+      <div style={{ marginBottom: 16, padding: '16px', background: 'rgba(8, 151, 156, 0.05)', border: '1px solid #08979c', borderRadius: 8 }}>
+        <Typography.Title level={5} style={{ color: '#08979c', marginTop: 0 }}>🧘 MACD+BOLL 影线作战纪律 — 位置决定性质</Typography.Title>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+          核心原则：影线长度 ≥ 实体2倍；阳线信号强于阴线（低位）；阴线信号强于阳线（高位）
+        </Typography.Text>
+        <div style={{ background: 'rgba(82, 196, 26, 0.06)', border: '1px solid rgba(82, 196, 26, 0.25)', borderRadius: 6, padding: '10px 14px', marginBottom: 12 }}>
+          <Typography.Title level={5} style={{ color: '#52c41a', marginTop: 0, marginBottom: 8 }}>🟢 低位区域 — 看涨格局</Typography.Title>
+          <Typography.Text strong style={{ color: '#95de64', fontSize: 13 }}>📌 低位长上影线 → 「仙人指路 / 倒锤头线」— 试盘看涨</Typography.Text>
+          <Row gutter={[16, 8]} style={{ marginTop: 4 }}>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>1. <Typography.Text type="danger" strong style={{ fontSize: 12 }}>温和放量试盘</Typography.Text>：MACD零轴下方金叉 + BOLL中下轨，长上影伴随温和放量——主力试探上方抛压，积极看涨信号。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>2. <Typography.Text type="danger" strong style={{ fontSize: 12 }}>收复影线高点</Typography.Text>：若随后几天股价震荡企稳并放量突破上影线最高点→试盘成功，主升浪即将开启；止损设于影线最低点下方。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>3. <Typography.Text type="warning" strong style={{ fontSize: 12 }}>巨量上影警惕</Typography.Text>：若量能过大/天量，需警惕主力对倒或利空导致反弹受阻，暂观望等次日确认。</Typography.Text></Col>
+          </Row>
+          <div style={{ margin: '8px 0', borderTop: '1px solid rgba(82, 196, 26, 0.15)' }} />
+          <Typography.Text strong style={{ color: '#95de64', fontSize: 13 }}>📌 低位长下影线 → 「锤头线 / 探底神针」— 经典见底</Typography.Text>
+          <Row gutter={[16, 8]} style={{ marginTop: 4 }}>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>1. <Typography.Text type="danger" strong style={{ fontSize: 12 }}>关键位锤头</Typography.Text>：打在重要均线（60日线/BOLL下轨/前低支撑）上的长下影阳线，多头强力抵抗信号，可信度极高。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>2. <Typography.Text type="danger" strong style={{ fontSize: 12 }}>次日阳线确认</Typography.Text>：次日收阳且站上锤头实体顶部→反转确认，是左侧交易者加仓信号；止损设于下影线最低点下方。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>3. <Typography.Text type="success" strong style={{ fontSize: 12 }}>破位必须止损</Typography.Text>：若跌破锤头线最低价（多头防线失守），支撑逻辑失效，须立即止损。</Typography.Text></Col>
+          </Row>
+        </div>
+        <div style={{ background: 'rgba(255, 77, 79, 0.06)', border: '1px solid rgba(255, 77, 79, 0.25)', borderRadius: 6, padding: '10px 14px' }}>
+          <Typography.Title level={5} style={{ color: '#ff4d4f', marginTop: 0, marginBottom: 8 }}>🔴 高位区域 — 见顶格局</Typography.Title>
+          <Typography.Text strong style={{ color: '#ff9999', fontSize: 13 }}>📌 高位长下影线 → 「吊颈线 / 上吊线」— 上涨衰竭</Typography.Text>
+          <Row gutter={[16, 8]} style={{ marginTop: 4 }}>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>1. <Typography.Text type="success" strong style={{ fontSize: 12 }}>高位吊颈阴线</Typography.Text>：MACD高位死叉 + BOLL上轨，长下影阴线（下影≥实体2倍）——多头拉高出货/分歧加剧，见顶意味最浓。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>2. <Typography.Text type="success" strong style={{ fontSize: 12 }}>量能萎缩最危险</Typography.Text>：高位吊颈伴随缩量→上涨动能枯竭，变盘概率极高；若伴巨量→主力剧烈震荡诱多出货，均应减仓。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>3. <Typography.Text type="success" strong style={{ fontSize: 12 }}>次日低开即离场</Typography.Text>：形态出现后，若次日低开或收出实体阴线→空头确立，前期涨势宣告结束，坚决离场。</Typography.Text></Col>
+          </Row>
+          <div style={{ margin: '8px 0', borderTop: '1px solid rgba(255, 77, 79, 0.15)' }} />
+          <Typography.Text strong style={{ color: '#ff9999', fontSize: 13 }}>📌 高位长上影线 → 「射击之星 / 流星线」— 强烈见顶</Typography.Text>
+          <Row gutter={[16, 8]} style={{ marginTop: 4 }}>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>1. <Typography.Text type="success" strong style={{ fontSize: 12 }}>高位放量流星</Typography.Text>：上影≥实体2倍 + 巨量→主力借利好盘中急拉诱多，随后反手出货致价格崩塌，是最强烈的见顶信号。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>2. <Typography.Text type="success" strong style={{ fontSize: 12 }}>缩量流星=试盘失败</Typography.Text>：高位缩量长上影→主力向上试盘发现抛压沉重、跟风不足，随即放弃；同样是离场/减仓信号。</Typography.Text></Col>
+            <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>3. <Typography.Text type="success" strong style={{ fontSize: 12 }}>墓碑线最凶险</Typography.Text>：高位长上影阴线（墓碑线）杀跌意味比阳线更强——次日跌破实体或低开即确认见顶，立刻清仓，不抱幻想。</Typography.Text></Col>
+          </Row>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="page-container" style={{ padding: '24px', background: '#0a0a0a', minHeight: '100vh' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -135,9 +179,9 @@ const StockPoolPage = () => {
         <StockPoolSearch days={days} />
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} counts={counts} tabOrder={tabOrder} />
  
-        {renderShortTermStrategy()}
         {renderDivergenceReversalStrategy()}
-        {activeTab === 'long' && <VolumePriceStrategy />}
+        {renderMacdBollStrategy()}
+        {activeTab === 'macd_boll' && <VolumePriceStrategy />}
         {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
         {activeTab === 'winner_mode' && <WinnerModeHeader />}
 

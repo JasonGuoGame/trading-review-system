@@ -21,8 +21,11 @@ type StockPool struct {
 	Score        int64         `json:"score"`
 	IsWatchFocus int           `gorm:"column:is_watch_focus;default:0" json:"is_watch_focus"`
 	Tags         string        `gorm:"type:json" json:"tags"`
-	Notes        string        `gorm:"type:text" json:"notes"`
-	CreatedAt    time.Time     `json:"created_at"`
+	Notes            string        `gorm:"type:text" json:"notes"`
+	PredictionFlag   int8          `gorm:"column:prediction_flag;default:99" json:"prediction_flag"`
+	PredictionDetail string        `gorm:"column:prediction_detail;size:100" json:"prediction_detail"`
+	Viewpoint        string        `gorm:"column:viewpoint;type:text" json:"viewpoint"`
+	CreatedAt        time.Time     `json:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at"`
 }
 

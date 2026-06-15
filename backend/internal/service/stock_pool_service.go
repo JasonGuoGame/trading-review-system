@@ -121,15 +121,26 @@ func (s *StockPoolService) GetStockDetail(symbol string) (*dto.StockPoolDetailRe
 	signals, _ := s.repo.GetSignals(symbol)
 
 	return &dto.StockPoolDetailResponse{
-		Symbol:     stock.Symbol,
-		StockName:  stock.StockName,
-		PoolType:   stock.PoolType,
-		SectorName: stock.SectorName,
-		Score:      stock.Score,
-		Status:     stock.Status,
-		Notes:      stock.Notes,
-		Signals:    signals,
+		Symbol:           stock.Symbol,
+		StockName:        stock.StockName,
+		PoolType:         stock.PoolType,
+		SectorName:       stock.SectorName,
+		Score:            stock.Score,
+		Status:           stock.Status,
+		Notes:            stock.Notes,
+		PredictionFlag:   stock.PredictionFlag,
+		PredictionDetail: stock.PredictionDetail,
+		Viewpoint:        stock.Viewpoint,
+		Signals:          signals,
 	}, nil
+}
+
+func (s *StockPoolService) UpdatePrediction(symbol string, tradeDateStr, poolTypeStr, status string, predictionFlag int8, predictionDetail string, viewpoint string) error {
+	if _, err := time.Parse("2006-01-02", tradeDateStr); err != nil {
+		return err
+	}
+	poolType := models.StockPoolType(poolTypeStr)
+	return s.repo.UpdatePrediction(symbol, tradeDateStr, poolType, status, predictionFlag, predictionDetail, viewpoint)
 }
 
 func (s *StockPoolService) SearchStockPools(query string, days int) ([]dto.StockPoolSearchResult, error) {

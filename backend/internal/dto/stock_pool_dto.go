@@ -20,6 +20,12 @@ type UpdateStockPoolStatusRequest struct {
 	Status string `json:"status" binding:"required"`
 }
 
+type UpdatePredictionRequest struct {
+	PredictionFlag   int8   `json:"prediction_flag" binding:"required"`
+	PredictionDetail string `json:"prediction_detail"`
+	Viewpoint        string `json:"viewpoint"`
+}
+
 type StockPoolSearchResult struct {
 	Symbol      string               `json:"symbol"`
 	StockName   string               `json:"stock_name"`
@@ -41,7 +47,10 @@ type StockPoolDetailResponse struct {
 	SectorName string               `json:"sector_name"`
 	Score      int64                `json:"score"`
 	Status     string               `json:"status"`
-	Notes      string               `json:"notes"`
-	Signals    []models.StockPoolSignal `json:"signals"`
+	Notes            string                  `json:"notes"`
+	PredictionFlag   int8                    `json:"prediction_flag"`
+	PredictionDetail string                  `json:"prediction_detail"`
+	Viewpoint        string                  `json:"viewpoint"`
+	Signals          []models.StockPoolSignal `json:"signals"`
 	FundFlow   interface{}          `json:"fund_flow"` // Can be detailed fund flow data
 }

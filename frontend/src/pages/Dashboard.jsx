@@ -17,19 +17,22 @@ import {
   useGetEquityCurveQuery,
   useGetWinRateQuery,
   useGetRecentTradesQuery,
+  useGetPredictionAccuracyQuery,
   useGetMarketBreadthQuery,
 } from '../app/api'
 import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor } from '../utils/format'
 import dayjs from 'dayjs'
 
 const COLORS = ['#52c41a', '#1677ff', '#faad14', '#ff4d4f']
+const PREDICTION_COLORS = { 1: '#ef4444', [-1]: '#22c55e', 0: '#eab308' }
 
 function Dashboard() {
   const { data: summary, isLoading: loadingSummary } = useGetDashboardSummaryQuery()
   const { data: equityCurve, isLoading: loadingEquity } = useGetEquityCurveQuery()
   const { data: winRate, isLoading: loadingWinRate } = useGetWinRateQuery()
   const { data: recentTrades, isLoading: loadingRecent } = useGetRecentTradesQuery()
-  
+  const { data: predAccuracy, isLoading: loadingPredAcc } = useGetPredictionAccuracyQuery()
+
   const todayDateStr = dayjs().format('YYYY-MM-DD')
   const { data: breadthData, isLoading: loadingBreadth } = useGetMarketBreadthQuery(todayDateStr)
 
@@ -214,6 +217,88 @@ function Dashboard() {
                   </Pie>
                   <Tooltip contentStyle={{ background: '#1f1f1f', border: '1px solid #333', borderRadius: 8 }} />
                 </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <Empty description="暂无数据" style={{ padding: 60 }} />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Prediction Accuracy */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={8}>
+          <Card title="🎯 预测准确率">
+            {loadingPredAcc ? (
+              <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div>
+            ) : predAccuracy ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Statistic
+                  title="整体准确率"
+                  value={predAccuracy.overall_accuracy || 0}
+                  precision={1}
+                  suffix="%"
+                  valueStyle={{ color: '#1677ff', fontSize: 28 }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#999' }}>
+                  <span>总预测: <strong>{predAccuracy.total_predictions}</strong></span>
+                  <span>正确: <strong style={{ color: '#52c41a' }}>{predAccuracy.correct_predictions}</strong></span>
+                </div>
+                {predAccuracy.by_type?.map((t) => (
+                  <div key={t.prediction_flag} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: PREDICTION_COLORS[t.prediction_flag] || '#999' }}>
+                      {t.label}
+                    </span>
+                    <span>
+                      {t.correct}/{t.total}
+                      <span style={{ marginLeft: 8, color: t.accuracy >= 50 ? '#52c41a' : '#ff4d4f' }}>
+                        {t.accuracy.toFixed(1)}%
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Empty description="暂无预测数据" style={{ padding: 60 }} />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card title="📊 按预测类型">
+            {loadingPredAcc ? (
+              <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div>
+            ) : predAccuracy?.by_type?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={predAccuracy.by_type}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="label" stroke="#666" fontSize={12} />
+                  <YAxis stroke="#666" fontSize={12} domain={[0, 100]} />
+                  <Tooltip contentStyle={{ background: '#1f1f1f', border: '1px solid #333', borderRadius: 8 }} />
+                  <Bar dataKey="accuracy" name="准确率%" radius={[4, 4, 0, 0]}>
+                    {predAccuracy.by_type.map((entry) => (
+                      <Cell key={entry.prediction_flag} fill={PREDICTION_COLORS[entry.prediction_flag] || '#666'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Empty description="暂无数据" style={{ padding: 60 }} />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card title="📈 准确率趋势">
+            {loadingPredAcc ? (
+              <div style={{ textAlign: 'center', padding: 60 }}><Spin /></div>
+            ) : predAccuracy?.trend?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={predAccuracy.trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+                  <XAxis dataKey="date" stroke="#666" fontSize={12} />
+                  <YAxis stroke="#666" fontSize={12} domain={[0, 100]} />
+                  <Tooltip contentStyle={{ background: '#1f1f1f', border: '1px solid #333', borderRadius: 8 }} />
+                  <Line type="monotone" dataKey="accuracy" stroke="#1677ff" strokeWidth={2} dot={false} name="准确率%" />
+                </LineChart>
               </ResponsiveContainer>
             ) : (
               <Empty description="暂无数据" style={{ padding: 60 }} />

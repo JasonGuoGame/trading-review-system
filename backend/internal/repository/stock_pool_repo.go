@@ -129,6 +129,24 @@ func (r *StockPoolRepository) GetSignals(symbol string) ([]models.StockPoolSigna
 	return signals, err
 }
 
+func (r *StockPoolRepository) ListWithPredictions() ([]models.StockPool, error) {
+	var stocks []models.StockPool
+	err := r.db.Where("prediction_flag != ?", 99).Order("trade_date DESC").Find(&stocks).Error
+	return stocks, err
+}
+
 func (r *StockPoolRepository) SaveSignal(signal *models.StockPoolSignal) error {
 	return r.db.Save(signal).Error
+}
+
+func (r *StockPoolRepository) UpdatePrediction(symbol string, tradeDate string, poolType models.StockPoolType, status string, predictionFlag int8, predictionDetail string, viewpoint string) error {
+	updates := map[string]any{
+		"prediction_flag":   predictionFlag,
+		"prediction_detail": predictionDetail,
+		"viewpoint":         viewpoint,
+	}
+	return r.db.Model(&models.StockPool{}).
+		Where("symbol = ? AND trade_date = ? AND pool_type = ? AND status = ?",
+			symbol, tradeDate, poolType, status).
+		Updates(updates).Error
 }

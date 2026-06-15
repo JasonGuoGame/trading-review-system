@@ -30,3 +30,25 @@ type WinRateResponse struct {
 	Trend        []WinRatePoint      `json:"trend"`
 	Distribution []ScoreDistribution `json:"distribution"`
 }
+
+type PredictionTypeAccuracy struct {
+	PredictionFlag int8    `json:"prediction_flag"`
+	Label          string  `json:"label"`
+	Total          int64   `json:"total"`
+	Correct        int64   `json:"correct"`
+	Accuracy       float64 `json:"accuracy"`
+}
+
+type PredictionAccuracyPoint struct {
+	Date     string  `json:"date"`
+	Accuracy float64 `json:"accuracy"`
+	Total    int64   `json:"total"`
+}
+
+type PredictionAccuracyResponse struct {
+	TotalPredictions   int64                     `json:"total_predictions"`
+	CorrectPredictions int64                     `json:"correct_predictions"`
+	OverallAccuracy    float64                   `json:"overall_accuracy"`
+	ByType             []PredictionTypeAccuracy  `json:"by_type"`
+	Trend              []PredictionAccuracyPoint `json:"trend"`
+}

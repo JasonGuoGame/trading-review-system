@@ -304,7 +304,9 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
 
   const { strategies = [], trend_data = [], commentary = '' } = data;
 
-  const visibleStrategies = strategies.filter((s) => !hiddenStrategies.includes(s.name));
+  const DELETED_STRATEGIES = ['1. 短线黑马股', '2. 价值长线股'];
+
+  const visibleStrategies = strategies.filter((s) => !hiddenStrategies.includes(s.name) && !DELETED_STRATEGIES.includes(s.name));
 
   return (
     <div style={{ marginBottom: 16 }}>

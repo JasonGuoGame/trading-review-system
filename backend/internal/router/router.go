@@ -58,6 +58,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			dashboard.GET("/equity-curve", handlers.Dashboard.GetEquityCurve)
 			dashboard.GET("/win-rate", handlers.Dashboard.GetWinRate)
 			dashboard.GET("/recent-trades", handlers.Dashboard.GetRecentTrades)
+			dashboard.GET("/prediction-accuracy", handlers.Dashboard.GetPredictionAccuracy)
 		}
 
 		// Analysis
@@ -95,6 +96,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			stockPool.POST("", handlers.StockPool.Create)
 			stockPool.PUT("/status", handlers.StockPool.UpdateStatus)
 			stockPool.PUT("/watch-focus", handlers.StockPool.SetWatchFocus)
+			stockPool.PUT("/prediction", handlers.StockPool.UpdatePrediction)
 			stockPool.DELETE("", handlers.StockPool.Delete)
 			stockPool.GET("/search", handlers.StockPool.Search)
 			stockPool.GET("/:symbol/detail", handlers.StockPool.GetDetail)

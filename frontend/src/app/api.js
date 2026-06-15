@@ -179,6 +179,12 @@ export const apiSlice = createApi({
       providesTags: ['Dashboard'],
     }),
 
+    getPredictionAccuracy: builder.query({
+      query: () => '/dashboard/prediction-accuracy',
+      transformResponse: (res) => res.data,
+      providesTags: ['Dashboard'],
+    }),
+
     // === Analysis ===
     getSignalAnalysis: builder.query({
       query: () => '/analysis/signals',
@@ -349,6 +355,27 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['StockPool'],
     }),
+    updateStockPrediction: builder.mutation({
+      query: (params) => ({
+        url: '/stock-pool/prediction',
+        method: 'PUT',
+        params: {
+          symbol: params.symbol,
+          trade_date: params.trade_date,
+          pool_type: params.pool_type,
+          status: params.status,
+        },
+        body: {
+          prediction_flag: params.prediction_flag,
+          prediction_detail: params.prediction_detail,
+          viewpoint: params.viewpoint,
+        },
+      }),
+      invalidatesTags: (result, error, { symbol }) => [
+        { type: 'StockPool', id: symbol },
+        'StockPool',
+      ],
+    }),
     // === Market Earning Effect ===
     getMarketEarningEffect: builder.query({
       query: () => '/market-earning-effect',
@@ -461,6 +488,7 @@ export const {
   useGetEquityCurveQuery,
   useGetWinRateQuery,
   useGetRecentTradesQuery,
+  useGetPredictionAccuracyQuery,
   useGetSignalAnalysisQuery,
   useGetTagAnalysisQuery,
   useGetMarketAnalysisQuery,
@@ -483,6 +511,7 @@ export const {
   useUpdateStockPoolStatusMutation,
   useSetWatchFocusMutation,
   useDeleteStockPoolMutation,
+  useUpdateStockPredictionMutation,
   useGetMarketEarningEffectQuery,
   useGetStrategyPerformanceQuery,
   useGetStrategyScoreAnalysisQuery,

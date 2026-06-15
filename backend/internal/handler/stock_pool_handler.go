@@ -309,6 +309,30 @@ func (h *StockPoolHandler) GetStatusScoreTrend(c *gin.Context) {
 	})
 }
 
+func (h *StockPoolHandler) UpdatePrediction(c *gin.Context) {
+	symbol := c.Query("symbol")
+	tradeDate := c.Query("trade_date")
+	poolType := c.Query("pool_type")
+	status := c.Query("status")
+
+	if len(tradeDate) > 10 {
+		tradeDate = tradeDate[:10]
+	}
+
+	var req dto.UpdatePredictionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.UpdatePrediction(symbol, tradeDate, poolType, status, req.PredictionFlag, req.PredictionDetail, req.Viewpoint); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+}
+
 func (h *StockPoolHandler) Delete(c *gin.Context) {
 	symbol := c.Query("symbol")
 	tradeDate := c.Query("trade_date")
