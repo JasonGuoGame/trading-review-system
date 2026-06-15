@@ -1,5 +1,5 @@
+import { Form, Input, Modal, Select, message } from 'antd'
 import { useEffect } from 'react'
-import { Modal, Form, Input, Select, message } from 'antd'
 import { useCreateStockPoolMutation } from '../../app/api'
 
 const { Option } = Select
@@ -11,6 +11,7 @@ const POOL_OPTIONS = [
   { value: 'trend_following', label: '📈 MACD+BOLL' },
   { value: 'turnover_vol', label: '📈 换手率+量比' },
   { value: 'mf_entry', label: '🎯 主力资金入场' },
+  { value: 'auction_surge', label: '🔔 竞价异动' },
 ]
 
 export default function AddStockModal({ open, poolType, onClose, onSuccess }) {

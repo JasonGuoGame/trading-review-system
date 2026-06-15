@@ -1,6 +1,5 @@
-import React from 'react';
-import { Table, Tag, Progress, Space, Button, message } from 'antd';
-import { EyeOutlined, EditOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
+import { EyeOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
+import { Button, message, Space, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { useSetWatchFocusMutation } from '../../app/api';
 
@@ -428,6 +427,82 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
     ...commonColumns.slice(2),
   ];
 
+  const AUCTION_SURGE_FACTOR_LABELS = {
+    ratio: '竞价量比',
+    open_pct: '开盘涨幅',
+    amount_wan: '竞价金额',
+    strategy: '策略名称',
+  };
+  const AUCTION_SURGE_FACTOR_COLORS = {
+    ratio: '#722ed1',
+    open_pct: '#ff4d4f',
+    amount_wan: '#13c2c2',
+    strategy: '#2f54eb',
+  };
+  const renderAuctionSurgeTags = (val) => {
+    const tags = [];
+    if (!val) return <Space size={4}>{tags}</Space>;
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+      Object.entries(parsed).forEach(([k, v]) => {
+        const label = AUCTION_SURGE_FACTOR_LABELS[k] || k;
+        const color = AUCTION_SURGE_FACTOR_COLORS[k] || 'default';
+        let displayVal = v;
+        if (k === 'open_pct') {
+          displayVal = `${(parseFloat(v) || 0) > 0 ? '+' : ''}${(parseFloat(v) || 0).toFixed(2)}%`;
+        } else if (k === 'amount_wan') {
+          displayVal = `${(parseFloat(v) || 0).toFixed(0)}万`;
+        } else if (k === 'ratio') {
+          displayVal = `${(parseFloat(v) || 0).toFixed(2)}倍`;
+        }
+        tags.push(
+          <Tag color={color} key={k} style={{ marginBottom: 4, fontSize: 12 }}>
+            {label}: {displayVal}
+          </Tag>
+        );
+      });
+      return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 280 }}>
+          {tags}
+        </div>
+      );
+    } catch (e) {
+      return <span>{val}</span>;
+    }
+  };
+  const auctionSurgeColumns = [
+    ...commonColumns.slice(0, 2),
+    {
+      title: '策略状态',
+      dataIndex: 'status',
+      key: 'auction_status',
+      render: (status) => (
+        <Tag color="purple" style={{ fontWeight: 'bold', fontSize: 13, padding: '2px 10px' }}>
+          🔔 {status || '竞价异动'}
+        </Tag>
+      ),
+    },
+    {
+      title: '竞价指标',
+      key: 'auction_factors',
+      render: (_, record) => renderAuctionSurgeTags(record.tags),
+    },
+    {
+      title: '逻辑演绎 (Notes)',
+      dataIndex: 'notes',
+      key: 'notes',
+      render: (val) => {
+        if (!val) return <span>-</span>;
+        return (
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, display: 'inline-block', maxWidth: 250, whiteSpace: 'normal', wordWrap: 'break-word' }}>
+            {val}
+          </span>
+        );
+      },
+    },
+    ...commonColumns.slice(2),
+  ];
+
   const getColumns = () => {
     switch (type) {
       case 'short': return shortTermColumns;
@@ -435,6 +510,7 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       case 'winner_mode': return winnerModeColumns;
       case 'mf_entry': return mfEntryColumns;
       case 'divergence_reversal': return divergenceReversalColumns;
+      case 'auction_surge': return auctionSurgeColumns;
       default: return macdBollColumns;
     }
   };

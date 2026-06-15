@@ -7,6 +7,7 @@ const TAB_CONFIG = [
   { key: 'winner_mode', emoji: '🏆', label: '赢家跟随' },
   { key: 'mf_entry', emoji: '🎯', label: '主力入场' },
   { key: 'divergence_reversal', emoji: '🔄', label: '分歧反包' },
+  { key: 'auction_surge', emoji: '🔔', label: '竞价异动' },
 ];
 
 const PoolTabs = ({ activeKey, onChange, counts = {}, tabOrder }) => {

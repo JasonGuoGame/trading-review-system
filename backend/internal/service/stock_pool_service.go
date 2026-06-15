@@ -11,8 +11,8 @@ import (
 )
 
 type StockPoolService struct {
-	repo     *repository.StockPoolRepository
-	fundRepo *repository.FundFlowRepository
+	repo      *repository.StockPoolRepository
+	fundRepo  *repository.FundFlowRepository
 	klineRepo *repository.KlineRepository
 }
 
@@ -67,14 +67,50 @@ func (s *StockPoolService) GetStockPool(poolType models.StockPoolType, days int,
 }
 
 func (s *StockPoolService) CreateStock(req dto.CreateStockPoolRequest) error {
+	dbPoolType := req.PoolType
+	status := req.Status
+	switch req.PoolType {
+	case "macd_boll":
+		dbPoolType = "short"
+		if status == "" {
+			status = "资金共振金叉"
+		}
+	case "trend_following":
+		dbPoolType = "long"
+		if status == "" {
+			status = "趋势确立"
+		}
+	case "turnover_vol":
+		dbPoolType = "short"
+		if status == "" {
+			status = "主升接力"
+		}
+	case "mf_entry":
+		dbPoolType = "short"
+		if status == "" {
+			status = "主力入场"
+		}
+	case "divergence_reversal":
+		dbPoolType = "short"
+		if status == "" {
+			status = "分歧反包"
+		}
+	case "auction_surge":
+		dbPoolType = "short"
+		if status == "" {
+			status = "竞价异动"
+		}
+	}
 	stock := &models.StockPool{
-		Symbol:     req.Symbol,
-		StockName:  req.StockName,
-		PoolType:   req.PoolType,
+		Symbol:    req.Symbol,
+		StockName: req.StockName,
+		// PoolType:   req.PoolType,
+		PoolType:   dbPoolType,
 		SectorName: req.SectorName,
-		Status:     req.Status,
-		Notes:      req.Notes,
-		Score:      80, // Default score
+		// Status:     req.Status,
+		Status: status,
+		Notes:  req.Notes,
+		Score:  80, // Default score
 	}
 
 	// Initial scoring could happen here
@@ -199,7 +235,7 @@ func (s *StockPoolService) SearchStockPools(query string, days int) ([]dto.Stock
 	return results, nil
 }
 
-var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry", "divergence_reversal"}
+var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry", "divergence_reversal", "auction_surge"}
 
 func (s *StockPoolService) GetTypeCounts() (map[string]int64, error) {
 	counts := make(map[string]int64)
@@ -214,14 +250,15 @@ func (s *StockPoolService) GetTypeCounts() (map[string]int64, error) {
 }
 
 var strategyToPoolType = map[string]models.StockPoolType{
-	"1. 短线黑马股":     "short",
-	"2. 价值长线股":     "long",
-	"3. 0轴金叉资金共振": "macd_boll",
-	"4. MACD+BOLL趋势":  "trend_following",
-	"5. 换手率+量比动能": "turnover_vol",
-	"6. 模式赢家跟随":   "winner_mode",
-	"7. 主力资金入场":   "mf_entry",
-	"8. 分歧反包策略":   "divergence_reversal",
+	"1. 短线黑马股":       "short",
+	"2. 价值长线股":       "long",
+	"3. 0轴金叉资金共振":    "macd_boll",
+	"4. MACD+BOLL趋势": "trend_following",
+	"5. 换手率+量比动能":    "turnover_vol",
+	"6. 模式赢家跟随":      "winner_mode",
+	"7. 主力资金入场":      "mf_entry",
+	"8. 分歧反包策略":      "divergence_reversal",
+	"9. 竞价异动策略":      "auction_surge",
 }
 
 func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate string, scoreMin int, scoreMax int, status string) (*dto.StrategyStocksResponse, error) {
@@ -435,9 +472,9 @@ func (s *StockPoolService) GetStatusRanking(rawStrategy string, days int) (*dto.
 	}
 
 	type statusStat struct {
-		total    int
-		wins     int
-		buckets  map[int]struct{ total, wins int }
+		total   int
+		wins    int
+		buckets map[int]struct{ total, wins int }
 	}
 	statusMap := make(map[string]*statusStat)
 

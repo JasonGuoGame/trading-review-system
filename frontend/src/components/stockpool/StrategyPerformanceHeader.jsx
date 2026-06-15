@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
-import { Typography, Spin, Card, Row, Col, Tag, Button, Space } from 'antd';
 import {
-  CaretUpOutlined, CaretDownOutlined, MinusOutlined, TrophyOutlined,
-  BarChartOutlined, StarFilled, EyeInvisibleOutlined, EyeOutlined,
-  FolderFilled, DownOutlined, UpOutlined
+  BarChartOutlined,
+  CaretDownOutlined,
+  CaretUpOutlined,
+  DownOutlined,
+  EyeInvisibleOutlined, EyeOutlined,
+  FolderFilled,
+  MinusOutlined,
+  StarFilled,
+  TrophyOutlined,
+  UpOutlined
 } from '@ant-design/icons';
+import { Button, Card, Col, Row, Space, Spin, Tag, Typography } from 'antd';
+import React, { useState } from 'react';
 import {
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, ReferenceLine,
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis, YAxis,
 } from 'recharts';
 import { useGetStrategyPerformanceQuery } from '../../app/api';
 import StrategyScoreAnalysisDrawer from './StrategyScoreAnalysisDrawer';
@@ -23,6 +37,7 @@ const ICONS = {
   '6. 模式赢家跟随': '🏆',
   '7. 主力资金入场': '🎯',
   '8. 分歧反包策略': '🔄',
+  '9. 竞价异动策略': '🔔',
 };
 
 const SHORT_NAMES = {
@@ -34,6 +49,7 @@ const SHORT_NAMES = {
   '6. 模式赢家跟随': '赢家跟随',
   '7. 主力资金入场': '主力入场',
   '8. 分歧反包策略': '分歧反包',
+  '9. 竞价异动策略': '竞价异动',
 };
 
 const LINE_COLORS = {
@@ -45,6 +61,7 @@ const LINE_COLORS = {
   '6. 模式赢家跟随': '#faad14',
   '7. 主力资金入场': '#eb2f96',
   '8. 分歧反包策略': '#13c2c2',
+  '9. 竞价异动策略': '#722ed1',
 };
 
 const hexToRgb = (hex) => {
@@ -242,6 +259,7 @@ const STRATEGY_TO_TAB = {
   '6. 模式赢家跟随': 'winner_mode',
   '7. 主力资金入场': 'mf_entry',
   '8. 分歧反包策略': 'divergence_reversal',
+  '9. 竞价异动策略': 'auction_surge',
 };
 
 const StrategyPerformanceHeader = ({ onOrderChange }) => {

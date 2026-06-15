@@ -78,6 +78,21 @@ const StockPoolPage = () => {
     );
   };
 
+  const renderAuctionSurgeStrategy = () => {
+    if (activeTab !== 'auction_surge') return null;
+    return (
+      <div style={{ marginBottom: 16, padding: '16px', background: 'rgba(114, 46, 209, 0.05)', border: '1px solid #722ed1', borderRadius: 8 }}>
+        <Typography.Title level={5} style={{ color: '#722ed1', marginTop: 0 }}>🔔 竞价异动作战纪律 (Key Rules)</Typography.Title>
+        <Row gutter={[16, 12]}>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>1. <Typography.Text type="danger" strong>竞价超强抢筹</Typography.Text>：竞价量比大幅放大（{'>'}20倍），开盘小幅高开（0%~4%），放量上攻时顺势介入。</Typography.Text></Col>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>3. <Typography.Text type="danger" strong>资金深度参与</Typography.Text>：早盘竞价成交金额达数千万以上，表征大资金关注度极高，择机分时低吸。</Typography.Text></Col>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>2. <Typography.Text type="success" strong>规避超高开盘</Typography.Text>：开盘涨幅超7%或直接顶一字，防范冲高回落被动接盘，需观察分时承接。</Typography.Text></Col>
+          <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>4. <Typography.Text type="success" strong>防守破位减仓</Typography.Text>：开盘后分时走弱跌破均价线，或竞价抢筹冲高后无承接，跌破前低坚决止损。</Typography.Text></Col>
+        </Row>
+      </div>
+    );
+  };
+
   const renderMacdBollStrategy = () => {
     if (activeTab !== 'trend_following') return null;
     return (
@@ -172,15 +187,16 @@ const StockPoolPage = () => {
           </Button>
         </Space>
       </header>
- 
+
       <StrategyPerformanceHeader onOrderChange={setTabOrder} />
- 
+
       <div style={{ background: '#141414', padding: '20px', borderRadius: 12, border: '1px solid #30363d' }}>
         <StockPoolSearch days={days} />
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} counts={counts} tabOrder={tabOrder} />
- 
+
         {renderDivergenceReversalStrategy()}
         {renderMacdBollStrategy()}
+        {renderAuctionSurgeStrategy()}
         {activeTab === 'macd_boll' && <VolumePriceStrategy />}
         {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
         {activeTab === 'winner_mode' && <WinnerModeHeader />}

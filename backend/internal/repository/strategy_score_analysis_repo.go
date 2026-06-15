@@ -17,14 +17,15 @@ func NewStrategyScoreAnalysisRepository(db *gorm.DB) *StrategyScoreAnalysisRepos
 // Map full strategy names (from strategy_performance_history) to short names (in strategy_score_analysis)
 func mapToScoreAnalysisName(fullName string) string {
 	mapping := map[string]string{
-		"1. 短线黑马股":     "1. 短线黑马",
-		"2. 价值长线股":     "5. 价值长线",
-		"3. 0轴金叉资金共振": "3. 0轴金叉共振",
-		"4. MACD+BOLL趋势":  "4. MACD+BOLL",
-		"5. 换手率+量比动能": "2. 换手率量比",
-		"6. 模式赢家跟随":   "6. 赢家跟随",
-		"7. 主力资金入场":   "主力入场",
-		"8. 分歧反包策略":   "分歧反包",
+		"1. 短线黑马股":       "1. 短线黑马",
+		"2. 价值长线股":       "5. 价值长线",
+		"3. 0轴金叉资金共振":    "3. 0轴金叉共振",
+		"4. MACD+BOLL趋势": "4. MACD+BOLL",
+		"5. 换手率+量比动能":    "2. 换手率量比",
+		"6. 模式赢家跟随":      "6. 赢家跟随",
+		"7. 主力资金入场":      "主力入场",
+		"8. 分歧反包策略":      "分歧反包",
+		"9. 竞价异动策略":      "竞价异动",
 	}
 	if mapped, ok := mapping[fullName]; ok {
 		return mapped
