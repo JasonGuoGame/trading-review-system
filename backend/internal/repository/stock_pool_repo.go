@@ -106,6 +106,8 @@ func (r *StockPoolRepository) applyPoolTypeFilter(poolType models.StockPoolType)
 		return r.db.Where("pool_type = ? AND status = ?", poolType, "长线牛")
 	case "winner_mode":
 		return r.db.Where("status LIKE ?", "赢家模式:%")
+	case "four_dim":
+		return r.db.Where("pool_type = ? AND status = ?", "short", "四维共振")
 	case "auction_surge":
 		return r.db.Where("pool_type = ? AND status = ?", "short", "竞价异动")
 	default:

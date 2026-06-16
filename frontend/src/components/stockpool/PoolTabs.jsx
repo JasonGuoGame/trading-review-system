@@ -1,6 +1,7 @@
 import { Tabs } from 'antd';
 
 const TAB_CONFIG = [
+  { key: 'four_dim', emoji: '📡', label: '四维共振' },
   { key: 'macd_boll', emoji: '🔥', label: '0轴金叉' },
   { key: 'trend_following', emoji: '🧘', label: 'MACD+BOLL' },
   { key: 'turnover_vol', emoji: '🚀', label: '换手率量比' },

@@ -38,6 +38,7 @@ const ICONS = {
   '7. 主力资金入场': '🎯',
   '8. 分歧反包策略': '🔄',
   '9. 竞价异动策略': '🔔',
+  '四维共振': '📡',
 };
 
 const SHORT_NAMES = {
@@ -50,6 +51,7 @@ const SHORT_NAMES = {
   '7. 主力资金入场': '主力入场',
   '8. 分歧反包策略': '分歧反包',
   '9. 竞价异动策略': '竞价异动',
+  '四维共振': '四维共振',
 };
 
 const LINE_COLORS = {
@@ -62,6 +64,7 @@ const LINE_COLORS = {
   '7. 主力资金入场': '#eb2f96',
   '8. 分歧反包策略': '#13c2c2',
   '9. 竞价异动策略': '#722ed1',
+  '四维共振': '#2f54eb',
 };
 
 const hexToRgb = (hex) => {
@@ -99,8 +102,8 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected, o
         padding: '10px 10px',
         position: 'relative',
         minWidth: 0,
-        cursor: hasData ? 'pointer' : 'default',
-        opacity: dimmed ? 0.4 : hasData ? 1 : 0.5,
+        cursor: 'pointer',
+        opacity: dimmed ? 0.4 : 1,
         transition: 'all 0.2s',
         boxShadow: isSelected ? `0 0 12px rgba(${hexToRgb(lineColor)}, 0.3)` : 'none',
       }}
@@ -196,19 +199,19 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected, o
               )}
             </span>
           </div>
-          <Button
-            type="link"
-            size="small"
-            icon={<BarChartOutlined />}
-            onClick={(e) => { e.stopPropagation(); onAnalyze?.(s.name); }}
-            style={{ padding: 0, marginTop: 4, fontSize: 11, color: '#8b949e' }}
-          >
-            查看分数分析
-          </Button>
         </>
       ) : (
-        <Text type="secondary" style={{ fontSize: 12 }}>暂无数据</Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>暂无历史数据</Text>
       )}
+      <Button
+        type="link"
+        size="small"
+        icon={<BarChartOutlined />}
+        onClick={(e) => { e.stopPropagation(); onAnalyze?.(s.name); }}
+        style={{ padding: 0, marginTop: 4, fontSize: 11, color: '#8b949e' }}
+      >
+        查看分数分析
+      </Button>
     </div>
   );
 };
@@ -260,6 +263,7 @@ const STRATEGY_TO_TAB = {
   '7. 主力资金入场': 'mf_entry',
   '8. 分歧反包策略': 'divergence_reversal',
   '9. 竞价异动策略': 'auction_surge',
+  '四维共振': 'four_dim',
 };
 
 const StrategyPerformanceHeader = ({ onOrderChange }) => {

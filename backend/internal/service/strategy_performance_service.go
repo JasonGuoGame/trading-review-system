@@ -20,6 +20,7 @@ var strategyNames = []string{
 	"7. 主力资金入场",
 	"8. 分歧反包策略",
 	"9. 竞价异动策略",
+	"四维共振",
 }
 
 var strategyIcons = map[string]string{
@@ -32,6 +33,7 @@ var strategyIcons = map[string]string{
 	"7. 主力资金入场":      "🎯",
 	"8. 分歧反包策略":      "🔄",
 	"9. 竞价异动策略":      "🔔",
+	"四维共振":           "📡",
 }
 
 type StrategyPerformanceService struct {

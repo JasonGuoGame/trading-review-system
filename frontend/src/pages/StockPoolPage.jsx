@@ -137,6 +137,82 @@ const StockPoolPage = () => {
     );
   };
 
+  const renderFourDimStrategy = () => {
+    if (activeTab !== 'four_dim') return null;
+    return (
+      <div style={{ marginBottom: 16, padding: '16px', background: 'rgba(47, 84, 235, 0.05)', border: '1px solid #2f54eb', borderRadius: 8 }}>
+        <Typography.Title level={5} style={{ color: '#2f54eb', marginTop: 0 }}>📡 四维共振作战纪律 (Four-Dimensional Resonance)</Typography.Title>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+          核心逻辑：资金评分 + 板块流入 + 获利盘 + 主力净流入 四维共振选股。Tags 中包含 strategy、sector_rate、profit_ratio、capital_score、main_net_ratio、quantity_ratio。
+        </Typography.Text>
+
+        <Row gutter={[16, 12]}>
+          <Col span={12}>
+            <div style={{ background: 'rgba(47, 84, 235, 0.08)', borderRadius: 6, padding: '8px 12px', height: '100%' }}>
+              <Typography.Text strong style={{ color: '#85a5ff', fontSize: 13 }}>📊 维度一：资金评分 (capital_score)</Typography.Text>
+              <br />
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>
+                综合资金流向评分，≥80分视为强资金介入，优先关注。高分低吸，低分回避。
+              </Typography.Text>
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ background: 'rgba(47, 84, 235, 0.08)', borderRadius: 6, padding: '8px 12px', height: '100%' }}>
+              <Typography.Text strong style={{ color: '#85a5ff', fontSize: 13 }}>📈 维度二：获利盘比例 (profit_ratio)</Typography.Text>
+              <br />
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>
+                获利盘占比过高（{'>'}95%）需警惕获利回吐；适中（60-85%）筹码结构健康，上涨阻力小。
+              </Typography.Text>
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ background: 'rgba(47, 84, 235, 0.08)', borderRadius: 6, padding: '8px 12px', height: '100%' }}>
+              <Typography.Text strong style={{ color: '#85a5ff', fontSize: 13 }}>💰 维度三：主力净流入 (main_net_ratio)</Typography.Text>
+              <br />
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>
+                主力净流入占比，≥10%表明主力积极做多；负值或{'<'}5%说明主力参与度不足，谨慎参与。
+              </Typography.Text>
+            </div>
+          </Col>
+          <Col span={12}>
+            <div style={{ background: 'rgba(47, 84, 235, 0.08)', borderRadius: 6, padding: '8px 12px', height: '100%' }}>
+              <Typography.Text strong style={{ color: '#85a5ff', fontSize: 13 }}>🔄 维度四：量比 (quantity_ratio)</Typography.Text>
+              <br />
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>
+                量比≥1.5说明放量明显，市场关注度高；量比{'<'}0.8缩量震荡，需等待放量信号再介入。
+              </Typography.Text>
+            </div>
+          </Col>
+        </Row>
+
+        <div style={{ margin: '12px 0', borderTop: '1px solid rgba(47, 84, 235, 0.2)' }} />
+
+        <Row gutter={[16, 8]}>
+          <Col span={12}>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              1. <Typography.Text type="danger" strong style={{ fontSize: 12 }}>四维共振买入</Typography.Text>：资金评分≥80 + 主力净流入≥10% + 获利盘60-95% + 量比≥1.5，四项共振时果断介入。
+            </Typography.Text>
+          </Col>
+          <Col span={12}>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              2. <Typography.Text type="success" strong style={{ fontSize: 12 }}>获利盘过高减仓</Typography.Text>：获利盘{'>'}98% 且资金评分下降，获利盘极度拥挤，应分批止盈锁定利润。
+            </Typography.Text>
+          </Col>
+          <Col span={12}>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              3. <Typography.Text type="warning" strong style={{ fontSize: 12 }}>板块流入为负观望</Typography.Text>：sector_rate 为 0 或负值，板块资金未形成合力，个股独立行情持续性存疑，轻仓或观望。
+            </Typography.Text>
+          </Col>
+          <Col span={12}>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              4. <Typography.Text type="success" strong style={{ fontSize: 12 }}>共振失效止损</Typography.Text>：若主力净流入转负或资金评分跌破60，共振逻辑破坏，应无条件止损离场。
+            </Typography.Text>
+          </Col>
+        </Row>
+      </div>
+    );
+  };
+
   return (
     <div className="page-container" style={{ padding: '24px', background: '#0a0a0a', minHeight: '100vh' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -197,6 +273,7 @@ const StockPoolPage = () => {
         {renderDivergenceReversalStrategy()}
         {renderMacdBollStrategy()}
         {renderAuctionSurgeStrategy()}
+        {renderFourDimStrategy()}
         {activeTab === 'macd_boll' && <VolumePriceStrategy />}
         {activeTab === 'turnover_vol' && <TradingPhaseGuide />}
         {activeTab === 'winner_mode' && <WinnerModeHeader />}

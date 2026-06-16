@@ -100,6 +100,11 @@ func (s *StockPoolService) CreateStock(req dto.CreateStockPoolRequest) error {
 		if status == "" {
 			status = "竞价异动"
 		}
+	case "four_dim":
+		dbPoolType = "short"
+		if status == "" {
+			status = "四维共振"
+		}
 	}
 	stock := &models.StockPool{
 		Symbol:    req.Symbol,
@@ -235,7 +240,7 @@ func (s *StockPoolService) SearchStockPools(query string, days int) ([]dto.Stock
 	return results, nil
 }
 
-var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry", "divergence_reversal", "auction_surge"}
+var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry", "divergence_reversal", "auction_surge", "four_dim"}
 
 func (s *StockPoolService) GetTypeCounts() (map[string]int64, error) {
 	counts := make(map[string]int64)
@@ -259,6 +264,7 @@ var strategyToPoolType = map[string]models.StockPoolType{
 	"7. 主力资金入场":      "mf_entry",
 	"8. 分歧反包策略":      "divergence_reversal",
 	"9. 竞价异动策略":      "auction_surge",
+	"四维共振":           "four_dim",
 }
 
 func (s *StockPoolService) GetStrategyStocks(strategyName string, tradeDate string, scoreMin int, scoreMax int, status string) (*dto.StrategyStocksResponse, error) {
