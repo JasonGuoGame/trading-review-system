@@ -32,6 +32,7 @@ func mapToScoreAnalysisName(fullName string) string {
 		"8. 分歧反包策略":      "分歧反包",
 		"9. 竞价异动策略":      "竞价异动",
 		"四维共振":           "四维共振",
+		"GPT资金共振":         "GPT资金共振",
 	}
 	if mapped, ok := mapping[fullName]; ok {
 		return mapped

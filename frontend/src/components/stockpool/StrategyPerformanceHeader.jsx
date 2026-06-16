@@ -39,6 +39,7 @@ const ICONS = {
   '8. 分歧反包策略': '🔄',
   '9. 竞价异动策略': '🔔',
   '四维共振': '📡',
+  'GPT资金共振': '🤖',
 };
 
 const SHORT_NAMES = {
@@ -52,6 +53,7 @@ const SHORT_NAMES = {
   '8. 分歧反包策略': '分歧反包',
   '9. 竞价异动策略': '竞价异动',
   '四维共振': '四维共振',
+  'GPT资金共振': 'GPT资金共振',
 };
 
 const LINE_COLORS = {
@@ -65,6 +67,7 @@ const LINE_COLORS = {
   '8. 分歧反包策略': '#13c2c2',
   '9. 竞价异动策略': '#722ed1',
   '四维共振': '#2f54eb',
+  'GPT资金共振': '#13c2c2',
 };
 
 const hexToRgb = (hex) => {
@@ -264,6 +267,7 @@ const STRATEGY_TO_TAB = {
   '8. 分歧反包策略': 'divergence_reversal',
   '9. 竞价异动策略': 'auction_surge',
   '四维共振': 'four_dim',
+  'GPT资金共振': 'gpt_fund',
 };
 
 const StrategyPerformanceHeader = ({ onOrderChange }) => {
