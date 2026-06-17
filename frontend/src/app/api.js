@@ -185,6 +185,12 @@ export const apiSlice = createApi({
       providesTags: ['Dashboard'],
     }),
 
+    getPredictionDetails: builder.query({
+      query: () => '/dashboard/prediction-details',
+      transformResponse: (res) => res.data,
+      providesTags: ['Dashboard'],
+    }),
+
     // === Analysis ===
     getSignalAnalysis: builder.query({
       query: () => '/analysis/signals',
@@ -489,6 +495,7 @@ export const {
   useGetWinRateQuery,
   useGetRecentTradesQuery,
   useGetPredictionAccuracyQuery,
+  useGetPredictionDetailsQuery,
   useGetSignalAnalysisQuery,
   useGetTagAnalysisQuery,
   useGetMarketAnalysisQuery,

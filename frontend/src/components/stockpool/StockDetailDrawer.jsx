@@ -10,28 +10,28 @@ const { TextArea } = Input;
 
 const PREDICTION_OPTIONS = [
   { value: 1, label: '\u{1F4C8} 看涨' },
-  { value: 2, label: '\u{1F4C9} 看跌' },
+  { value: -1, label: '\u{1F4C9} 看跌' },
   { value: 0, label: '\u{1F532} 震荡' },
   { value: 99, label: '❌ 未评' },
 ];
 
 const PREDICTION_LABELS = {
   1: '看涨',
-  2: '看跌',
+  [-1]: '看跌',
   0: '震荡',
   99: '未评',
 };
 
 const PREDICTION_COLORS = {
   1: '#52c41a',
-  2: '#ff4d4f',
+  [-1]: '#ff4d4f',
   0: '#faad14',
   99: '#8b949e',
 };
 
 const PREDICTION_DETAIL_TEMPLATES = {
   1: '均线多头, 放量突破, 主力加仓',
-  2: '均线空头, 缩量下跌, 主力出货',
+  [-1]: '均线空头, 缩量下跌, 主力出货',
   0: '缩量震荡, 方向不明, 观望',
   99: '',
 };

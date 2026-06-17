@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"trading-review-system/backend/internal/dto"
+	"trading-review-system/backend/internal/models"
 	"trading-review-system/backend/internal/repository"
 )
 
@@ -133,13 +134,21 @@ func (s *DashboardService) GetPredictionAccuracy() (*dto.PredictionAccuracyRespo
 		nextClose := rows[1].Close
 		pctChange := (nextClose - todayClose) / todayClose
 
+		// Normalize flag: positive (>0, not 99) → 1 (看涨), negative → -1 (看跌), 0 → 0 (震荡)
+		normFlag := rec.flag
+		if rec.flag > 0 && rec.flag != 99 {
+			normFlag = 1
+		} else if rec.flag < 0 {
+			normFlag = -1
+		}
+
 		var isCorrect bool
-		switch rec.flag {
-		case 1:
+		switch {
+		case rec.flag > 0 && rec.flag != 99:
 			isCorrect = nextClose > todayClose
-		case -1:
+		case rec.flag < 0:
 			isCorrect = nextClose < todayClose
-		case 0:
+		case rec.flag == 0:
 			isCorrect = math.Abs(pctChange) <= 0.01
 		default:
 			continue
@@ -147,13 +156,13 @@ func (s *DashboardService) GetPredictionAccuracy() (*dto.PredictionAccuracyRespo
 
 		dateStr := rec.tradeDate.Format("2006-01-02")
 
-		bt := byType[rec.flag]
+		bt := byType[normFlag]
 		bt.total++
 		if isCorrect {
 			bt.correct++
 			totalCorrect++
 		}
-		byType[rec.flag] = bt
+		byType[normFlag] = bt
 
 		ds := dailyStats[dateStr]
 		ds.total++
@@ -217,4 +226,79 @@ func (s *DashboardService) GetPredictionAccuracy() (*dto.PredictionAccuracyRespo
 		ByType:             typeAccuracies,
 		Trend:              trend,
 	}, nil
+}
+
+func (s *DashboardService) GetPredictionDetails() ([]dto.PredictionDetail, error) {
+	stocks, err := s.repos.StockPool.ListWithPredictions()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stocks) == 0 {
+		return []dto.PredictionDetail{}, nil
+	}
+
+	type predRecord struct {
+		stock    models.StockPool
+		flag     int8
+	}
+	var records []predRecord
+	for _, st := range stocks {
+		records = append(records, predRecord{stock: st, flag: st.PredictionFlag})
+	}
+
+	predictionLabels := map[int8]string{1: "看涨", -1: "看跌", 0: "震荡"}
+	var details []dto.PredictionDetail
+
+	for _, rec := range records {
+		klines, err := s.repos.Kline.GetNextTwoKlines([]string{rec.stock.Symbol}, rec.stock.TradeDate)
+		if err != nil || len(klines[rec.stock.Symbol]) < 2 {
+			continue
+		}
+
+		rows := klines[rec.stock.Symbol]
+		todayClose := rows[0].Close
+		nextClose := rows[1].Close
+		pctChange := (nextClose - todayClose) / todayClose * 100
+
+		label := predictionLabels[rec.flag]
+		if label == "" {
+			if rec.flag > 0 && rec.flag != 99 {
+				label = "看涨"
+			} else if rec.flag < 0 {
+				label = "看跌"
+			} else if rec.flag == 0 {
+				label = "震荡"
+			}
+		}
+
+		var isCorrect bool
+		switch {
+		case rec.flag > 0 && rec.flag != 99:
+			isCorrect = nextClose > todayClose
+		case rec.flag < 0:
+			isCorrect = nextClose < todayClose
+		case rec.flag == 0:
+			isCorrect = math.Abs(pctChange/100) <= 0.01
+		default:
+			continue
+		}
+
+		details = append(details, dto.PredictionDetail{
+			Symbol:           rec.stock.Symbol,
+			StockName:        rec.stock.StockName,
+			SectorName:       rec.stock.SectorName,
+			TradeDate:        rec.stock.TradeDate.Format("2006-01-02"),
+			PredictionFlag:   rec.flag,
+			PredictionLabel:  label,
+			PredictionDetail: rec.stock.PredictionDetail,
+			Viewpoint:        rec.stock.Viewpoint,
+			CloseToday:       todayClose,
+			CloseNext:        nextClose,
+			PctChange:        pctChange,
+			IsCorrect:        isCorrect,
+		})
+	}
+
+	return details, nil
 }

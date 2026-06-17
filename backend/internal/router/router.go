@@ -59,6 +59,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			dashboard.GET("/win-rate", handlers.Dashboard.GetWinRate)
 			dashboard.GET("/recent-trades", handlers.Dashboard.GetRecentTrades)
 			dashboard.GET("/prediction-accuracy", handlers.Dashboard.GetPredictionAccuracy)
+			dashboard.GET("/prediction-details", handlers.Dashboard.GetPredictionDetails)
 		}
 
 		// Analysis

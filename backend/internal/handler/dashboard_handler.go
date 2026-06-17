@@ -57,6 +57,16 @@ func (h *DashboardHandler) GetPredictionAccuracy(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
 
+// GET /api/dashboard/prediction-details
+func (h *DashboardHandler) GetPredictionDetails(c *gin.Context) {
+	data, err := h.service.GetPredictionDetails()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: "Failed to get prediction details"})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}
+
 // GET /api/dashboard/recent-trades
 func (h *DashboardHandler) GetRecentTrades(c *gin.Context) {
 	data, err := h.service.GetRecentTrades()

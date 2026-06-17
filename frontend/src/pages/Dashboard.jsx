@@ -1,4 +1,5 @@
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Empty } from 'antd'
+import { useState } from 'react'
+import { Row, Col, Card, Statistic, Table, Tag, Spin, Empty, Button } from 'antd'
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -18,6 +19,7 @@ import {
   useGetWinRateQuery,
   useGetRecentTradesQuery,
   useGetPredictionAccuracyQuery,
+  useGetPredictionDetailsQuery,
   useGetMarketBreadthQuery,
 } from '../app/api'
 import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor } from '../utils/format'
@@ -32,6 +34,8 @@ function Dashboard() {
   const { data: winRate, isLoading: loadingWinRate } = useGetWinRateQuery()
   const { data: recentTrades, isLoading: loadingRecent } = useGetRecentTradesQuery()
   const { data: predAccuracy, isLoading: loadingPredAcc } = useGetPredictionAccuracyQuery()
+  const { data: predDetails } = useGetPredictionDetailsQuery()
+  const [showPredDetails, setShowPredDetails] = useState(false)
 
   const todayDateStr = dayjs().format('YYYY-MM-DD')
   const { data: breadthData, isLoading: loadingBreadth } = useGetMarketBreadthQuery(todayDateStr)
@@ -306,6 +310,48 @@ function Dashboard() {
           </Card>
         </Col>
       </Row>
+
+      {/* Prediction Detail Table */}
+      {predDetails && predDetails.length > 0 && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col span={24}>
+            <Card
+              title="📋 预测明细"
+              extra={
+                <Button type="link" size="small" onClick={() => setShowPredDetails(!showPredDetails)}>
+                  {showPredDetails ? '收起' : `展开 (${predDetails.length}条)`}
+                </Button>
+              }
+              bodyStyle={showPredDetails ? { padding: '12px 16px' } : { display: 'none' }}
+            >
+              <Table
+                dataSource={predDetails}
+                rowKey={(r) => `${r.symbol}-${r.trade_date}`}
+                size="small"
+                pagination={predDetails.length > 20 ? { pageSize: 20 } : false}
+                scroll={{ x: 900 }}
+                columns={[
+                  { title: '股票', dataIndex: 'symbol', width: 100, render: (v, r) => <span><strong style={{ color: '#fff' }}>{v}</strong><br /><span style={{ color: '#8b949e', fontSize: 11 }}>{r.stock_name}</span></span> },
+                  { title: '板块', dataIndex: 'sector_name', width: 100, render: (v) => <Tag color="blue" style={{ fontSize: 11 }}>{v || '-'}</Tag> },
+                  { title: '日期', dataIndex: 'trade_date', width: 90, render: (v) => <span style={{ color: '#8b949e', fontSize: 12 }}>{v}</span> },
+                  { title: '预测', dataIndex: 'prediction_label', width: 65, render: (v, r) => <Tag color={r.prediction_flag > 0 ? 'red' : r.prediction_flag < 0 ? 'green' : 'gold'}>{v}</Tag> },
+                  { title: '预测描述', dataIndex: 'prediction_detail', width: 160, ellipsis: true, render: (v) => <span style={{ color: '#8b949e', fontSize: 12 }}>{v || '-'}</span> },
+                  { title: '当日收', dataIndex: 'close_today', width: 75, align: 'right', render: (v) => <span style={{ color: '#c9d1d9' }}>{v?.toFixed(2)}</span> },
+                  { title: '次日收', dataIndex: 'close_next', width: 75, align: 'right', render: (v) => <span style={{ color: '#c9d1d9' }}>{v?.toFixed(2)}</span> },
+                  { title: '涨跌幅', dataIndex: 'pct_change', width: 75, align: 'right', render: (v) => <span style={{ color: v > 0 ? '#52c41a' : v < 0 ? '#ff4d4f' : '#8b949e', fontWeight: 500 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
+                  { title: '结果', dataIndex: 'is_correct', width: 65, align: 'center', render: (v) => <Tag color={v ? 'success' : 'error'}>{v ? '✓ 胜' : '✗ 负'}</Tag> },
+                ]}
+                onRow={(r) => ({
+                  style: {
+                    background: r.is_correct ? 'rgba(82,196,26,0.04)' : 'rgba(255,77,79,0.04)',
+                    borderLeft: `3px solid ${r.is_correct ? '#52c41a' : '#ff4d4f'}`,
+                  },
+                })}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* Win Rate Trend */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

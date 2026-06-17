@@ -52,3 +52,18 @@ type PredictionAccuracyResponse struct {
 	ByType             []PredictionTypeAccuracy  `json:"by_type"`
 	Trend              []PredictionAccuracyPoint `json:"trend"`
 }
+
+type PredictionDetail struct {
+	Symbol           string  `json:"symbol"`
+	StockName        string  `json:"stock_name"`
+	SectorName       string  `json:"sector_name"`
+	TradeDate        string  `json:"trade_date"`
+	PredictionFlag   int8    `json:"prediction_flag"`
+	PredictionLabel  string  `json:"prediction_label"`
+	PredictionDetail string  `json:"prediction_detail"`
+	Viewpoint        string  `json:"viewpoint"`
+	CloseToday       float64 `json:"close_today"`
+	CloseNext        float64 `json:"close_next"`
+	PctChange        float64 `json:"pct_change"`
+	IsCorrect        bool    `json:"is_correct"`
+}
