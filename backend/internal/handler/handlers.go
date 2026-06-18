@@ -19,6 +19,7 @@ type Handlers struct {
 	StrategyPerf  *StrategyPerformanceHandler
 	ScoreAnalysis  *StrategyScoreAnalysisHandler
 	TradeChecklist *TradeChecklistHandler
+	ChipMonitor    *ChipMonitorHandler
 }
 
 func NewHandlers(services *service.Services) *Handlers {
@@ -39,5 +40,6 @@ func NewHandlers(services *service.Services) *Handlers {
 		StrategyPerf:  NewStrategyPerformanceHandler(services.StrategyPerf),
 		ScoreAnalysis:  NewStrategyScoreAnalysisHandler(services.ScoreAnalysis),
 		TradeChecklist: NewTradeChecklistHandler(services.TradeChecklist),
+		ChipMonitor:    NewChipMonitorHandler(services.ChipMonitor),
 	}
 }

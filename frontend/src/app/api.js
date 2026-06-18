@@ -472,6 +472,32 @@ export const apiSlice = createApi({
       }),
       transformResponse: (res) => res.data,
     }),
+
+    // === Chip Monitor ===
+    getChipRadar: builder.query({
+      query: () => '/chip-monitor/radar',
+      transformResponse: (res) => res.data,
+    }),
+    getChipAccumulation: builder.query({
+      query: () => '/chip-monitor/accumulation',
+      transformResponse: (res) => res.data,
+    }),
+    getChipPeakMove: builder.query({
+      query: () => '/chip-monitor/peak-move',
+      transformResponse: (res) => res.data,
+    }),
+    getChipDivergence: builder.query({
+      query: () => '/chip-monitor/divergence',
+      transformResponse: (res) => res.data,
+    }),
+    getChipDistribution: builder.query({
+      query: () => '/chip-monitor/distribution',
+      transformResponse: (res) => res.data,
+    }),
+    searchChipStock: builder.query({
+      query: (q) => `/chip-monitor/search?q=${encodeURIComponent(q)}`,
+      transformResponse: (res) => res.data,
+    }),
   }),
 })
 
@@ -532,4 +558,11 @@ export const {
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,
+  useGetChipRadarQuery,
+  useGetChipAccumulationQuery,
+  useGetChipPeakMoveQuery,
+  useGetChipDivergenceQuery,
+  useGetChipDistributionQuery,
+  useSearchChipStockQuery,
+  useLazySearchChipStockQuery,
 } = apiSlice

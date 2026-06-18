@@ -14,7 +14,30 @@
       "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:3000/api/strategy-analysis/trend?strategy=6.%20%E6%A8%A1%E5%BC%8F%E8%B5%A2%E5%AE%B6%E8%B7%9F%E9%9A%8F&days=30\"; $cell = $r.data.heatmap | Where-Object { $_.trade_date -eq '2026-06-08' -and $_.bin_key -eq '90-100' }; \"date=$\\($cell.trade_date\\) bin=$\\($cell.bin_key\\) win_rate=$\\($cell.win_rate\\) trades=$\\($cell.total_trades\\)\" } catch { \"Error: $_\" })",
       "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://localhost:3000/api/strategy-analysis/trend?strategy=6.%20%E6%A8%A1%E5%BC%8F%E8%B5%A2%E5%AE%B6%E8%B7%9F%E9%9A%8F&days=30\"; $cell = $r.data.heatmap | Where-Object { $_.trade_date -eq '2026-06-08' -and $_.bin_key -eq '90-100' }; \"Heatmap: win_rate=$\\([math]::Round\\($cell.win_rate,1\\)\\)% trades=$\\($cell.total_trades\\)\" ; $r2 = Invoke-RestMethod -Uri \"http://localhost:3000/api/strategy-analysis/stocks?strategy=6.%20%E6%A8%A1%E5%BC%8F%E8%B5%A2%E5%AE%B6%E8%B7%9F%E9%9A%8F&trade_date=2026-06-08&score_min=90&score_max=100\"; \"Stocks: $\\($r2.data.stocks.Count\\)\"; $r2.data.stocks | ForEach-Object { \"$\\($_.symbol\\) $\\($_.stock_name\\): score=$\\($_.score\\) win=$\\($_.is_win\\) status=$\\($_.status\\)\" } } catch { \"Error: $_\" })",
       "Bash(go vet *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(go run *)",
+      "Bash(curl -s http://localhost:8080/api/chip-monitor/radar)",
+      "Bash(curl -s \"http://localhost:8080/api/chip-monitor/accumulation\")",
+      "Bash(pkill -f \"main.exe\")",
+      "Bash(pkill -f \"go run\")",
+      "Bash(pkill -f \"server\")",
+      "Bash(/tmp/chip-server.exe)",
+      "Bash(curl -s http://localhost:8080/api/chip-monitor/accumulation)",
+      "Bash(pkill -f \"chip-server\")",
+      "Bash(/tmp/chip2.exe)",
+      "Bash(pkill -f \"chip2.exe\")",
+      "Bash(pkill -f \"go\")",
+      "Bash(/tmp/chip3.exe)",
+      "Bash(curl -s \"http://localhost:8080/health\")",
+      "Bash(pkill -f \"main\")",
+      "Bash(pkill -f \"chip\")",
+      "Read(//tmp/**)",
+      "Bash(pkill -f \"main\" 2>/dev/null; pkill -f \"go\" 2>/dev/null; sleep 2 *)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -Command \"Stop-Process -Id 10732 -Force; Stop-Process -Id 19472 -Force\")",
+      "Bash(/tmp/chip-final.exe)",
+      "Bash(cat /tmp/server-final.log | head -5)",
+      "Bash(powershell -Command \"Get-Service -Name '*mysql*' 2>&1; Get-Service -Name '*MariaDB*' 2>&1\")"
     ]
   }
 }

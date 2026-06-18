@@ -534,9 +534,6 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
         dataSource={data}
         loading={loading}
         rowKey="id"
-        onRow={(record) => ({
-          onClick: () => onRowClick(record),
-        })}
         rowClassName={(record) => record.is_watch_focus ? 'watch-focus-row' : ''}
         style={{
           background: '#141414',

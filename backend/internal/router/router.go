@@ -125,8 +125,19 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			marketAttack.GET("/top", handlers.MarketAttack.GetTopAttacks)
 			marketAttack.GET("/sector/:name", handlers.MarketAttack.GetSectorDetail)
 			marketAttack.GET("/trend", handlers.MarketAttack.GetSectorTrend)
-		}
 	}
 
-	return r
+	// Chip Monitor
+	chipMonitor := api.Group("/chip-monitor")
+	{
+		chipMonitor.GET("/radar", handlers.ChipMonitor.GetRadar)
+		chipMonitor.GET("/accumulation", handlers.ChipMonitor.GetAccumulation)
+		chipMonitor.GET("/peak-move", handlers.ChipMonitor.GetPeakMove)
+		chipMonitor.GET("/divergence", handlers.ChipMonitor.GetDivergence)
+		chipMonitor.GET("/distribution", handlers.ChipMonitor.GetDistribution)
+			chipMonitor.GET("/search", handlers.ChipMonitor.SearchStock)
+	}
+}
+
+return r
 }

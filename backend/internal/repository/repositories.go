@@ -20,6 +20,7 @@ type Repositories struct {
 	ScoreAnalysis  *StrategyScoreAnalysisRepository
 	Kline          *KlineRepository
 	TradeChecklist *TradeChecklistRepository
+	ChipMonitor    *ChipMonitorRepository
 }
 
 func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
@@ -41,5 +42,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		ScoreAnalysis: NewStrategyScoreAnalysisRepository(db),
 		Kline:         NewKlineRepository(quantDb),
 		TradeChecklist: NewTradeChecklistRepository(db),
+		ChipMonitor:   NewChipMonitorRepository(quantDb),
 	}
 }

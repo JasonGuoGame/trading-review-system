@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
 import {
@@ -23,6 +23,7 @@ import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
 import MarketAttackPage from './pages/MarketAttackPage'
 import SectorFundFlowPage from './pages/SectorFundFlowPage'
 import StockPoolPage from './pages/StockPoolPage'
+import ChipMonitorPage from './pages/ChipMonitorPage'
 import TradePlaybook from './pages/TradePlaybook'
 
 const { Sider, Content } = Layout
@@ -35,6 +36,7 @@ const menuItems = [
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
   { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
+  { key: '/chip-monitor', icon: <AimOutlined />, label: '筹码监控' },
   { key: '/market-attack', icon: <AimOutlined />, label: '情绪周期' },
   { key: '/sector-fund-flow', icon: <FundOutlined />, label: '资金流向' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
@@ -49,6 +51,10 @@ function App() {
     .map((item) => item.key)
     .filter((key) => location.pathname === key || (key !== '/' && location.pathname.startsWith(key)))
     .sort((a, b) => b.length - a.length)[0] || '/'
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
 
   const handleMenuClick = ({ key }) => {
     if (key === location.pathname) {
@@ -109,6 +115,7 @@ function App() {
             <Route path="/trades/:id" element={<TradeDetail />} />
             <Route path="/trades/:id/edit" element={<TradeForm />} />
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
+        <Route path="/chip-monitor" element={<ChipMonitorPage />} />
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />

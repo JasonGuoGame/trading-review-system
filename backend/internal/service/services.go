@@ -21,6 +21,7 @@ type Services struct {
 	StrategyPerf  *StrategyPerformanceService
 	ScoreAnalysis  *StrategyScoreAnalysisService
 	TradeChecklist *TradeChecklistService
+	ChipMonitor    *ChipMonitorService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -40,5 +41,6 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis),
 		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis, repos.StockPool, repos.Kline),
 		TradeChecklist: NewTradeChecklistService(repos.TradeChecklist),
+		ChipMonitor:    NewChipMonitorService(repos.ChipMonitor),
 	}
 }
