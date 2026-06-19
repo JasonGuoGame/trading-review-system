@@ -44,6 +44,31 @@ func (r *ResearchSqlRepository) CreateSaved(s *models.ResearchSql) error {
 	return r.db.Create(s).Error
 }
 
+// UpsertSaved finds by category+name; if exists, updates; otherwise creates.
+func (r *ResearchSqlRepository) UpsertSaved(s *models.ResearchSql) (*models.ResearchSql, error) {
+	var existing models.ResearchSql
+	err := r.db.Where("category = ? AND name = ?", s.Category, s.Name).First(&existing).Error
+	if err == nil {
+		// Update existing
+		existing.StrategyType = s.StrategyType
+		existing.Description = s.Description
+		existing.SqlText = s.SqlText
+		existing.UpdatedAt = time.Now()
+		if err := r.db.Save(&existing).Error; err != nil {
+			return nil, err
+		}
+		return &existing, nil
+	}
+	// Not found → create
+	now := time.Now()
+	s.CreatedAt = now
+	s.UpdatedAt = now
+	if err := r.db.Create(s).Error; err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
 func (r *ResearchSqlRepository) UpdateSaved(s *models.ResearchSql) error {
 	s.UpdatedAt = time.Now()
 	return r.db.Save(s).Error

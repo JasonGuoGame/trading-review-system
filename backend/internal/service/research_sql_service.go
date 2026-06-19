@@ -34,10 +34,7 @@ func (s *ResearchSqlService) CreateSaved(name, category, strategyType, descripti
 		Description:  description,
 		SqlText:      sqlText,
 	}
-	if err := s.repo.CreateSaved(rec); err != nil {
-		return nil, err
-	}
-	return rec, nil
+	return s.repo.UpsertSaved(rec)
 }
 
 func (s *ResearchSqlService) UpdateSaved(id int64, name, category, strategyType, description, sqlText string) error {
