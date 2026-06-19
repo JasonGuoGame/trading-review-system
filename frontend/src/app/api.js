@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf', 'TradeChecklist'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf', 'TradeChecklist', 'ResearchLab', 'ResearchLabHistory'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -498,6 +498,38 @@ export const apiSlice = createApi({
       query: (q) => `/chip-monitor/search?q=${encodeURIComponent(q)}`,
       transformResponse: (res) => res.data,
     }),
+
+    // === Research Lab ===
+    getSavedSqls: builder.query({
+      query: () => '/research-lab/saved',
+      transformResponse: (res) => res.data,
+      providesTags: ['ResearchLab'],
+    }),
+    createSavedSql: builder.mutation({
+      query: (body) => ({ url: '/research-lab/saved', method: 'POST', body }),
+      invalidatesTags: ['ResearchLab'],
+    }),
+    updateSavedSql: builder.mutation({
+      query: ({ id, ...body }) => ({ url: `/research-lab/saved/${id}`, method: 'PUT', body }),
+      invalidatesTags: ['ResearchLab'],
+    }),
+    deleteSavedSql: builder.mutation({
+      query: (id) => ({ url: `/research-lab/saved/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['ResearchLab'],
+    }),
+    executeSql: builder.mutation({
+      query: (body) => ({ url: '/research-lab/execute', method: 'POST', body }),
+      transformResponse: (res) => res.data,
+    }),
+    getSqlHistory: builder.query({
+      query: (limit = 20) => `/research-lab/history?limit=${limit}`,
+      transformResponse: (res) => res.data,
+      providesTags: ['ResearchLabHistory'],
+    }),
+    clearSqlHistory: builder.mutation({
+      query: (days = 30) => ({ url: `/research-lab/history?days=${days}`, method: 'DELETE' }),
+      invalidatesTags: ['ResearchLabHistory'],
+    }),
   }),
 })
 
@@ -565,4 +597,11 @@ export const {
   useGetChipDistributionQuery,
   useSearchChipStockQuery,
   useLazySearchChipStockQuery,
+  useGetSavedSqlsQuery,
+  useCreateSavedSqlMutation,
+  useUpdateSavedSqlMutation,
+  useDeleteSavedSqlMutation,
+  useExecuteSqlMutation,
+  useGetSqlHistoryQuery,
+  useClearSqlHistoryMutation,
 } = apiSlice

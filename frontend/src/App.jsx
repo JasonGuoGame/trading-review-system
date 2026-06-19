@@ -12,6 +12,7 @@ import {
   FireOutlined,
   AimOutlined,
   ReadOutlined,
+  CodeOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -24,6 +25,7 @@ import MarketAttackPage from './pages/MarketAttackPage'
 import SectorFundFlowPage from './pages/SectorFundFlowPage'
 import StockPoolPage from './pages/StockPoolPage'
 import ChipMonitorPage from './pages/ChipMonitorPage'
+import ResearchLabPage from './pages/ResearchLabPage'
 import TradePlaybook from './pages/TradePlaybook'
 
 const { Sider, Content } = Layout
@@ -37,6 +39,8 @@ const menuItems = [
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
   { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
   { key: '/chip-monitor', icon: <AimOutlined />, label: '筹码监控' },
+  { type: 'divider' },
+  { key: '/research-lab', icon: <CodeOutlined />, label: 'SQL研究中心' },
   { key: '/market-attack', icon: <AimOutlined />, label: '情绪周期' },
   { key: '/sector-fund-flow', icon: <FundOutlined />, label: '资金流向' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
@@ -116,6 +120,7 @@ function App() {
             <Route path="/trades/:id/edit" element={<TradeForm />} />
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
         <Route path="/chip-monitor" element={<ChipMonitorPage />} />
+            <Route path="/research-lab" element={<ResearchLabPage />} />
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />

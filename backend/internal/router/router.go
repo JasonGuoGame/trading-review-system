@@ -137,6 +137,18 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		chipMonitor.GET("/distribution", handlers.ChipMonitor.GetDistribution)
 			chipMonitor.GET("/search", handlers.ChipMonitor.SearchStock)
 	}
+
+	// Research Lab
+	researchLab := api.Group("/research-lab")
+	{
+		researchLab.GET("/saved", handlers.ResearchSql.ListSaved)
+		researchLab.POST("/saved", handlers.ResearchSql.CreateSaved)
+		researchLab.PUT("/saved/:id", handlers.ResearchSql.UpdateSaved)
+		researchLab.DELETE("/saved/:id", handlers.ResearchSql.DeleteSaved)
+		researchLab.POST("/execute", handlers.ResearchSql.Execute)
+		researchLab.GET("/history", handlers.ResearchSql.ListHistory)
+		researchLab.DELETE("/history", handlers.ResearchSql.ClearHistory)
+	}
 }
 
 return r

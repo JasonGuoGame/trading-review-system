@@ -22,6 +22,7 @@ type Services struct {
 	ScoreAnalysis  *StrategyScoreAnalysisService
 	TradeChecklist *TradeChecklistService
 	ChipMonitor    *ChipMonitorService
+	ResearchSql    *ResearchSqlService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -42,5 +43,6 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis, repos.StockPool, repos.Kline),
 		TradeChecklist: NewTradeChecklistService(repos.TradeChecklist),
 		ChipMonitor:    NewChipMonitorService(repos.ChipMonitor),
+		ResearchSql:    NewResearchSqlService(repos.ResearchSql),
 	}
 }

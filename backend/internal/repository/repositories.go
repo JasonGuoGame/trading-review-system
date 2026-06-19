@@ -21,6 +21,7 @@ type Repositories struct {
 	Kline          *KlineRepository
 	TradeChecklist *TradeChecklistRepository
 	ChipMonitor    *ChipMonitorRepository
+	ResearchSql    *ResearchSqlRepository
 }
 
 func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
@@ -43,5 +44,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		Kline:         NewKlineRepository(quantDb),
 		TradeChecklist: NewTradeChecklistRepository(db),
 		ChipMonitor:   NewChipMonitorRepository(quantDb),
+		ResearchSql:   NewResearchSqlRepository(db, quantDb),
 	}
 }
