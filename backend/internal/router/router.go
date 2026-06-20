@@ -130,7 +130,8 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 	// Chip Monitor
 	chipMonitor := api.Group("/chip-monitor")
 	{
-		chipMonitor.GET("/radar", handlers.ChipMonitor.GetRadar)
+		chipMonitor.GET("/latest-date", handlers.ChipMonitor.GetLatestDate)
+			chipMonitor.GET("/radar", handlers.ChipMonitor.GetRadar)
 		chipMonitor.GET("/accumulation", handlers.ChipMonitor.GetAccumulation)
 		chipMonitor.GET("/peak-move", handlers.ChipMonitor.GetPeakMove)
 		chipMonitor.GET("/divergence", handlers.ChipMonitor.GetDivergence)

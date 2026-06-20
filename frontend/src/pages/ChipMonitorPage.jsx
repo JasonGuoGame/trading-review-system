@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import { Row, Col, Card, Tabs, Table, Tag, Spin, Empty, Typography, Input, Button, Descriptions, Space, message } from 'antd'
-import { TrophyOutlined, RiseOutlined, FallOutlined, WarningOutlined, SearchOutlined } from '@ant-design/icons'
+import { useState, useEffect } from 'react'
+import { Row, Col, Card, Tabs, Table, Tag, Spin, Empty, Typography, Input, Button, Descriptions, Space, message, DatePicker } from 'antd'
+import { TrophyOutlined, RiseOutlined, FallOutlined, WarningOutlined, SearchOutlined, CalendarOutlined } from '@ant-design/icons'
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ResponsiveContainer,
 } from 'recharts'
+import dayjs from 'dayjs'
 import {
+  useGetChipLatestDateQuery,
   useGetChipRadarQuery,
   useGetChipAccumulationQuery,
   useGetChipPeakMoveQuery,
@@ -100,13 +102,34 @@ const ChipMonitorPage = () => {
   const [activeTab, setActiveTab] = useState('accumulation')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const { data: radar, isLoading: loadingRadar } = useGetChipRadarQuery()
-  const { data: accumulation, isLoading: loadingAcc } = useGetChipAccumulationQuery()
-  const { data: peakMove, isLoading: loadingPeak } = useGetChipPeakMoveQuery()
-  const { data: divergence, isLoading: loadingDiv } = useGetChipDivergenceQuery()
-  const { data: distribution, isLoading: loadingDist } = useGetChipDistributionQuery()
+  // Date selection
+  const { data: latestDate } = useGetChipLatestDateQuery()
+  const [selectedDate, setSelectedDate] = useState(dayjs())
+
+  // Auto-set to latest available date once loaded
+  useEffect(() => {
+    if (latestDate) {
+      setSelectedDate(dayjs(latestDate))
+    }
+  }, [latestDate])
+
+  const tradeDate = selectedDate.format('YYYY-MM-DD')
+
+  const { data: radar, isLoading: loadingRadar } = useGetChipRadarQuery(tradeDate, { skip: !tradeDate })
+  const { data: accumulation, isLoading: loadingAcc } = useGetChipAccumulationQuery(tradeDate, { skip: !tradeDate })
+  const { data: peakMove, isLoading: loadingPeak } = useGetChipPeakMoveQuery(tradeDate, { skip: !tradeDate })
+  const { data: divergence, isLoading: loadingDiv } = useGetChipDivergenceQuery(tradeDate, { skip: !tradeDate })
+  const { data: distribution, isLoading: loadingDist } = useGetChipDistributionQuery(tradeDate, { skip: !tradeDate })
 
   const [triggerSearch, { data: searchResult, isLoading: loadingSearch, isUninitialized }] = useLazySearchChipStockQuery()
+  const [lastSearchQ, setLastSearchQ] = useState('')
+
+  // When tradeDate changes, re-run the last search if any
+  useEffect(() => {
+    if (lastSearchQ.trim()) {
+      triggerSearch({ q: lastSearchQ.trim(), tradeDate })
+    }
+  }, [tradeDate])
 
   const radarData = radar ? [
     { subject: '控盘度', A: radar['控盘度'] || 0, fullMark: RADAR_MAX },
@@ -122,7 +145,8 @@ const ChipMonitorPage = () => {
       message.warning('请输入股票代码或名称')
       return
     }
-    triggerSearch(q)
+    setLastSearchQ(q)
+    triggerSearch({ q, tradeDate })
   }
 
   const handleTabJump = (tabKey) => {
@@ -148,10 +172,21 @@ const ChipMonitorPage = () => {
 
   return (
     <div className="page-container" style={{ padding: '24px', background: '#0a0a0a', minHeight: '100vh' }}>
-      <Title level={2} style={{ color: '#fff', marginBottom: 4 }}>🎯 筹码监控</Title>
-      <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
-        筹码共振雷达 · 主力行为追踪 · 实时风险预警
-      </Text>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <Title level={2} style={{ color: '#fff', marginBottom: 4 }}>🎯 筹码监控</Title>
+          <Text type="secondary">筹码共振雷达 · 主力行为追踪 · 实时风险预警</Text>
+        </div>
+        <Space>
+          <CalendarOutlined style={{ color: '#8b949e', fontSize: 16 }} />
+          <DatePicker
+            value={selectedDate}
+            onChange={(d) => setSelectedDate(d || dayjs())}
+            allowClear={false}
+            style={{ background: '#1a1a2e', borderColor: '#30363d' }}
+          />
+        </Space>
+      </div>
 
       {/* Top section: Radar + Search */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

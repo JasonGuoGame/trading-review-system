@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   Row, Col, Card, Typography, Input, Button, Table, Tag, Tree,
   Space, Modal, Form, Popconfirm, message, Empty, Spin, Tooltip, Badge,
+  AutoComplete,
 } from 'antd'
 import {
   PlayCircleOutlined, PlusOutlined, DeleteOutlined, EditOutlined,
@@ -117,6 +118,16 @@ const ResearchLabPage = () => {
       })
     }
     return nodes
+  }, [savedList])
+
+  // Unique categories & strategy types for AutoComplete
+  const categoryOptions = useMemo(() => {
+    const cats = [...new Set(savedList.map((s) => s.category).filter(Boolean))]
+    return cats.map((c) => ({ value: c }))
+  }, [savedList])
+  const strategyOptions = useMemo(() => {
+    const sts = [...new Set(savedList.map((s) => s.strategy_type).filter(Boolean))]
+    return sts.map((s) => ({ value: s }))
   }, [savedList])
 
   const handleTreeSelect = (keys, info) => {
@@ -418,10 +429,10 @@ const ResearchLabPage = () => {
             <Input placeholder="如: 主力吸筹榜" />
           </Form.Item>
           <Form.Item name="category" label="分类">
-            <Input placeholder="如: 筹码" />
+            <AutoComplete options={categoryOptions} placeholder="选择或输入分类，如: 筹码" allowClear />
           </Form.Item>
           <Form.Item name="strategy_type" label="策略类型">
-            <Input placeholder="如: 选股" />
+            <AutoComplete options={strategyOptions} placeholder="选择或输入类型，如: 选股" allowClear />
           </Form.Item>
           <Form.Item name="description" label="描述">
             <Input placeholder="简要说明" />

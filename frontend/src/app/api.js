@@ -474,28 +474,32 @@ export const apiSlice = createApi({
     }),
 
     // === Chip Monitor ===
+    getChipLatestDate: builder.query({
+      query: () => '/chip-monitor/latest-date',
+      transformResponse: (res) => res.data,
+    }),
     getChipRadar: builder.query({
-      query: () => '/chip-monitor/radar',
+      query: (tradeDate) => `/chip-monitor/radar?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
     getChipAccumulation: builder.query({
-      query: () => '/chip-monitor/accumulation',
+      query: (tradeDate) => `/chip-monitor/accumulation?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
     getChipPeakMove: builder.query({
-      query: () => '/chip-monitor/peak-move',
+      query: (tradeDate) => `/chip-monitor/peak-move?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
     getChipDivergence: builder.query({
-      query: () => '/chip-monitor/divergence',
+      query: (tradeDate) => `/chip-monitor/divergence?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
     getChipDistribution: builder.query({
-      query: () => '/chip-monitor/distribution',
+      query: (tradeDate) => `/chip-monitor/distribution?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
     searchChipStock: builder.query({
-      query: (q) => `/chip-monitor/search?q=${encodeURIComponent(q)}`,
+      query: ({ q, tradeDate }) => `/chip-monitor/search?q=${encodeURIComponent(q)}&trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
 
@@ -590,6 +594,7 @@ export const {
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,
+  useGetChipLatestDateQuery,
   useGetChipRadarQuery,
   useGetChipAccumulationQuery,
   useGetChipPeakMoveQuery,

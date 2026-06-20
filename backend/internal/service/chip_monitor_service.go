@@ -18,17 +18,12 @@ func NewChipMonitorService(repo *repository.ChipMonitorRepository) *ChipMonitorS
 	return &ChipMonitorService{repo: repo}
 }
 
-func (s *ChipMonitorService) GetRadar() (*dto.ChipRadarResponse, error) {
-	tradeDate, err := s.repo.GetLatestTradeDate()
-	if err != nil {
-		log.Printf("[chip-monitor] GetLatestTradeDate error: %v", err)
-		return nil, fmt.Errorf("获取最新交易日期失败: %w", err)
-	}
-	if tradeDate == "" {
-		log.Printf("[chip-monitor] GetLatestTradeDate returned empty string")
-		return nil, fmt.Errorf("stk_chip_factor 表中无数据")
-	}
+// GetLatestTradeDate returns the most recent trade_date in stk_chip_factor.
+func (s *ChipMonitorService) GetLatestTradeDate() (string, error) {
+	return s.repo.GetLatestTradeDate()
+}
 
+func (s *ChipMonitorService) GetRadar(tradeDate string) (*dto.ChipRadarResponse, error) {
 	data, err := s.repo.GetRadarData(tradeDate)
 	if err != nil {
 		log.Printf("[chip-monitor] GetRadarData error: %v", err)
@@ -44,88 +39,49 @@ func (s *ChipMonitorService) GetRadar() (*dto.ChipRadarResponse, error) {
 	}, nil
 }
 
-// ============================================================
-// 主力吸筹榜
-// ============================================================
-func (s *ChipMonitorService) GetAccumulation() (*dto.ChipTabResponse, error) {
-	tradeDate, err := s.repo.GetLatestTradeDate()
-	if err != nil || tradeDate == "" {
-		return &dto.ChipTabResponse{Stocks: []dto.ChipStockItem{}}, err
-	}
-
+func (s *ChipMonitorService) GetAccumulation(tradeDate string) (*dto.ChipTabResponse, error) {
 	rows, err := s.repo.GetAccumulationList(tradeDate)
 	if err != nil {
 		return nil, err
 	}
-
 	items := buildItems(rows)
 	return &dto.ChipTabResponse{Stocks: items, Total: len(items)}, nil
 }
 
-// ============================================================
-// 筹码上移榜
-// ============================================================
-func (s *ChipMonitorService) GetPeakMove() (*dto.ChipTabResponse, error) {
-	tradeDate, err := s.repo.GetLatestTradeDate()
-	if err != nil || tradeDate == "" {
-		return &dto.ChipTabResponse{Stocks: []dto.ChipStockItem{}}, err
-	}
-
+func (s *ChipMonitorService) GetPeakMove(tradeDate string) (*dto.ChipTabResponse, error) {
 	rows, err := s.repo.GetPeakMoveList(tradeDate)
 	if err != nil {
 		return nil, err
 	}
-
 	items := buildItems(rows)
 	return &dto.ChipTabResponse{Stocks: items, Total: len(items)}, nil
 }
 
-// ============================================================
-// 筹码发散榜
-// ============================================================
-func (s *ChipMonitorService) GetDivergence() (*dto.ChipTabResponse, error) {
-	tradeDate, err := s.repo.GetLatestTradeDate()
-	if err != nil || tradeDate == "" {
-		return &dto.ChipTabResponse{Stocks: []dto.ChipStockItem{}}, err
-	}
-
+func (s *ChipMonitorService) GetDivergence(tradeDate string) (*dto.ChipTabResponse, error) {
 	rows, err := s.repo.GetDivergenceList(tradeDate)
 	if err != nil {
 		return nil, err
 	}
-
 	items := buildItems(rows)
 	return &dto.ChipTabResponse{Stocks: items, Total: len(items)}, nil
 }
 
-// ============================================================
-// 疑似出货榜
-// ============================================================
-func (s *ChipMonitorService) GetDistribution() (*dto.ChipTabResponse, error) {
-	tradeDate, err := s.repo.GetLatestTradeDate()
-	if err != nil || tradeDate == "" {
-		return &dto.ChipTabResponse{Stocks: []dto.ChipStockItem{}}, err
-	}
-
+func (s *ChipMonitorService) GetDistribution(tradeDate string) (*dto.ChipTabResponse, error) {
 	rows, err := s.repo.GetDistributionList(tradeDate)
 	if err != nil {
 		return nil, err
 	}
-
 	items := buildItems(rows)
 	return &dto.ChipTabResponse{Stocks: items, Total: len(items)}, nil
 }
 
-// ============================================================
-// SearchStock 搜索股票
-// ============================================================
-func (s *ChipMonitorService) SearchStock(query string) (*dto.ChipSearchResponse, error) {
-	row, tabs, err := s.repo.SearchStock(query)
+func (s *ChipMonitorService) SearchStock(tradeDate, query string) (*dto.ChipSearchResponse, error) {
+	row, tabs, err := s.repo.SearchStock(tradeDate, query)
 	if err != nil {
 		return nil, fmt.Errorf("搜索失败: %w", err)
 	}
 	if row == nil {
-		return nil, nil // not found
+		return nil, nil
 	}
 
 	items := buildItems([]models.AccumulationRow{*row})
@@ -156,7 +112,7 @@ func buildItems(rows []models.AccumulationRow) []dto.ChipStockItem {
 			ChipScore:         r.ChipScore,
 			CapitalScore:      r.CapitalScore,
 			MainNetRatio:      r.MainNetRatio,
-			MainNetInflow:     roundTo2(r.MainNetInflow / 1e4), // 万元 → 亿元
+			MainNetInflow:     roundTo2(r.MainNetInflow / 1e4),
 			Inflow3d:          roundTo2(r.Inflow3d / 1e4),
 			Inflow5d:          roundTo2(r.Inflow5d / 1e4),
 			InflowDays:        r.InflowDays,

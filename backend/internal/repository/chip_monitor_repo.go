@@ -27,13 +27,7 @@ func (r *ChipMonitorRepository) GetLatestTradeDate() (string, error) {
 	return date, nil
 }
 
-// GetRadarData returns the 5 radar dimensions:
-//
-//	控盘度   = AVG(main_force_control_score)
-//	筹码集中 = AVG(100 - chip_width70)
-//	获利盘   = AVG(profit_ratio)
-//	筹码上移 = AVG(peak_move_pct)
-//	资金流   = AVG(capital_score)
+// GetRadarData returns the 5 radar dimensions for a given trade_date.
 func (r *ChipMonitorRepository) GetRadarData(tradeDate string) (map[string]float64, error) {
 	type chipAgg struct {
 		ControlDegree float64 `gorm:"column:ctrl"`
@@ -43,12 +37,13 @@ func (r *ChipMonitorRepository) GetRadarData(tradeDate string) (map[string]float
 	}
 	var ca chipAgg
 	err := r.db.Raw(
-		"SELECT COALESCE(AVG(main_force_control_score),0) AS ctrl," +
-			" COALESCE(AVG(100 - chip_width70),0) AS chip_conc," +
-			" COALESCE(AVG(profit_ratio),0) AS profit," +
-			" COALESCE(AVG(peak_move_pct * 100),0) AS move_up" +
-			" FROM quant_db.stk_chip_factor" +
-			" WHERE trade_date = (SELECT MAX(trade_date) FROM quant_db.stk_chip_factor)",
+		"SELECT COALESCE(AVG(main_force_control_score),0) AS ctrl,"+
+			" COALESCE(AVG(100 - chip_width70),0) AS chip_conc,"+
+			" COALESCE(AVG(profit_ratio),0) AS profit,"+
+			" COALESCE(AVG(peak_move_pct * 100),0) AS move_up"+
+			" FROM quant_db.stk_chip_factor"+
+			" WHERE trade_date = ?",
+		tradeDate,
 	).Scan(&ca).Error
 	if err != nil {
 		log.Printf("[chip-monitor] radar chip error: %v", err)
@@ -60,17 +55,18 @@ func (r *ChipMonitorRepository) GetRadarData(tradeDate string) (map[string]float
 	}
 	var fa fundAgg
 	err = r.db.Raw(
-		"SELECT COALESCE(AVG(capital_score),0) AS cap_flow" +
-			" FROM quant_db.stk_stock_fund_flow" +
-			" WHERE trade_date = (SELECT MAX(trade_date) FROM quant_db.stk_chip_factor)",
+		"SELECT COALESCE(AVG(capital_score),0) AS cap_flow"+
+			" FROM quant_db.stk_stock_fund_flow"+
+			" WHERE trade_date = ?",
+		tradeDate,
 	).Scan(&fa).Error
 	if err != nil {
 		log.Printf("[chip-monitor] radar fund error: %v", err)
 		return nil, err
 	}
 
-	log.Printf("[chip-monitor] radar: ctrl=%.0f cap=%.0f chip=%.0f profit=%.0f move=%.0f",
-		ca.ControlDegree, fa.CapitalFlow, ca.ChipConc, ca.ProfitRatio, ca.ChipMoveUp)
+	log.Printf("[chip-monitor] radar: trade_date=%s ctrl=%.0f cap=%.0f chip=%.0f profit=%.0f move=%.0f",
+		tradeDate, ca.ControlDegree, fa.CapitalFlow, ca.ChipConc, ca.ProfitRatio, ca.ChipMoveUp)
 
 	return map[string]float64{
 		"control_degree":   ca.ControlDegree,
@@ -82,7 +78,7 @@ func (r *ChipMonitorRepository) GetRadarData(tradeDate string) (map[string]float
 }
 
 // ============================================================
-// Common SELECT columns shared by all 4 list queries
+// Common SELECT + FROM (WHERE trade_date = ? is the first param)
 // ============================================================
 const listSelectColumns = `
 	c.symbol,
@@ -118,7 +114,7 @@ const listFromJoin = `
 	LEFT JOIN quant_db.stk_daily_kline k
 		ON c.symbol COLLATE utf8mb4_unicode_ci = k.symbol COLLATE utf8mb4_unicode_ci
 	   AND c.trade_date = k.trade_date
-	WHERE c.trade_date = (SELECT MAX(trade_date) FROM quant_db.stk_chip_factor)
+	WHERE c.trade_date = ?
 `
 
 // ============================================================
@@ -132,12 +128,11 @@ func (r *ChipMonitorRepository) GetAccumulationList(tradeDate string) ([]models.
 		"  AND f.main_net_ratio > 0" +
 		" ORDER BY c.behavior_strength DESC, f.capital_score DESC" +
 		" LIMIT 100"
-
-	return r.queryList("accumulation", sql)
+	return r.queryList("accumulation", tradeDate, sql)
 }
 
 // ============================================================
-// 筹码上移榜  peak_move_pct > 2, main_net_ratio > 0, ORDER BY peak_move_pct DESC
+// 筹码上移榜
 // ============================================================
 func (r *ChipMonitorRepository) GetPeakMoveList(tradeDate string) ([]models.AccumulationRow, error) {
 	sql := "SELECT " + listSelectColumns + listFromJoin +
@@ -145,24 +140,22 @@ func (r *ChipMonitorRepository) GetPeakMoveList(tradeDate string) ([]models.Accu
 		"  AND f.main_net_ratio > 0" +
 		" ORDER BY c.peak_move_pct DESC" +
 		" LIMIT 100"
-
-	return r.queryList("peak-move", sql)
+	return r.queryList("peak-move", tradeDate, sql)
 }
 
 // ============================================================
-// 筹码发散榜  chip_width70 > 0.25, ORDER BY chip_width70 DESC
+// 筹码发散榜
 // ============================================================
 func (r *ChipMonitorRepository) GetDivergenceList(tradeDate string) ([]models.AccumulationRow, error) {
 	sql := "SELECT " + listSelectColumns + listFromJoin +
 		"  AND c.chip_width70 > 0.25" +
 		" ORDER BY c.chip_width70 DESC" +
 		" LIMIT 100"
-
-	return r.queryList("divergence", sql)
+	return r.queryList("divergence", tradeDate, sql)
 }
 
 // ============================================================
-// 疑似出货榜  behavior=4, cost_profit_pct > 20, main_net_ratio < 0
+// 疑似出货榜
 // ============================================================
 func (r *ChipMonitorRepository) GetDistributionList(tradeDate string) ([]models.AccumulationRow, error) {
 	sql := "SELECT " + listSelectColumns + listFromJoin +
@@ -171,33 +164,29 @@ func (r *ChipMonitorRepository) GetDistributionList(tradeDate string) ([]models.
 		"  AND f.main_net_ratio < 0" +
 		" ORDER BY c.behavior_strength DESC" +
 		" LIMIT 100"
-
-	return r.queryList("distribution", sql)
+	return r.queryList("distribution", tradeDate, sql)
 }
 
 // ============================================================
-// SearchStock 根据 symbol 或股票名称搜索，返回该股在哪个榜单中出现
+// SearchStock
 // ============================================================
-func (r *ChipMonitorRepository) SearchStock(query string) (*models.AccumulationRow, []string, error) {
+func (r *ChipMonitorRepository) SearchStock(tradeDate, query string) (*models.AccumulationRow, []string, error) {
 	sql := "SELECT " + listSelectColumns + listFromJoin +
 		"  AND (c.symbol = ? OR f.stock_name LIKE ?)" +
 		" LIMIT 1"
 
 	var row models.AccumulationRow
 	likeQ := "%" + query + "%"
-	if err := r.db.Raw(sql, query, likeQ).Scan(&row).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, query, likeQ).Scan(&row).Error; err != nil {
 		log.Printf("[chip-monitor] search query error: %v", err)
 		return nil, nil, err
 	}
 
-	// GORM Raw().Scan() returns nil error with zero-value struct when no rows found.
-	// We detect that by checking Symbol == "".
 	if row.Symbol == "" {
-		log.Printf("[chip-monitor] search: no match for %q", query)
+		log.Printf("[chip-monitor] search: no match for %q on %s", query, tradeDate)
 		return nil, nil, nil
 	}
 
-	// Determine which tabs this stock matches
 	var tabs []string
 	if row.Behavior == 1 && row.MainForceControlScore >= 70 && row.CapitalScore >= 60 && row.MainNetRatio > 0 {
 		tabs = append(tabs, "accumulation")
@@ -212,27 +201,21 @@ func (r *ChipMonitorRepository) SearchStock(query string) (*models.AccumulationR
 		tabs = append(tabs, "distribution")
 	}
 
-	log.Printf("[chip-monitor] search: %q matched tabs=%v", query, tabs)
+	log.Printf("[chip-monitor] search: %q on %s matched tabs=%v", query, tradeDate, tabs)
 	return &row, tabs, nil
 }
 
 // ============================================================
-// queryList runs a list query and returns mapped rows.
+// queryList runs a list query, passing tradeDate as first param.
 // ============================================================
-func (r *ChipMonitorRepository) queryList(label, sql string) ([]models.AccumulationRow, error) {
+func (r *ChipMonitorRepository) queryList(label string, tradeDate string, sql string) ([]models.AccumulationRow, error) {
 	var rows []models.AccumulationRow
+	log.Printf("[chip-monitor] %s SQL for trade_date=%q", label, tradeDate)
 
-	var chipDate string
-	if err := r.db.Raw("SELECT MAX(trade_date) FROM quant_db.stk_chip_factor").Scan(&chipDate).Error; err != nil {
-		log.Printf("[chip-monitor] %s date error: %v", label, err)
-		return nil, err
-	}
-	log.Printf("[chip-monitor] %s SQL for trade_date=%q", label, chipDate)
-
-	if err := r.db.Raw(sql).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
 		log.Printf("[chip-monitor] %s query error: %v", label, err)
 		return nil, err
 	}
-	log.Printf("[chip-monitor] %s: %d rows returned for %s", label, len(rows), chipDate)
+	log.Printf("[chip-monitor] %s: %d rows returned for %s", label, len(rows), tradeDate)
 	return rows, nil
 }
