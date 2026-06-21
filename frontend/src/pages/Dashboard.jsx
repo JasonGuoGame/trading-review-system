@@ -356,6 +356,7 @@ function Dashboard() {
                 columns={[
                   { title: '股票', dataIndex: 'symbol', width: 100, render: (v, r) => <span><strong style={{ color: '#fff' }}>{v}</strong><br /><span style={{ color: '#8b949e', fontSize: 11 }}>{r.stock_name}</span></span> },
                   { title: '板块', dataIndex: 'sector_name', width: 100, render: (v) => <Tag color="blue" style={{ fontSize: 11 }}>{v || '-'}</Tag> },
+                  { title: '策略', dataIndex: 'status', width: 85, render: (v) => <Tag color="purple" style={{ fontSize: 11 }}>{v || '-'}</Tag> },
                   { title: '日期', dataIndex: 'trade_date', width: 90, render: (v) => <span style={{ color: '#8b949e', fontSize: 12 }}>{v}</span> },
                   { title: '预测', dataIndex: 'prediction_label', width: 65, render: (v, r) => <Tag color={r.prediction_flag > 0 ? 'red' : r.prediction_flag < 0 ? 'green' : 'gold'}>{v}</Tag> },
                   { title: '预测描述', dataIndex: 'prediction_detail', width: 160, ellipsis: true, render: (v) => <span style={{ color: '#8b949e', fontSize: 12 }}>{v || '-'}</span> },

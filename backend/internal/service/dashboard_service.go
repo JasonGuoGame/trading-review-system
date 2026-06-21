@@ -288,6 +288,7 @@ func (s *DashboardService) GetPredictionDetails() ([]dto.PredictionDetail, error
 			Symbol:           rec.stock.Symbol,
 			StockName:        rec.stock.StockName,
 			SectorName:       rec.stock.SectorName,
+			Status:           rec.stock.Status,
 			TradeDate:        rec.stock.TradeDate.Format("2006-01-02"),
 			PredictionFlag:   rec.flag,
 			PredictionLabel:  label,

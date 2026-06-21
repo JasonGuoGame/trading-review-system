@@ -57,6 +57,7 @@ type PredictionDetail struct {
 	Symbol           string  `json:"symbol"`
 	StockName        string  `json:"stock_name"`
 	SectorName       string  `json:"sector_name"`
+	Status           string  `json:"status"`
 	TradeDate        string  `json:"trade_date"`
 	PredictionFlag   int8    `json:"prediction_flag"`
 	PredictionLabel  string  `json:"prediction_label"`
