@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Row, Col, Card, Statistic, Table, Tag, Spin, Empty, Button } from 'antd'
+import { useState, useMemo } from 'react'
+import { Row, Col, Card, Statistic, Table, Tag, Spin, Empty, Button, Segmented, Space } from 'antd'
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -36,6 +36,14 @@ function Dashboard() {
   const { data: predAccuracy, isLoading: loadingPredAcc } = useGetPredictionAccuracyQuery()
   const { data: predDetails } = useGetPredictionDetailsQuery()
   const [showPredDetails, setShowPredDetails] = useState(false)
+  const [predFilter, setPredFilter] = useState('all')
+
+  const filteredDetails = useMemo(() => {
+    if (!predDetails) return []
+    if (predFilter === 'success') return predDetails.filter((d) => d.is_correct)
+    if (predFilter === 'fail') return predDetails.filter((d) => !d.is_correct)
+    return predDetails
+  }, [predDetails, predFilter])
 
   const todayDateStr = dayjs().format('YYYY-MM-DD')
   const { data: breadthData, isLoading: loadingBreadth } = useGetMarketBreadthQuery(todayDateStr)
@@ -316,19 +324,34 @@ function Dashboard() {
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col span={24}>
             <Card
-              title="📋 预测明细"
+              title={
+                <Space>
+                  <span>📋 预测明细</span>
+                  <Segmented
+                    size="small"
+                    value={predFilter}
+                    onChange={setPredFilter}
+                    options={[
+                      { label: `全部 (${predDetails.length})`, value: 'all' },
+                      { label: `✓ 成功 (${predDetails.filter((d) => d.is_correct).length})`, value: 'success' },
+                      { label: `✗ 失败 (${predDetails.filter((d) => !d.is_correct).length})`, value: 'fail' },
+                    ]}
+                    style={{ background: '#1a1a2e' }}
+                  />
+                </Space>
+              }
               extra={
                 <Button type="link" size="small" onClick={() => setShowPredDetails(!showPredDetails)}>
-                  {showPredDetails ? '收起' : `展开 (${predDetails.length}条)`}
+                  {showPredDetails ? '收起' : `展开 (${filteredDetails.length}条)`}
                 </Button>
               }
               bodyStyle={showPredDetails ? { padding: '12px 16px' } : { display: 'none' }}
             >
               <Table
-                dataSource={predDetails}
+                dataSource={filteredDetails}
                 rowKey={(r) => `${r.symbol}-${r.trade_date}`}
                 size="small"
-                pagination={predDetails.length > 20 ? { pageSize: 20 } : false}
+                pagination={filteredDetails.length > 20 ? { pageSize: 20 } : false}
                 scroll={{ x: 900 }}
                 columns={[
                   { title: '股票', dataIndex: 'symbol', width: 100, render: (v, r) => <span><strong style={{ color: '#fff' }}>{v}</strong><br /><span style={{ color: '#8b949e', fontSize: 11 }}>{r.stock_name}</span></span> },

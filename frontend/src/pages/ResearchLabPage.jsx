@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Row, Col, Card, Typography, Input, Button, Table, Tag, Tree,
   Space, Modal, Form, Popconfirm, message, Empty, Spin, Tooltip, Badge,
@@ -37,13 +37,27 @@ const ResearchLabPage = () => {
   const { data: historyList = [], isLoading: loadingHistory, refetch: refetchHistory } = useGetSqlHistoryQuery(20)
   const [clearHistory] = useClearSqlHistoryMutation()
 
-  // UI state
-  const [sqlText, setSqlText] = useState('')
-  const [result, setResult] = useState(null)
-  const [execError, setExecError] = useState(null)
-  const [activeSavedId, setActiveSavedId] = useState(null)
+  // Persist key state across tab switches via sessionStorage
+  const readSS = (key, fallback) => {
+    try { const v = sessionStorage.getItem('rlab_'+key); return v != null ? JSON.parse(v) : fallback }
+    catch { return fallback }
+  }
+  const writeSS = (key, val) => {
+    try { sessionStorage.setItem('rlab_'+key, JSON.stringify(val)) } catch {}
+  }
+
+  // UI state (restore from sessionStorage on mount)
+  const [sqlText, setSqlText] = useState(() => readSS('sqlText', ''))
+  const [result, setResult] = useState(() => readSS('result', null))
+  const [execError, setExecError] = useState(null) // don't persist errors
+  const [activeSavedId, setActiveSavedId] = useState(() => readSS('activeSavedId', null))
   const [savedCollapsed, setSavedCollapsed] = useState(false)
   const [historyCollapsed, setHistoryCollapsed] = useState(false)
+
+  // Persist on change
+  useEffect(() => { writeSS('sqlText', sqlText) }, [sqlText])
+  useEffect(() => { if (result) writeSS('result', result) }, [result])
+  useEffect(() => { writeSS('activeSavedId', activeSavedId) }, [activeSavedId])
 
   // Save/edit modal
   const [saveModalOpen, setSaveModalOpen] = useState(false)

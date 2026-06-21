@@ -1,5 +1,5 @@
-import { EyeOutlined, StarFilled, StarOutlined } from '@ant-design/icons';
-import { Button, message, Space, Table, Tag } from 'antd';
+import { EyeOutlined, StarFilled, StarOutlined, CaretUpOutlined, CaretDownOutlined, MinusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Button, message, Space, Table, Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { useSetWatchFocusMutation } from '../../app/api';
 
@@ -33,6 +33,13 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
       default: return 'default';
     }
   };
+
+  const PREDICTION_ICONS = {
+    1:  { icon: <CaretUpOutlined   style={{ color: '#ff4d4f', fontSize: 16 }} />, label: '看涨', color: '#ff4d4f' },
+    [-1]: { icon: <CaretDownOutlined style={{ color: '#52c41a', fontSize: 16 }} />, label: '看跌', color: '#52c41a' },
+    0:  { icon: <MinusOutlined     style={{ color: '#faad14', fontSize: 16 }} />, label: '震荡', color: '#faad14' },
+    99: { icon: <QuestionCircleOutlined style={{ color: '#8b949e', fontSize: 14 }} />, label: '未预测', color: '#8b949e' },
+  }
 
   const commonColumns = [
     {
@@ -88,20 +95,27 @@ const StockPoolTable = ({ type, data, loading, onRowClick, onRefresh }) => {
     {
       title: '操作',
       key: 'action',
-      render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            size="small"
-            icon={record.is_watch_focus ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
-            onClick={(e) => handleWatchFocus(e, record)}
-            style={{ color: record.is_watch_focus ? '#faad14' : '#8b949e' }}
-          >
-            {record.is_watch_focus ? '已关注' : '关注'}
-          </Button>
-          <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => onRowClick(record)} />
-        </Space>
-      ),
+      render: (_, record) => {
+        const pFlag = record.prediction_flag ?? 99
+        const pInfo = PREDICTION_ICONS[pFlag] || PREDICTION_ICONS[99]
+        return (
+          <Space size="small">
+            <Tooltip title={`预测: ${pInfo.label}`}>
+              <span style={{ cursor: 'default' }}>{pInfo.icon}</span>
+            </Tooltip>
+            <Button
+              type="text"
+              size="small"
+              icon={record.is_watch_focus ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
+              onClick={(e) => handleWatchFocus(e, record)}
+              style={{ color: record.is_watch_focus ? '#faad14' : '#8b949e' }}
+            >
+              {record.is_watch_focus ? '已关注' : '关注'}
+            </Button>
+            <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => onRowClick(record)} />
+          </Space>
+        )
+      },
     },
   ];
 

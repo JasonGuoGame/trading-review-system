@@ -21,7 +21,7 @@ type UpdateStockPoolStatusRequest struct {
 }
 
 type UpdatePredictionRequest struct {
-	PredictionFlag   int8   `json:"prediction_flag" binding:"required"`
+	PredictionFlag   int8   `json:"prediction_flag"`
 	PredictionDetail string `json:"prediction_detail"`
 	Viewpoint        string `json:"viewpoint"`
 }
