@@ -99,8 +99,13 @@ const commonColumns = (showBehavior, showPeak, showWidth, showDist) => {
 }
 
 const ChipMonitorPage = () => {
+  // Persist search state across page navigation
+  const readSS = (key, fb) => { try { const v = sessionStorage.getItem('cm_'+key); return v != null ? JSON.parse(v) : fb } catch { return fb } }
+  const writeSS = (key, val) => { try { sessionStorage.setItem('cm_'+key, JSON.stringify(val)) } catch {} }
+
   const [activeTab, setActiveTab] = useState('accumulation')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(() => readSS('searchQuery', ''))
+  const [lastSearchQ, setLastSearchQ] = useState(() => readSS('lastSearchQ', ''))
 
   // Date selection
   const { data: latestDate } = useGetChipLatestDateQuery()
@@ -122,14 +127,17 @@ const ChipMonitorPage = () => {
   const { data: distribution, isLoading: loadingDist } = useGetChipDistributionQuery(tradeDate, { skip: !tradeDate })
 
   const [triggerSearch, { data: searchResult, isLoading: loadingSearch, isUninitialized }] = useLazySearchChipStockQuery()
-  const [lastSearchQ, setLastSearchQ] = useState('')
 
-  // When tradeDate changes, re-run the last search if any
+  // Persist search state on change
+  useEffect(() => { writeSS('searchQuery', searchQuery) }, [searchQuery])
+  useEffect(() => { writeSS('lastSearchQ', lastSearchQ) }, [lastSearchQ])
+
+  // Re-run search on mount (if had active search) and when date changes
   useEffect(() => {
     if (lastSearchQ.trim()) {
       triggerSearch({ q: lastSearchQ.trim(), tradeDate })
     }
-  }, [tradeDate])
+  }, [tradeDate, lastSearchQ])
 
   const radarData = radar ? [
     { subject: '控盘度', A: radar['控盘度'] || 0, fullMark: RADAR_MAX },
