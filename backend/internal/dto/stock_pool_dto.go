@@ -14,6 +14,7 @@ type CreateStockPoolRequest struct {
 	SectorName string               `json:"sector_name"`
 	Status     string               `json:"status"`
 	Notes      string               `json:"notes"`
+	Tags       string               `json:"tags"`
 }
 
 type UpdateStockPoolStatusRequest struct {

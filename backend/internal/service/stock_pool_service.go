@@ -120,7 +120,8 @@ func (s *StockPoolService) CreateStock(req dto.CreateStockPoolRequest) error {
 		// Status:     req.Status,
 		Status: status,
 		Notes:  req.Notes,
-		Score:  80, // Default score
+		Tags:   defaultTags(req.Tags),
+		Score:  0,
 	}
 
 	// Initial scoring could happen here
@@ -243,6 +244,13 @@ func (s *StockPoolService) SearchStockPools(query string, days int) ([]dto.Stock
 	}
 
 	return results, nil
+}
+
+func defaultTags(t string) string {
+	if t != "" {
+		return t
+	}
+	return "{}"
 }
 
 var poolTypeKeys = []models.StockPoolType{"short", "long", "macd_boll", "trend_following", "turnover_vol", "winner_mode", "mf_entry", "divergence_reversal", "auction_surge", "four_dim", "gpt_fund"}

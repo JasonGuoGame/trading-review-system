@@ -18,6 +18,7 @@ import {
   useExecuteSqlMutation,
   useGetSqlHistoryQuery,
   useClearSqlHistoryMutation,
+  useCreateStockPoolMutation,
 } from '../app/api'
 
 const { Title, Text } = Typography
@@ -36,6 +37,7 @@ const ResearchLabPage = () => {
   // History
   const { data: historyList = [], isLoading: loadingHistory, refetch: refetchHistory } = useGetSqlHistoryQuery(20)
   const [clearHistory] = useClearSqlHistoryMutation()
+  const [createStockPool] = useCreateStockPoolMutation()
 
   // Persist key state across tab switches via sessionStorage
   const readSS = (key, fallback) => {
@@ -215,10 +217,57 @@ const ResearchLabPage = () => {
     refetchHistory()
   }
 
+  // Detect symbol/name column indices for add-to-pool
+  const symbolColIdx = useMemo(() => {
+    if (!result?.columns) return null
+    const idx = result.columns.findIndex((c) => c.toLowerCase() === 'symbol')
+    return idx >= 0 ? idx : null
+  }, [result])
+  const nameColIdx = useMemo(() => {
+    if (!result?.columns) return null
+    const idx = result.columns.findIndex((c) => c.toLowerCase() === 'stock_name' || c.toLowerCase() === 'name')
+    return idx >= 0 ? idx : null
+  }, [result])
+
+  // Add-to-pool modal
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [addForm] = Form.useForm()
+  const [pendingAdd, setPendingAdd] = useState(null)
+
+  const openAddDialog = (row) => {
+    if (symbolColIdx == null) return
+    const symbol = String(row[String(symbolColIdx)] || '').trim()
+    const stockName = nameColIdx != null ? String(row[String(nameColIdx)] || '').trim() : ''
+    if (!symbol) { message.warning('股票代码为空'); return }
+    setPendingAdd({ symbol, stockName })
+    addForm.resetFields()
+    addForm.setFieldsValue({ notes: '手动加入', tags: '{}' })
+    setAddModalOpen(true)
+  }
+
+  const handleAddSubmit = async () => {
+    const values = await addForm.validateFields()
+    if (!pendingAdd) return
+    try {
+      await createStockPool({
+        symbol: pendingAdd.symbol,
+        stock_name: pendingAdd.stockName,
+        pool_type: 'four_dim',
+        notes: values.notes || '手动加入',
+        tags: values.tags || '{}',
+      }).unwrap()
+      message.success(`已添加 ${pendingAdd.stockName || pendingAdd.symbol} 到四维共振股票池`)
+      setAddModalOpen(false)
+      setPendingAdd(null)
+    } catch (err) {
+      message.error(err?.data?.error || '添加失败')
+    }
+  }
+
   // Build dynamic table columns from result
   const resultColumns = useMemo(() => {
     if (!result?.columns) return []
-    return result.columns.map((c, i) => ({
+    const cols = result.columns.map((c, i) => ({
       title: c,
       dataIndex: String(i),
       key: c,
@@ -230,7 +279,27 @@ const ResearchLabPage = () => {
         return <span>{String(v)}</span>
       },
     }))
-  }, [result])
+    // Append action column if symbol column exists
+    if (symbolColIdx != null) {
+      cols.push({
+        title: '操作',
+        key: '_action',
+        width: 130,
+        fixed: 'right',
+        render: (_, row) => (
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={() => openAddDialog(row)}
+          >
+            加入四维共振
+          </Button>
+        ),
+      })
+    }
+    return cols
+  }, [result, symbolColIdx])
 
   const resultDataSource = useMemo(() => {
     if (!result?.rows) return []
@@ -457,6 +526,25 @@ const ResearchLabPage = () => {
               style={{ fontFamily: 'monospace', fontSize: 13 }}
               placeholder="SELECT * FROM ..."
             />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Add-to-Pool Modal */}
+      <Modal
+        title={`添加 ${pendingAdd?.stockName || pendingAdd?.symbol || ''} 到四维共振股票池`}
+        open={addModalOpen}
+        onCancel={() => { setAddModalOpen(false); setPendingAdd(null) }}
+        onOk={handleAddSubmit}
+        okText="确认添加"
+        width={480}
+      >
+        <Form form={addForm} layout="vertical">
+          <Form.Item name="notes" label="备注 (Notes)">
+            <Input.TextArea rows={3} placeholder="手动加入" />
+          </Form.Item>
+          <Form.Item name="tags" label="标签 (Tags - JSON)">
+            <Input.TextArea rows={3} placeholder='{"key": "value"}' style={{ fontFamily: 'monospace', fontSize: 13 }} />
           </Form.Item>
         </Form>
       </Modal>
