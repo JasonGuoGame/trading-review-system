@@ -95,6 +95,7 @@ function TradeForm() {
         // Exit Plan
         stop_loss_pct: exit_plan?.stop_loss_pct || 0,
         stop_loss: exit_plan?.stop_loss,
+        take_profit_pct: exit_plan?.take_profit_pct || 0,
         take_profit: exit_plan?.take_profit,
         batch_plan: batchPlan,
       })
@@ -138,11 +139,12 @@ function TradeForm() {
             }
           : undefined
 
-        const exitPlan = values.stop_loss || values.stop_loss_pct || values.take_profit
+        const exitPlan = values.stop_loss || values.stop_loss_pct || values.take_profit || values.take_profit_pct
           ? {
               stop_loss: values.stop_loss || 0,
               stop_loss_pct: values.stop_loss_pct || 0,
               take_profit: values.take_profit || 0,
+              take_profit_pct: values.take_profit_pct || 0,
               batch_plan: values.batch_plan || [],
             }
           : undefined
@@ -167,12 +169,13 @@ function TradeForm() {
           reason: values.ed_reason || '',
         }).unwrap()
 
-        if (values.stop_loss || values.stop_loss_pct || values.take_profit) {
+        if (values.stop_loss || values.stop_loss_pct || values.take_profit || values.take_profit_pct) {
           await upsertExitPlan({
             tradeId,
             stop_loss: values.stop_loss || 0,
             stop_loss_pct: values.stop_loss_pct || 0,
             take_profit: values.take_profit || 0,
+            take_profit_pct: values.take_profit_pct || 0,
             batch_plan: values.batch_plan || [],
           }).unwrap()
         }
@@ -338,6 +341,11 @@ function TradeForm() {
             <Col xs={12} md={8}>
               <Form.Item name="stop_loss" label="止损价">
                 <InputNumber style={{ width: '100%' }} min={0} step={0.01} placeholder="止损价格" />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={8}>
+              <Form.Item name="take_profit_pct" label="止盈比例 (%)">
+                <Slider min={0} max={100} step={0.5} marks={{ 0: '0%', 10: '10%', 20: '20%', 30: '30%', 50: '50%' }} tooltip={{ formatter: (v) => `${v}%` }} />
               </Form.Item>
             </Col>
             <Col xs={12} md={8}>

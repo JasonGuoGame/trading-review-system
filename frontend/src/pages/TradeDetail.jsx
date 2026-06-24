@@ -331,22 +331,30 @@ function TradeDetail() {
               const firstBuy = orders?.filter((o) => o.order_type === 'buy').sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0]
               const entryPrice = firstBuy?.price || 0
               const direction = trade.direction || 'long'
-              const curPct = exit_plan.stop_loss_pct || 0
+              const curSlPct = exit_plan.stop_loss_pct || 0
+              const curTpPct = exit_plan.take_profit_pct || 0
               const calcStopPrice = (pct) => {
                 if (!entryPrice || !pct) return 0
                 return direction === 'short' ? entryPrice * (1 + pct / 100) : entryPrice * (1 - pct / 100)
+              }
+              const calcTakePrice = (pct) => {
+                if (!entryPrice || !pct) return 0
+                return direction === 'short' ? entryPrice * (1 - pct / 100) : entryPrice * (1 + pct / 100)
               }
               return (
                 <>
                   <Descriptions column={2} size="small" labelStyle={{ color: '#999' }}>
                     <Descriptions.Item label="止损比例">
-                      <Text type="danger" strong>{curPct}%</Text>
+                      <Text type="danger" strong>{curSlPct}%</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="止损价">
-                      <Text type="danger">${exit_plan.stop_loss || calcStopPrice(curPct)?.toFixed(4) || '--'}</Text>
+                      <Text type="danger">${exit_plan.stop_loss || calcStopPrice(curSlPct)?.toFixed(4) || '--'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="止盈比例">
+                      <Text type="success" strong>{curTpPct}%</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="止盈价">
-                      <Text type="success">${exit_plan.take_profit || '--'}</Text>
+                      <Text type="success">${exit_plan.take_profit || calcTakePrice(curTpPct)?.toFixed(4) || '--'}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="入场价">
                       <Text>${entryPrice || '--'}</Text>
@@ -366,12 +374,13 @@ function TradeDetail() {
                     </Descriptions.Item>
                   </Descriptions>
                   {entryPrice > 0 && (
-                    <div style={{ marginTop: 16, padding: '12px', background: 'rgba(255,77,79,0.04)', borderRadius: 8 }}>
-                      <Text type="secondary" style={{ fontSize: 12 }}>调整止损比例: {curPct}% → 止损价 ${calcStopPrice(curPct)?.toFixed(4)}</Text>
-                      <Slider
-                        min={0}
-                        max={30}
-                        step={0.5}
+                    <>
+                      <div style={{ marginTop: 12, padding: '12px', background: 'rgba(255,77,79,0.04)', borderRadius: 8 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>调整止损比例: {curSlPct}% → 止损价 ${calcStopPrice(curSlPct)?.toFixed(4)}</Text>
+                        <Slider
+                          min={0}
+                          max={30}
+                          step={0.5}
                         value={curPct}
                         marks={{ 0: '0', 5: '5%', 10: '10%', 20: '20%', 30: '30%' }}
                         tooltip={{ formatter: (v) => `${v}%` }}
@@ -381,6 +390,7 @@ function TradeDetail() {
                             tradeId: Number(id),
                             stop_loss: newPrice,
                             stop_loss_pct: v,
+                            take_profit_pct: curTpPct,
                             take_profit: exit_plan.take_profit || 0,
                             batch_plan: exit_plan.batch_plan || [],
                           })
@@ -388,6 +398,30 @@ function TradeDetail() {
                         }}
                       />
                     </div>
+                    <div style={{ marginTop: 12, padding: '12px', background: 'rgba(82,196,26,0.04)', borderRadius: 8 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>调整止盈比例: {curTpPct}% → 止盈价 ${calcTakePrice(curTpPct)?.toFixed(4)}</Text>
+                      <Slider
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={curTpPct}
+                        marks={{ 0: '0', 10: '10%', 20: '20%', 30: '30%', 50: '50%' }}
+                        tooltip={{ formatter: (v) => `${v}%` }}
+                        onChange={async (v) => {
+                          const newPrice = calcTakePrice(v)
+                          await upsertExitPlan({
+                            tradeId: Number(id),
+                            stop_loss_pct: curSlPct,
+                            stop_loss: exit_plan.stop_loss || 0,
+                            take_profit_pct: v,
+                            take_profit: newPrice,
+                            batch_plan: exit_plan.batch_plan || [],
+                          })
+                          message.success(`止盈比例已更新为 ${v}%，止盈价 $${newPrice.toFixed(4)}`)
+                        }}
+                      />
+                    </div>
+                    </>
                   )}
                 </>
               )

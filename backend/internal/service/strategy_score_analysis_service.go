@@ -122,11 +122,7 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 					continue
 				}
 				stocks, err := s.stockRepo.ListByScoreRange(poolType, cell.TradeDate, si, ei)
-				if err != nil || len(stocks) == 0 {
-					cell.WinRate = 0
-					cell.TotalTrades = 0
-					continue
-				}
+				if err != nil || len(stocks) == 0 { continue }
 				symbols := make([]string, len(stocks))
 				for j, st := range stocks {
 					symbols[j] = st.Symbol
@@ -142,22 +138,17 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 						continue
 					}
 					total++
-					if rows[1].Close > rows[0].Close {
+					if rows[1].Close >= rows[0].Close {
 						wins++
 					}
 				}
 				if total > 0 {
 					cell.WinRate = float64(wins) / float64(total) * 100
 					cell.TotalTrades = total
-				} else {
-					// Pre-computed data is stale; no live stocks found
-					cell.WinRate = 0
-					cell.TotalTrades = 0
+				}
 				}
 			}
 		}
-	}
-
 	// Build sorted dates and bins
 	var dates []string
 	for d := range dateSet {

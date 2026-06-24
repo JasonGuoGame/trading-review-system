@@ -10,6 +10,7 @@ import {
   FolderOutlined, FileTextOutlined, ClearOutlined, ReloadOutlined,
   UpOutlined, DownOutlined, LeftOutlined, RightOutlined,
 } from '@ant-design/icons'
+// SaveOutlined used below
 import {
   useGetSavedSqlsQuery,
   useCreateSavedSqlMutation,
@@ -183,6 +184,27 @@ const ResearchLabPage = () => {
     saveForm.resetFields()
     saveForm.setFieldsValue({ sql_text: sqlText })
     setSaveModalOpen(true)
+  }
+
+  const handleSaveOverwrite = async () => {
+    if (!activeSavedId) return
+    const saved = savedList.find((s) => s.id === activeSavedId)
+    if (!saved) return
+    if (!sqlText.trim()) { message.warning('SQL不能为空'); return }
+    try {
+      await updateSaved({
+        id: saved.id,
+        name: saved.name,
+        category: saved.category || '',
+        strategy_type: saved.strategy_type || '',
+        description: saved.description || '',
+        sql_text: sqlText,
+      }).unwrap()
+      message.success(`已覆盖保存「${saved.name}」`)
+      refetchSaved()
+    } catch (err) {
+      message.error('保存失败')
+    }
   }
 
   const handleEdit = (s) => {
@@ -370,6 +392,11 @@ const ResearchLabPage = () => {
                 >
                   清空
                 </Button>
+                {activeSavedId && (
+                  <Button type="text" size="small" icon={<SaveOutlined />} onClick={handleSaveOverwrite}>
+                    覆盖保存
+                  </Button>
+                )}
                 <Button type="primary" icon={<PlayCircleOutlined />} onClick={handleRun} loading={executing}>
                   运行
                 </Button>

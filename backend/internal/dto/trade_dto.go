@@ -79,9 +79,10 @@ type CreateEntryDecisionRequest struct {
 }
 
 type CreateExitPlanRequest struct {
-	StopLoss    float64     `json:"stop_loss"`
-	StopLossPct float64     `json:"stop_loss_pct"`
-	TakeProfit  float64     `json:"take_profit"`
+	StopLoss       float64     `json:"stop_loss"`
+	StopLossPct    float64     `json:"stop_loss_pct"`
+	TakeProfit     float64     `json:"take_profit"`
+	TakeProfitPct  float64     `json:"take_profit_pct"`
 	BatchPlan   models.JSON `json:"batch_plan"`
 }
 

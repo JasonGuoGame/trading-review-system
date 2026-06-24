@@ -37,7 +37,17 @@
       "Bash(powershell -Command \"Stop-Process -Id 10732 -Force; Stop-Process -Id 19472 -Force\")",
       "Bash(/tmp/chip-final.exe)",
       "Bash(cat /tmp/server-final.log | head -5)",
-      "Bash(powershell -Command \"Get-Service -Name '*mysql*' 2>&1; Get-Service -Name '*MariaDB*' 2>&1\")"
+      "Bash(powershell -Command \"Get-Service -Name '*mysql*' 2>&1; Get-Service -Name '*MariaDB*' 2>&1\")",
+      "Bash(sed -i 's/if err != nil || len\\(stocks\\) == 0 {/if err != nil || len\\(stocks\\) == 0 { continue/' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '/cell.WinRate = 0/{/if err != nil || len\\(stocks\\)/!{/cell.WinRate = 0/{n;s/cell.TotalTrades = 0//;};};}' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '125s/{ continue/{/' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '126,128d' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '145s/ > / >= /' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '152,156d' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '125s/if err != nil || len\\(stocks\\) == 0 {$/if err != nil || len\\(stocks\\) == 0 { continue }/' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '126d' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i 's/rows\\\\[1\\\\].Close > rows\\\\[0\\\\].Close/rows[1].Close >= rows[0].Close/' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '149,151d' internal/service/strategy_score_analysis_service.go)"
     ]
   }
 }

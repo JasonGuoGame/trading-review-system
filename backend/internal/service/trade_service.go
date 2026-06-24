@@ -64,7 +64,8 @@ func (s *TradeService) CreateTrade(req dto.CreateTradeRequest) (*models.Trade, e
 		ep := &models.ExitPlan{
 			TradeID:     trade.ID,
 			StopLoss:    req.ExitPlan.StopLoss,
-			StopLossPct: req.ExitPlan.StopLossPct,
+			StopLossPct:   req.ExitPlan.StopLossPct,
+				TakeProfitPct: req.ExitPlan.TakeProfitPct,
 			TakeProfit:  req.ExitPlan.TakeProfit,
 			BatchPlan:   req.ExitPlan.BatchPlan,
 		}
@@ -223,11 +224,12 @@ func (s *TradeService) UpsertEntryDecision(tradeID uint, req dto.CreateEntryDeci
 
 func (s *TradeService) UpsertExitPlan(tradeID uint, req dto.CreateExitPlanRequest) error {
 	ep := &models.ExitPlan{
-		TradeID:     tradeID,
-		StopLoss:    req.StopLoss,
-		StopLossPct: req.StopLossPct,
-		TakeProfit:  req.TakeProfit,
-		BatchPlan:   req.BatchPlan,
+		TradeID:       tradeID,
+		StopLoss:      req.StopLoss,
+		StopLossPct:   req.StopLossPct,
+		TakeProfit:    req.TakeProfit,
+		TakeProfitPct: req.TakeProfitPct,
+		BatchPlan:     req.BatchPlan,
 	}
 	return s.repos.ExitPlan.Upsert(ep)
 }

@@ -250,7 +250,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
               <Col span={6}>
                 <div style={{ background: 'rgba(255,77,79,0.06)', border: '1px solid rgba(255,77,79,0.15)', borderRadius: 8, padding: '12px 16px', textAlign: 'center' }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>信号数</Text>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>{bestModeItem.total_trades}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>{bestModeItem.best_score_trades || bestModeItem.total_trades}</div>
                 </div>
               </Col>
             </Row>
