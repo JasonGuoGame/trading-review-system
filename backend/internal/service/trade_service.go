@@ -62,10 +62,11 @@ func (s *TradeService) CreateTrade(req dto.CreateTradeRequest) (*models.Trade, e
 	// Create exit plan if provided
 	if req.ExitPlan != nil {
 		ep := &models.ExitPlan{
-			TradeID:    trade.ID,
-			StopLoss:   req.ExitPlan.StopLoss,
-			TakeProfit: req.ExitPlan.TakeProfit,
-			BatchPlan:  req.ExitPlan.BatchPlan,
+			TradeID:     trade.ID,
+			StopLoss:    req.ExitPlan.StopLoss,
+			StopLossPct: req.ExitPlan.StopLossPct,
+			TakeProfit:  req.ExitPlan.TakeProfit,
+			BatchPlan:   req.ExitPlan.BatchPlan,
 		}
 		if err := s.repos.ExitPlan.Upsert(ep); err != nil {
 			return nil, err
@@ -222,10 +223,11 @@ func (s *TradeService) UpsertEntryDecision(tradeID uint, req dto.CreateEntryDeci
 
 func (s *TradeService) UpsertExitPlan(tradeID uint, req dto.CreateExitPlanRequest) error {
 	ep := &models.ExitPlan{
-		TradeID:    tradeID,
-		StopLoss:   req.StopLoss,
-		TakeProfit: req.TakeProfit,
-		BatchPlan:  req.BatchPlan,
+		TradeID:     tradeID,
+		StopLoss:    req.StopLoss,
+		StopLossPct: req.StopLossPct,
+		TakeProfit:  req.TakeProfit,
+		BatchPlan:   req.BatchPlan,
 	}
 	return s.repos.ExitPlan.Upsert(ep)
 }

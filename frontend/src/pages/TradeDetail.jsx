@@ -8,7 +8,7 @@ import {
   CheckCircleOutlined, CloseCircleOutlined, PlusOutlined, MinusOutlined, TagsOutlined, QuestionCircleOutlined
 } from '@ant-design/icons'
 import { useState } from 'react'
-import { useGetTradeDetailQuery, useDeleteTradeMutation, useUpsertReviewMutation, useSetTradeTagsMutation, useGetTagsQuery, useCreateOrderMutation, useUpdateOrderMutation, useUpdateTradeMutation } from '../app/api'
+import { useGetTradeDetailQuery, useDeleteTradeMutation, useUpsertReviewMutation, useSetTradeTagsMutation, useGetTagsQuery, useCreateOrderMutation, useUpdateOrderMutation, useUpdateTradeMutation, useUpsertExitPlanMutation } from '../app/api'
 import { formatMoney, formatPercent, formatDate, getPnlClass, getScoreColor, getOrderColor, getOrderLabel } from '../utils/format'
 import { TagSelector, getTagColor } from '../components/TagSelector'
 
@@ -30,6 +30,7 @@ function TradeDetail() {
   const [selectedTagNames, setSelectedTagNames] = useState([])
 
   const [updateTrade] = useUpdateTradeMutation()
+  const [upsertExitPlan] = useUpsertExitPlanMutation()
   const [scoreModal, setScoreModal] = useState(false)
   const [scoreForm, setScoreForm] = useState({})
 
@@ -326,29 +327,71 @@ function TradeDetail() {
 
           {/* Exit Plan Card */}
           <Card title="🚪 出场计划" style={{ marginBottom: 16 }}>
-            {exit_plan ? (
-              <Descriptions column={2} size="small" labelStyle={{ color: '#999' }}>
-                <Descriptions.Item label="止损价">
-                  <Text type="danger">${exit_plan.stop_loss || '--'}</Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="止盈价">
-                  <Text type="success">${exit_plan.take_profit || '--'}</Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="分批计划" span={2}>
-                  {(() => {
-                    try {
-                      const plan = typeof exit_plan.batch_plan === 'string'
-                        ? JSON.parse(exit_plan.batch_plan)
-                        : exit_plan.batch_plan
-                      if (!plan || !Array.isArray(plan)) return '--'
-                      return plan.map((p, i) => (
-                        <Tag key={i}>{p.pct}% @ ${p.target}</Tag>
-                      ))
-                    } catch { return '--' }
-                  })()}
-                </Descriptions.Item>
-              </Descriptions>
-            ) : (
+            {exit_plan ? (() => {
+              const firstBuy = orders?.filter((o) => o.order_type === 'buy').sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0]
+              const entryPrice = firstBuy?.price || 0
+              const direction = trade.direction || 'long'
+              const curPct = exit_plan.stop_loss_pct || 0
+              const calcStopPrice = (pct) => {
+                if (!entryPrice || !pct) return 0
+                return direction === 'short' ? entryPrice * (1 + pct / 100) : entryPrice * (1 - pct / 100)
+              }
+              return (
+                <>
+                  <Descriptions column={2} size="small" labelStyle={{ color: '#999' }}>
+                    <Descriptions.Item label="止损比例">
+                      <Text type="danger" strong>{curPct}%</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="止损价">
+                      <Text type="danger">${exit_plan.stop_loss || calcStopPrice(curPct)?.toFixed(4) || '--'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="止盈价">
+                      <Text type="success">${exit_plan.take_profit || '--'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="入场价">
+                      <Text>${entryPrice || '--'}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="分批计划" span={2}>
+                      {(() => {
+                        try {
+                          const plan = typeof exit_plan.batch_plan === 'string'
+                            ? JSON.parse(exit_plan.batch_plan)
+                            : exit_plan.batch_plan
+                          if (!plan || !Array.isArray(plan)) return '--'
+                          return plan.map((p, i) => (
+                            <Tag key={i}>{p.pct}% @ ${p.target}</Tag>
+                          ))
+                        } catch { return '--' }
+                      })()}
+                    </Descriptions.Item>
+                  </Descriptions>
+                  {entryPrice > 0 && (
+                    <div style={{ marginTop: 16, padding: '12px', background: 'rgba(255,77,79,0.04)', borderRadius: 8 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>调整止损比例: {curPct}% → 止损价 ${calcStopPrice(curPct)?.toFixed(4)}</Text>
+                      <Slider
+                        min={0}
+                        max={30}
+                        step={0.5}
+                        value={curPct}
+                        marks={{ 0: '0', 5: '5%', 10: '10%', 20: '20%', 30: '30%' }}
+                        tooltip={{ formatter: (v) => `${v}%` }}
+                        onChange={async (v) => {
+                          const newPrice = calcStopPrice(v)
+                          await upsertExitPlan({
+                            tradeId: Number(id),
+                            stop_loss: newPrice,
+                            stop_loss_pct: v,
+                            take_profit: exit_plan.take_profit || 0,
+                            batch_plan: exit_plan.batch_plan || [],
+                          })
+                          message.success(`止损比例已更新为 ${v}%，止损价 $${newPrice.toFixed(4)}`)
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              )
+            })() : (
               <Empty description="未填写出场计划" />
             )}
           </Card>

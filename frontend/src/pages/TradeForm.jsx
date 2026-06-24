@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col,
-  Checkbox, Divider, Space, message, Spin,
+  Checkbox, Divider, Space, message, Spin, Slider, Typography,
 } from 'antd'
 import { SaveOutlined, PlusOutlined, MinusCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -93,6 +93,7 @@ function TradeForm() {
         ed_signals: signals,
         ed_reason: entry_decision?.reason,
         // Exit Plan
+        stop_loss_pct: exit_plan?.stop_loss_pct || 0,
         stop_loss: exit_plan?.stop_loss,
         take_profit: exit_plan?.take_profit,
         batch_plan: batchPlan,
@@ -137,9 +138,10 @@ function TradeForm() {
             }
           : undefined
 
-        const exitPlan = values.stop_loss || values.take_profit
+        const exitPlan = values.stop_loss || values.stop_loss_pct || values.take_profit
           ? {
               stop_loss: values.stop_loss || 0,
+              stop_loss_pct: values.stop_loss_pct || 0,
               take_profit: values.take_profit || 0,
               batch_plan: values.batch_plan || [],
             }
@@ -165,10 +167,11 @@ function TradeForm() {
           reason: values.ed_reason || '',
         }).unwrap()
 
-        if (values.stop_loss || values.take_profit) {
+        if (values.stop_loss || values.stop_loss_pct || values.take_profit) {
           await upsertExitPlan({
             tradeId,
             stop_loss: values.stop_loss || 0,
+            stop_loss_pct: values.stop_loss_pct || 0,
             take_profit: values.take_profit || 0,
             batch_plan: values.batch_plan || [],
           }).unwrap()
@@ -327,6 +330,11 @@ function TradeForm() {
         {/* Exit Plan */}
         <Card title="🚪 出场计划" style={{ marginBottom: 16 }}>
           <Row gutter={16}>
+            <Col xs={12} md={8}>
+              <Form.Item name="stop_loss_pct" label="止损比例 (%)">
+                <Slider min={0} max={50} step={0.5} marks={{ 0: '0%', 5: '5%', 10: '10%', 20: '20%', 30: '30%' }} tooltip={{ formatter: (v) => `${v}%` }} />
+              </Form.Item>
+            </Col>
             <Col xs={12} md={8}>
               <Form.Item name="stop_loss" label="止损价">
                 <InputNumber style={{ width: '100%' }} min={0} step={0.01} placeholder="止损价格" />
