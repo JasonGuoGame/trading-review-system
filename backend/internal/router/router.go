@@ -139,6 +139,18 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			chipMonitor.GET("/search", handlers.ChipMonitor.SearchStock)
 	}
 
+	// Sector Sentiment
+	sectorSentiment := api.Group("/sector-sentiment")
+	{
+		sectorSentiment.GET("/latest-date", handlers.SectorSentiment.GetLatestDate)
+		sectorSentiment.GET("/consistent-strength", handlers.SectorSentiment.GetConsistentStrength)
+		sectorSentiment.GET("/new-faces", handlers.SectorSentiment.GetNewFaces)
+		sectorSentiment.GET("/ice-recovery", handlers.SectorSentiment.GetIceRecovery)
+		sectorSentiment.GET("/divergence", handlers.SectorSentiment.GetDivergence)
+		sectorSentiment.GET("/concentration", handlers.SectorSentiment.GetConcentration)
+		sectorSentiment.GET("/full-report", handlers.SectorSentiment.GetFullReport)
+	}
+
 	// Research Lab
 	researchLab := api.Group("/research-lab")
 	{

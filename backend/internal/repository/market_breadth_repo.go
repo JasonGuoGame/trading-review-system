@@ -29,6 +29,22 @@ func (r *MarketBreadthRepository) GetByDate(date time.Time) (*models.MarketBread
 	return &breadth, nil
 }
 
+func (r *MarketBreadthRepository) GetAdvancersByDates(dates []string) (map[string]int, error) {
+	if len(dates) == 0 {
+		return map[string]int{}, nil
+	}
+	var rows []models.MarketBreadth
+	err := r.db.Where("trade_date IN ?", dates).Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(rows))
+	for _, row := range rows {
+		result[row.TradeDate.Format("2006-01-02")] = row.Advancers
+	}
+	return result, nil
+}
+
 func (r *MarketBreadthRepository) Upsert(breadth *models.MarketBreadth) error {
 	startOfDay := time.Date(breadth.TradeDate.Year(), breadth.TradeDate.Month(), breadth.TradeDate.Day(), 0, 0, 0, 0, breadth.TradeDate.Location())
 	breadth.TradeDate = startOfDay

@@ -503,6 +503,36 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    // === Sector Sentiment ===
+    getSectorSentimentLatestDate: builder.query({
+      query: () => '/sector-sentiment/latest-date',
+      transformResponse: (res) => res.data,
+    }),
+    getConsistentStrength: builder.query({
+      query: () => '/sector-sentiment/consistent-strength',
+      transformResponse: (res) => res.data,
+    }),
+    getNewFaces: builder.query({
+      query: () => '/sector-sentiment/new-faces',
+      transformResponse: (res) => res.data,
+    }),
+    getIceRecovery: builder.query({
+      query: () => '/sector-sentiment/ice-recovery',
+      transformResponse: (res) => res.data,
+    }),
+    getSectorDivergence: builder.query({
+      query: () => '/sector-sentiment/divergence',
+      transformResponse: (res) => res.data,
+    }),
+    getConcentration: builder.query({
+      query: () => '/sector-sentiment/concentration',
+      transformResponse: (res) => res.data,
+    }),
+    getFullReport: builder.query({
+      query: () => '/sector-sentiment/full-report',
+      transformResponse: (res) => res.data,
+    }),
+
     // === Research Lab ===
     getSavedSqls: builder.query({
       query: () => '/research-lab/saved',
@@ -602,6 +632,13 @@ export const {
   useGetChipDistributionQuery,
   useSearchChipStockQuery,
   useLazySearchChipStockQuery,
+  useGetSectorSentimentLatestDateQuery,
+  useGetConsistentStrengthQuery,
+  useGetNewFacesQuery,
+  useGetIceRecoveryQuery,
+  useGetSectorDivergenceQuery,
+  useGetConcentrationQuery,
+  useGetFullReportQuery,
   useGetSavedSqlsQuery,
   useCreateSavedSqlMutation,
   useUpdateSavedSqlMutation,

@@ -261,24 +261,30 @@ const ResearchLabPage = () => {
     const symbol = String(row[String(symbolColIdx)] || '').trim()
     const stockName = nameColIdx != null ? String(row[String(nameColIdx)] || '').trim() : ''
     if (!symbol) { message.warning('股票代码为空'); return }
-    setPendingAdd({ symbol, stockName })
+    setPendingAdd({ symbol, stockName, hasStockName: nameColIdx != null && stockName !== '' })
     addForm.resetFields()
-    addForm.setFieldsValue({ notes: '手动加入', tags: '{}' })
+    addForm.setFieldsValue({
+      notes: '手动加入',
+      tags: '{}',
+      stock_name: nameColIdx != null ? stockName : '',
+    })
     setAddModalOpen(true)
   }
 
   const handleAddSubmit = async () => {
     const values = await addForm.validateFields()
     if (!pendingAdd) return
+    // Use form stock_name if the result didn't have one, otherwise use the row value
+    const stockName = pendingAdd.hasStockName ? pendingAdd.stockName : values.stock_name
     try {
       await createStockPool({
         symbol: pendingAdd.symbol,
-        stock_name: pendingAdd.stockName,
+        stock_name: stockName,
         pool_type: 'four_dim',
         notes: values.notes || '手动加入',
         tags: values.tags || '{}',
       }).unwrap()
-      message.success(`已添加 ${pendingAdd.stockName || pendingAdd.symbol} 到四维共振股票池`)
+      message.success(`已添加 ${stockName || pendingAdd.symbol} 到四维共振股票池`)
       setAddModalOpen(false)
       setPendingAdd(null)
     } catch (err) {
@@ -567,6 +573,21 @@ const ResearchLabPage = () => {
         width={480}
       >
         <Form form={addForm} layout="vertical">
+          {!pendingAdd?.hasStockName && (
+            <Form.Item
+              name="stock_name"
+              label="股票名称"
+              rules={[{ required: true, message: '请输入股票名称' }]}
+            >
+              <Input placeholder="请输入股票名称（SQL结果未包含stock_name列）" />
+            </Form.Item>
+          )}
+          {pendingAdd?.hasStockName && (
+            <div style={{ marginBottom: 16, padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 6 }}>
+              <span style={{ color: '#8c8c8c', fontSize: 12 }}>股票名称：</span>
+              <span style={{ color: '#fff', fontWeight: 500 }}>{pendingAdd.stockName}</span>
+            </div>
+          )}
           <Form.Item name="notes" label="备注 (Notes)">
             <Input.TextArea rows={3} placeholder="手动加入" />
           </Form.Item>

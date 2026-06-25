@@ -285,6 +285,8 @@ const ChipMonitorPage = () => {
                   <Descriptions.Item label="筹码上移">{searchResult.stock.peak_move_pct > 0 ? '+' : ''}{searchResult.stock.peak_move_pct?.toFixed(2)}%</Descriptions.Item>
                   <Descriptions.Item label="筹码宽度">{searchResult.stock.chip_width70?.toFixed(4)}</Descriptions.Item>
                   <Descriptions.Item label="现价">{searchResult.stock.current_price?.toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="主力成本">{searchResult.stock.estimated_main_cost?.toFixed(2)}</Descriptions.Item>
+                  <Descriptions.Item label="筹码峰位置">{searchResult.stock.chip_peak_price?.toFixed(2)}</Descriptions.Item>
                   <Descriptions.Item label="主动买入占比">{searchResult.stock.buy_power_ratio?.toFixed(2)}%</Descriptions.Item>
                   <Descriptions.Item label="主动卖出占比">{searchResult.stock.sell_power_ratio?.toFixed(2)}%</Descriptions.Item>
                   <Descriptions.Item label="红量白量比">{searchResult.stock.volume_power_ratio?.toFixed(2)}</Descriptions.Item>

@@ -90,6 +90,7 @@ const listSelectColumns = `
 	c.control_level,
 	c.chip_score,
 	c.profit_ratio,
+	c.chip_peak_price,
 	c.peak_move_pct,
 	c.estimated_main_cost,
 	COALESCE(k.close, c.current_price) AS current_price,

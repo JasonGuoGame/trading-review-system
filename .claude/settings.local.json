@@ -47,7 +47,11 @@
       "Bash(sed -i '125s/if err != nil || len\\(stocks\\) == 0 {$/if err != nil || len\\(stocks\\) == 0 { continue }/' internal/service/strategy_score_analysis_service.go)",
       "Bash(sed -i '126d' internal/service/strategy_score_analysis_service.go)",
       "Bash(sed -i 's/rows\\\\[1\\\\].Close > rows\\\\[0\\\\].Close/rows[1].Close >= rows[0].Close/' internal/service/strategy_score_analysis_service.go)",
-      "Bash(sed -i '149,151d' internal/service/strategy_score_analysis_service.go)"
+      "Bash(sed -i '149,151d' internal/service/strategy_score_analysis_service.go)",
+      "Bash(python -c ' *)",
+      "Bash(sed -i '15a\\\\\\\\t\\\\tbreadthRepo *repository.MarketBreadthRepository' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '18s/klineRepo\\)/klineRepo, breadthRepo *repository.MarketBreadthRepository\\)/' internal/service/strategy_score_analysis_service.go)",
+      "Bash(sed -i '19s/klineRepo: klineRepo/klineRepo: klineRepo, breadthRepo: breadthRepo/' internal/service/strategy_score_analysis_service.go)"
     ]
   }
 }

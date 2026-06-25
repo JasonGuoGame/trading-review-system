@@ -13,10 +13,11 @@ type StrategyScoreAnalysisService struct {
 	repo      *repository.StrategyScoreAnalysisRepository
 	stockRepo *repository.StockPoolRepository
 	klineRepo *repository.KlineRepository
+		breadthRepo *repository.MarketBreadthRepository
 }
 
-func NewStrategyScoreAnalysisService(repo *repository.StrategyScoreAnalysisRepository, stockRepo *repository.StockPoolRepository, klineRepo *repository.KlineRepository) *StrategyScoreAnalysisService {
-	return &StrategyScoreAnalysisService{repo: repo, stockRepo: stockRepo, klineRepo: klineRepo}
+	func NewStrategyScoreAnalysisService(repo *repository.StrategyScoreAnalysisRepository, stockRepo *repository.StockPoolRepository, klineRepo *repository.KlineRepository, breadthRepo *repository.MarketBreadthRepository) *StrategyScoreAnalysisService {
+		return &StrategyScoreAnalysisService{repo: repo, stockRepo: stockRepo, klineRepo: klineRepo, breadthRepo: breadthRepo}
 }
 
 // Map full strategy names (from strategy_performance_history) to short names (in strategy_score_analysis)
@@ -215,6 +216,14 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 		binTrends[bk] = pts
 	}
 
+	var advancersMap map[string]int
+	if s.breadthRepo != nil {
+		advancersMap, _ = s.breadthRepo.GetAdvancersByDates(dates)
+	}
+	if advancersMap == nil {
+		advancersMap = make(map[string]int)
+	}
+
 	return &dto.StrategyScoreAnalysisResponse{
 		StrategyName: strategyName,
 		BestBin:      bestBin,
@@ -223,6 +232,7 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 		BinTrends:    binTrends,
 		Dates:        dates,
 		BinLabels:    binsKeys,
+		Advancers:    advancersMap,
 	}, nil
 }
 

@@ -28,6 +28,7 @@ type ChipStockItem struct {
 	VolumePowerRatio  float64 `json:"volume_power_ratio"`   // volume_power_ratio
 	ProfitRatio       float64 `json:"profit_ratio"`         // profit_ratio
 	BehaviorStrength  float64 `json:"behavior_strength"`    // behavior_strength
+	ChipPeakPrice     float64 `json:"chip_peak_price"`      // chip_peak_price
 	PeakMovePct       float64 `json:"peak_move_pct"`        // peak_move_pct
 	EstimatedMainCost float64 `json:"estimated_main_cost"`  // estimated_main_cost
 	CurrentPrice      float64 `json:"current_price"`        // current_price

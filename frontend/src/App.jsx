@@ -25,6 +25,7 @@ import MarketAttackPage from './pages/MarketAttackPage'
 import SectorFundFlowPage from './pages/SectorFundFlowPage'
 import StockPoolPage from './pages/StockPoolPage'
 import ChipMonitorPage from './pages/ChipMonitorPage'
+import SectorSentimentPage from './pages/SectorSentimentPage'
 import ResearchLabPage from './pages/ResearchLabPage'
 import TradePlaybook from './pages/TradePlaybook'
 
@@ -39,6 +40,7 @@ const menuItems = [
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
   { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
   { key: '/chip-monitor', icon: <AimOutlined />, label: '筹码监控' },
+  { key: '/sector-sentiment', icon: <DashboardOutlined />, label: '板块情绪' },
   { type: 'divider' },
   { key: '/research-lab', icon: <CodeOutlined />, label: 'SQL研究中心' },
   { key: '/market-attack', icon: <AimOutlined />, label: '情绪周期' },
@@ -120,7 +122,8 @@ function App() {
             <Route path="/trades/:id/edit" element={<TradeForm />} />
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
         <Route path="/chip-monitor" element={<ChipMonitorPage />} />
-            <Route path="/research-lab" element={<ResearchLabPage />} />
+        <Route path="/sector-sentiment" element={<SectorSentimentPage key={`sector-sentiment-${tick}`} />} />
+        <Route path="/research-lab" element={<ResearchLabPage />} />
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />

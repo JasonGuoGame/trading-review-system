@@ -121,6 +121,7 @@ func buildItems(rows []models.AccumulationRow) []dto.ChipStockItem {
 			VolumePowerRatio:  r.VolumePowerRatio,
 			ProfitRatio:       r.ProfitRatio,
 			BehaviorStrength:  r.BehaviorStrength,
+			ChipPeakPrice:     r.ChipPeakPrice,
 			PeakMovePct:       roundTo2(r.PeakMovePct * 100),
 			EstimatedMainCost: r.EstimatedMainCost,
 			CurrentPrice:      r.CurrentPrice,

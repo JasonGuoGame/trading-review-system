@@ -71,6 +71,7 @@ type AccumulationRow struct {
 	ControlLevel          string  `gorm:"column:control_level"`
 	ChipScore             int     `gorm:"column:chip_score"`
 	ProfitRatio           float64 `gorm:"column:profit_ratio"`
+	ChipPeakPrice         float64 `gorm:"column:chip_peak_price"`
 	PeakMovePct           float64 `gorm:"column:peak_move_pct"`
 	EstimatedMainCost     float64 `gorm:"column:estimated_main_cost"`
 	CurrentPrice          float64 `gorm:"column:current_price"`

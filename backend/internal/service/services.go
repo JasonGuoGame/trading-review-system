@@ -21,8 +21,9 @@ type Services struct {
 	StrategyPerf  *StrategyPerformanceService
 	ScoreAnalysis  *StrategyScoreAnalysisService
 	TradeChecklist *TradeChecklistService
-	ChipMonitor    *ChipMonitorService
-	ResearchSql    *ResearchSqlService
+	ChipMonitor     *ChipMonitorService
+	ResearchSql     *ResearchSqlService
+	SectorSentiment *SectorSentimentService
 }
 
 func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
@@ -40,9 +41,10 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		MarketAttack:  NewMarketAttackService(repos.MarketAttack, cfg.SectorBlacklist),
 		MarketEarning: NewMarketEarningService(repos.MarketEarning),
 		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis),
-		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis, repos.StockPool, repos.Kline),
+		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis, repos.StockPool, repos.Kline, repos.MarketBreadth),
 		TradeChecklist: NewTradeChecklistService(repos.TradeChecklist),
-		ChipMonitor:    NewChipMonitorService(repos.ChipMonitor),
-		ResearchSql:    NewResearchSqlService(repos.ResearchSql),
+		ChipMonitor:     NewChipMonitorService(repos.ChipMonitor),
+		ResearchSql:     NewResearchSqlService(repos.ResearchSql),
+		SectorSentiment: NewSectorSentimentService(repos.SectorSentiment),
 	}
 }

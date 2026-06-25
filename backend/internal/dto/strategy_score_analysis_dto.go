@@ -56,6 +56,7 @@ type StrategyScoreAnalysisResponse struct {
 	BinTrends    map[string][]ScoreTrendPoint   `json:"bin_trends"`
 	Dates        []string                       `json:"dates"`
 	BinLabels    []string                       `json:"bin_labels"`
+	Advancers    map[string]int                 `json:"advancers"`
 }
 
 type StatusHeatmapCell struct {

@@ -303,6 +303,20 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Advancers row — market breadth */}
+                  <tr>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,77,79,0.2)', color: '#ff4d4f', fontWeight: 600, fontSize: 11, background: 'rgba(255,77,79,0.04)' }}>
+                      上涨家数
+                    </td>
+                    {heatmapData.dates.map((d) => {
+                      const adv = (data.advancers && data.advancers[d]) ?? '--'
+                      return (
+                        <td key={d} style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid rgba(255,77,79,0.2)', color: '#ff4d4f', fontWeight: 600, fontSize: 12, background: 'rgba(255,77,79,0.04)' }}>
+                          {adv}
+                        </td>
+                      )
+                    })}
+                  </tr>
                   {heatmapData.bins.map((bin) => (
                     <tr key={bin}>
                       <td style={{
