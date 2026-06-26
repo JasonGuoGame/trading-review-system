@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, ReferenceLine,
 } from 'recharts';
-import { useGetStrategyScoreAnalysisQuery, useGetStrategyStocksQuery, useGetStatusHeatmapQuery, useGetModeRankingQuery, useGetStatusRankingQuery, useGetStatusScoreTrendQuery } from '../../app/api';
+import { useGetStrategyScoreAnalysisQuery, useGetMarketBreadthBucketsQuery, useGetStrategyStocksQuery, useGetStatusHeatmapQuery, useGetModeRankingQuery, useGetStatusRankingQuery, useGetStatusScoreTrendQuery } from '../../app/api';
 
 const { Title, Text } = Typography;
 
@@ -56,6 +56,10 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
   );
 
   const isTurnoverVol = strategyName === '5. 换手率+量比动能';
+  const { data: breadthBuckets } = useGetMarketBreadthBucketsQuery(
+    { strategy: strategyName, days: 30 },
+  );
+
   const { data: statusHeatmap } = useGetStatusHeatmapQuery(
     { days: 30 },
     { skip: !isTurnoverVol },
@@ -283,6 +287,93 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
                 </div>
               </Col>
             </Row>
+          )}
+
+          {/* Market Breadth Bucket Analysis */}
+          <Title level={5} style={{ color: '#c9d1d9', marginTop: 0 }}>
+            📈 大盘红盘率分段胜率图
+          </Title>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+            按当日上涨家数分段，统计各段位的胜率、收益、信号数、稳定性
+          </Text>
+          {breadthBuckets?.buckets?.length > 0 ? (
+            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '6px 10px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'left' }}>上涨家数段</th>
+                    <th style={{ padding: '6px 10px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'center' }}>胜率</th>
+                    <th style={{ padding: '6px 10px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'center' }}>平均收益</th>
+                    <th style={{ padding: '6px 10px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'center' }}>信号数</th>
+                    <th style={{ padding: '6px 10px', background: '#1a1a2e', borderBottom: '1px solid #30363d', color: '#8b949e', textAlign: 'center' }}>稳定性</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {breadthBuckets.buckets.map((b) => {
+                    const hasData = b.signal_count > 0
+                    const wrColor = b.win_rate >= 60 ? '#52c41a' : b.win_rate >= 40 ? '#faad14' : '#ff4d4f'
+                    const stColor = b.stability >= 0.7 ? '#52c41a' : b.stability >= 0.4 ? '#faad14' : '#ff4d4f'
+                    return (
+                      <tr key={b.bucket_label}>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: '#c9d1d9', fontWeight: 500 }}>
+                          {b.bucket_label}
+                        </td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
+                          {hasData ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{
+                                flex: 1, height: 14, borderRadius: 7, background: '#1a1a2e',
+                                overflow: 'hidden', position: 'relative',
+                              }}>
+                                <div style={{
+                                  width: `${Math.min(b.win_rate, 100)}%`, height: '100%',
+                                  background: wrColor, borderRadius: 7,
+                                  transition: 'width 0.3s',
+                                }} />
+                              </div>
+                              <span style={{ color: wrColor, fontWeight: 600, minWidth: 42, textAlign: 'right' }}>
+                                {b.win_rate.toFixed(0)}%
+                              </span>
+                            </div>
+                          ) : <span style={{ color: '#434343' }}>--</span>}
+                        </td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
+                          <span style={{ color: hasData ? (b.avg_return >= 0 ? '#52c41a' : '#ff4d4f') : '#434343', fontWeight: 500 }}>
+                            {hasData ? `${b.avg_return >= 0 ? '+' : ''}${b.avg_return.toFixed(1)}%` : '--'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
+                          <span style={{ color: hasData ? '#c9d1d9' : '#434343', fontWeight: 500 }}>
+                            {hasData ? b.signal_count : '--'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
+                          {hasData ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{
+                                flex: 1, height: 14, borderRadius: 7, background: '#1a1a2e',
+                                overflow: 'hidden', position: 'relative',
+                              }}>
+                                <div style={{
+                                  width: `${Math.min(b.stability * 100, 100)}%`, height: '100%',
+                                  background: stColor, borderRadius: 7,
+                                  transition: 'width 0.3s',
+                                }} />
+                              </div>
+                              <span style={{ color: stColor, fontWeight: 600, minWidth: 34, textAlign: 'right' }}>
+                                {(b.stability * 100).toFixed(0)}
+                              </span>
+                            </div>
+                          ) : <span style={{ color: '#434343' }}>--</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty description="暂无大盘红盘率分段数据" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ marginBottom: 16 }} />
           )}
 
           {/* Heatmap */}

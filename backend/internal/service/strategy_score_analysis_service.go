@@ -236,6 +236,96 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 	}, nil
 }
 
+// ============================================================
+// Market Breadth Bucket Analysis
+// ============================================================
+
+var advancerBuckets = []struct {
+	Label  string
+	Min    int
+	Max    int // 0 = unbounded
+}{
+	{"0-500", 0, 500},
+	{"501-1000", 501, 1000},
+	{"1001-1500", 1001, 1500},
+	{"1501-2000", 1501, 2000},
+	{"2001-2500", 2001, 2500},
+	{"2501-3000", 2501, 3000},
+	{"3001-3500", 3001, 3500},
+	{"3501-4000", 3501, 4000},
+	{"4000+", 4001, 0},
+}
+
+func (s *StrategyScoreAnalysisService) GetMarketBreadthBuckets(strategyName string, days int) (*dto.MarketBreadthBucketResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+
+	rows, err := s.repo.GetDateBreadthData(strategyName, days)
+	if err != nil {
+		return nil, fmt.Errorf("获取大盘红盘率分段数据失败: %w", err)
+	}
+
+	// Group rows into buckets
+	type bucketData struct {
+		winRates []float64
+		returns  []float64
+		signals  int
+	}
+	buckets := make([]bucketData, len(advancerBuckets))
+
+	for _, row := range rows {
+		for i, b := range advancerBuckets {
+			inBucket := false
+			if b.Max == 0 {
+				inBucket = row.Advancers >= b.Min
+			} else {
+				inBucket = row.Advancers >= b.Min && row.Advancers <= b.Max
+			}
+			if inBucket {
+				if row.TotalTrades > 0 {
+					buckets[i].winRates = append(buckets[i].winRates, row.WinRate)
+					buckets[i].returns = append(buckets[i].returns, row.AvgReturn)
+					buckets[i].signals += row.TotalTrades
+				}
+				break
+			}
+		}
+	}
+
+	// Build response items
+	items := make([]dto.MarketBreadthBucketItem, len(advancerBuckets))
+	for i, b := range advancerBuckets {
+		bd := buckets[i]
+		var wr, ar, st float64
+		if len(bd.winRates) > 0 {
+			for _, v := range bd.winRates {
+				wr += v
+			}
+			wr /= float64(len(bd.winRates))
+			for _, v := range bd.returns {
+				ar += v
+			}
+			ar /= float64(len(bd.returns))
+			st = calcScoreStability(bd.winRates, wr, ar)
+		}
+		items[i] = dto.MarketBreadthBucketItem{
+			BucketLabel: b.Label,
+			BucketMin:   b.Min,
+			BucketMax:   b.Max,
+			WinRate:     wr,
+			AvgReturn:   ar,
+			SignalCount: bd.signals,
+			Stability:   st,
+		}
+	}
+
+	return &dto.MarketBreadthBucketResponse{
+		StrategyName: strategyName,
+		Buckets:      items,
+	}, nil
+}
+
 func calcScoreStability(winRates []float64, avgWR, avgAR float64) float64 {
 	if len(winRates) < 2 {
 		return 0.5

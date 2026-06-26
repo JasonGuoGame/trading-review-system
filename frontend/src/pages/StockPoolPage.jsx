@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Typography, Space, Button, InputNumber, Row, Col } from 'antd';
-import { PlusOutlined, CalendarOutlined } from '@ant-design/icons';
-import StrategyPerformanceHeader from '../components/stockpool/StrategyPerformanceHeader';
+import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Col, InputNumber, Row, Space, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useGetStockPoolCountsQuery, useGetStockPoolQuery } from '../app/api';
+import AddStockModal from '../components/stockpool/AddStockModal';
 import PoolTabs from '../components/stockpool/PoolTabs';
-import StockPoolTable from '../components/stockpool/StockPoolTable';
 import StockDetailDrawer from '../components/stockpool/StockDetailDrawer';
+import StockPoolSearch from '../components/stockpool/StockPoolSearch';
+import StockPoolTable from '../components/stockpool/StockPoolTable';
+import StrategyPerformanceHeader from '../components/stockpool/StrategyPerformanceHeader';
 import TradingPhaseGuide from '../components/stockpool/TradingPhaseGuide';
 import VolumePriceStrategy from '../components/stockpool/VolumePriceStrategy';
 import WinnerModeHeader from '../components/stockpool/WinnerModeHeader';
-import StockPoolSearch from '../components/stockpool/StockPoolSearch';
-import AddStockModal from '../components/stockpool/AddStockModal';
-import { useGetStockPoolQuery, useGetStockPoolCountsQuery } from '../app/api';
 
 const { Title } = Typography;
 
@@ -59,6 +59,70 @@ const StockPoolPage = () => {
           <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>4. <Typography.Text type="success" strong>大幅低开弱势</Typography.Text>：低开超-3%且5分钟内未翻红（弱势确立），坚决离场。</Typography.Text></Col>
           <Col span={12}><Typography.Text style={{ color: 'rgba(255,255,255,0.85)' }}>8. <Typography.Text type="success" strong>高位放量滞涨</Typography.Text>：放量巨震但股价停滞不前（主力出货），立刻清仓离场。</Typography.Text></Col>
         </Row>
+      </div>
+    );
+  };
+
+  const renderGptFundStrategy = () => {
+    if (activeTab !== 'gpt_fund') return null;
+    return (
+      <div style={{ marginBottom: 16, padding: '16px', background: 'rgba(19, 194, 194, 0.05)', border: '1px solid #13c2c2', borderRadius: 8 }}>
+        <Typography.Title level={5} style={{ color: '#13c2c2', marginTop: 0 }}>🤖 GPT资金共振 · 分时交易口诀 (Intraday Rules)</Typography.Title>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+          核心原则：开盘30分钟定胜负 —— 观察开盘幅度、翻红速度、涨停意愿，快速决策介入或离场
+        </Typography.Text>
+
+        {/* 买入口诀 */}
+        <div style={{ background: 'rgba(82, 196, 26, 0.06)', border: '1px solid rgba(82, 196, 26, 0.25)', borderRadius: 6, padding: '10px 14px', marginBottom: 12 }}>
+          <Typography.Title level={5} style={{ color: '#52c41a', marginTop: 0, marginBottom: 8 }}>🟢 买入口诀</Typography.Title>
+          <Row gutter={[16, 12]}>
+            <Col span={24}>
+              <Typography.Text strong style={{ color: '#95de64', fontSize: 14 }}>📌 口诀一：低开3%以上，10分钟定生死</Typography.Text>
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'block', marginTop: 4 }}>
+                ✅ 10分钟内翻红且站上均价线 → <Typography.Text type="danger" strong>果断介入</Typography.Text>。低开3%以内说明空方力量有限，快速翻红+站上均价线表明多方承接强劲、主力洗盘后主动拉升。
+              </Typography.Text>
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'block', marginTop: 4 }}>
+                ❌ 10分钟内没有翻红、没有站上均价线 → <Typography.Text type="success" strong>果断离场</Typography.Text>。低开后无力翻红且被均价线压制，说明多方承接疲弱、主力无意护盘，应避免被温水煮蛙式阴跌套牢。
+              </Typography.Text>
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong style={{ color: '#95de64', fontSize: 14 }}>📌 口诀二：平开不跌，20分钟突破早盘高点</Typography.Text>
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'block', marginTop: 4 }}>
+                个股开盘平开，不跌不弱，20分钟内快速拉升突破早盘分时高点 → <Typography.Text type="danger" strong>果断加仓</Typography.Text>。平开说明多空均衡、没有恐慌抛压；不跌不弱表明盘中承接扎实；20分钟内突破早盘分时高点意味着主力主动进攻、打破盘整格局，是确定性加仓点。
+              </Typography.Text>
+            </Col>
+          </Row>
+        </div>
+
+        {/* 卖出口诀 */}
+        <div style={{ background: 'rgba(255, 77, 79, 0.06)', border: '1px solid rgba(255, 77, 79, 0.25)', borderRadius: 6, padding: '10px 14px', marginBottom: 12 }}>
+          <Typography.Title level={5} style={{ color: '#ff4d4f', marginTop: 0, marginBottom: 8 }}>🔴 卖出口诀</Typography.Title>
+          <Row gutter={[16, 12]}>
+            <Col span={24}>
+              <Typography.Text strong style={{ color: '#ff9999', fontSize: 14 }}>📌 口诀三：高开2%~5%，半小时不冲涨停</Typography.Text>
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'block', marginTop: 4 }}>
+                高开2%~5%，半小时不冲涨停 → <Typography.Text type="success" strong>先卖一半，落袋为安</Typography.Text>。高开已兑现部分利好预期，若半小时内无冲击涨停的动能，说明主力无意继续拉升，减半仓锁定利润，剩余观察。
+              </Typography.Text>
+            </Col>
+            <Col span={24}>
+              <Typography.Text strong style={{ color: '#ff9999', fontSize: 14 }}>📌 口诀四：高开5%以上，一小时不涨停 + 主力净流出</Typography.Text>
+              <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'block', marginTop: 4 }}>
+                高开5%以上，一小时不涨停且主力净流出 → <Typography.Text type="success" strong>应全部卖出</Typography.Text>。大幅高开后长时间无法封板，叠加主力资金外流，是典型的"高开诱多"出货形态，不要留恋。
+              </Typography.Text>
+            </Col>
+          </Row>
+        </div>
+
+        {/* 关注口诀 */}
+        <div style={{ background: 'rgba(250, 173, 20, 0.06)', border: '1px solid rgba(250, 173, 20, 0.25)', borderRadius: 6, padding: '10px 14px' }}>
+          <Typography.Title level={5} style={{ color: '#faad14', marginTop: 0, marginBottom: 8 }}>🟡 观察口诀</Typography.Title>
+          <Col span={24}>
+            <Typography.Text strong style={{ color: '#ffd666', fontSize: 14 }}>📌 口诀五：冲高涨停未封死</Typography.Text>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, display: 'block', marginTop: 4 }}>
+              冲高涨停未封死，量能放大且持续 → <Typography.Text type="warning" strong>尾盘小回拉再补水（可关注）</Typography.Text>。涨停板被打开但量能未萎缩，说明多空分歧激烈但多方仍在努力——若尾盘回拉企稳，是次日的潜在低吸标的，加入观察清单。
+            </Typography.Text>
+          </Col>
+        </div>
       </div>
     );
   };
@@ -270,6 +334,7 @@ const StockPoolPage = () => {
         <StockPoolSearch days={days} />
         <PoolTabs activeKey={activeTab} onChange={setActiveTab} counts={counts} tabOrder={tabOrder} />
 
+        {renderGptFundStrategy()}
         {renderDivergenceReversalStrategy()}
         {renderMacdBollStrategy()}
         {renderAuctionSurgeStrategy()}

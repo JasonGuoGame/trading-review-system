@@ -417,6 +417,11 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    getMarketBreadthBuckets: builder.query({
+      query: ({ strategy, days = 30 }) => `/strategy-analysis/market-breadth-buckets?strategy=${encodeURIComponent(strategy)}&days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
+
     getStrategyStocks: builder.query({
       query: (params) => ({
         url: '/strategy-analysis/stocks',
@@ -529,7 +534,7 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
     getFullReport: builder.query({
-      query: () => '/sector-sentiment/full-report',
+      query: (tradeDate) => `/sector-sentiment/full-report?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
 
@@ -614,6 +619,7 @@ export const {
   useGetMarketEarningEffectQuery,
   useGetStrategyPerformanceQuery,
   useGetStrategyScoreAnalysisQuery,
+  useGetMarketBreadthBucketsQuery,
   useGetStrategyStocksQuery,
   useGetStatusHeatmapQuery,
   useGetModeRankingQuery,

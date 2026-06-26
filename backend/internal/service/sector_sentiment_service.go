@@ -25,15 +25,15 @@ func (s *SectorSentimentService) GetLatestTradeDate() (string, error) {
 // 1. 连强信号
 // ============================================================
 
-func (s *SectorSentimentService) GetConsistentStrength() ([]dto.ConsistentStrengthItem, error) {
-	rows, err := s.repo.GetConsistentStrength()
+func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.ConsistentStrengthItem, error) {
+	rows, err := s.repo.GetConsistentStrength(tradeDate)
 	if err != nil {
 		return nil, fmt.Errorf("连强信号查询失败: %w", err)
 	}
 
 	items := make([]dto.ConsistentStrengthItem, len(rows))
 	for i, row := range rows {
-		ranks, err := s.repo.GetSectorRecentRanks(row.SectorName)
+		ranks, err := s.repo.GetSectorRecentRanks(row.SectorName, tradeDate)
 		if err != nil {
 			log.Printf("[sector-sentiment] GetSectorRecentRanks for %q: %v", row.SectorName, err)
 			ranks = make([]*int, 5)
@@ -51,8 +51,8 @@ func (s *SectorSentimentService) GetConsistentStrength() ([]dto.ConsistentStreng
 // 2. 新面孔信号
 // ============================================================
 
-func (s *SectorSentimentService) GetNewFaces() ([]dto.NewFaceItem, error) {
-	rows, err := s.repo.GetNewFaces()
+func (s *SectorSentimentService) GetNewFaces(tradeDate string) ([]dto.NewFaceItem, error) {
+	rows, err := s.repo.GetNewFaces(tradeDate)
 	if err != nil {
 		return nil, fmt.Errorf("新面孔信号查询失败: %w", err)
 	}
@@ -73,15 +73,15 @@ func (s *SectorSentimentService) GetNewFaces() ([]dto.NewFaceItem, error) {
 // 3. 冰点回升信号
 // ============================================================
 
-func (s *SectorSentimentService) GetIceRecovery() ([]dto.IceRecoveryItem, error) {
-	rows, err := s.repo.GetIceRecovery()
+func (s *SectorSentimentService) GetIceRecovery(tradeDate string) ([]dto.IceRecoveryItem, error) {
+	rows, err := s.repo.GetIceRecovery(tradeDate)
 	if err != nil {
 		return nil, fmt.Errorf("冰点回升信号查询失败: %w", err)
 	}
 
 	items := make([]dto.IceRecoveryItem, len(rows))
 	for i, row := range rows {
-		prevRates, err := s.repo.GetSectorPrev5dRates(row.SectorName)
+		prevRates, err := s.repo.GetSectorPrev5dRates(row.SectorName, tradeDate)
 		if err != nil {
 			log.Printf("[sector-sentiment] GetSectorPrev5dRates for %q: %v", row.SectorName, err)
 			prevRates = make([]float64, 0)
@@ -100,13 +100,13 @@ func (s *SectorSentimentService) GetIceRecovery() ([]dto.IceRecoveryItem, error)
 // 4. 背离信号
 // ============================================================
 
-func (s *SectorSentimentService) GetDivergence() (*dto.DivergenceResponse, error) {
-	rows, err := s.repo.GetDivergenceTrend()
+func (s *SectorSentimentService) GetDivergence(tradeDate string) (*dto.DivergenceResponse, error) {
+	rows, err := s.repo.GetDivergenceTrend(tradeDate)
 	if err != nil {
 		return nil, fmt.Errorf("背离信号查询失败: %w", err)
 	}
 
-	medRate, err := s.repo.GetIndustryMedianRate()
+	medRate, err := s.repo.GetIndustryMedianRate(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetIndustryMedianRate error: %v", err)
 		medRate = 0
@@ -149,19 +149,15 @@ func (s *SectorSentimentService) determineDivergenceWarning(trend []dto.Divergen
 	}
 	latest := trend[len(trend)-1]
 
-	// 红色背离（虚假繁荣）：大盘指针在高位，行业指针在低位
 	if latest.BroadAvgRate >= 50 && latest.IndustryAvgRate < 50 {
 		return "fake_prosperity"
 	}
-	// 蓝色背离（暗流涌动）：大盘指针在低位，行业指针已率先回升
 	if latest.BroadAvgRate < 50 && latest.IndustryAvgRate >= 50 {
 		return "undercurrent"
 	}
-	// 绿色（健康）：两针重合且都在50%以上
 	if latest.BroadAvgRate >= 50 && latest.IndustryAvgRate >= 50 {
 		return "healthy"
 	}
-	// Both below 50 — weak overall
 	return "weak"
 }
 
@@ -169,8 +165,8 @@ func (s *SectorSentimentService) determineDivergenceWarning(trend []dto.Divergen
 // 5. 资金抱团度
 // ============================================================
 
-func (s *SectorSentimentService) GetConcentration() ([]dto.ConcentrationItem, error) {
-	rows, err := s.repo.GetConcentration()
+func (s *SectorSentimentService) GetConcentration(tradeDate string) ([]dto.ConcentrationItem, error) {
+	rows, err := s.repo.GetConcentration(tradeDate)
 	if err != nil {
 		return nil, fmt.Errorf("资金抱团度查询失败: %w", err)
 	}
@@ -190,37 +186,40 @@ func (s *SectorSentimentService) GetConcentration() ([]dto.ConcentrationItem, er
 // Full report
 // ============================================================
 
-func (s *SectorSentimentService) GetFullReport() (*dto.SectorSentimentFullResponse, error) {
-	tradeDate, err := s.GetLatestTradeDate()
-	if err != nil {
-		return nil, fmt.Errorf("获取最新交易日期失败: %w", err)
+func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSentimentFullResponse, error) {
+	if tradeDate == "" {
+		var err error
+		tradeDate, err = s.GetLatestTradeDate()
+		if err != nil {
+			return nil, fmt.Errorf("获取最新交易日期失败: %w", err)
+		}
 	}
 
-	consistent, err := s.GetConsistentStrength()
+	consistent, err := s.GetConsistentStrength(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] consistent strength partial error: %v", err)
 		consistent = []dto.ConsistentStrengthItem{}
 	}
 
-	newFaces, err := s.GetNewFaces()
+	newFaces, err := s.GetNewFaces(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] new faces partial error: %v", err)
 		newFaces = []dto.NewFaceItem{}
 	}
 
-	iceRecovery, err := s.GetIceRecovery()
+	iceRecovery, err := s.GetIceRecovery(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] ice recovery partial error: %v", err)
 		iceRecovery = []dto.IceRecoveryItem{}
 	}
 
-	divergence, err := s.GetDivergence()
+	divergence, err := s.GetDivergence(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] divergence partial error: %v", err)
 		divergence = &dto.DivergenceResponse{}
 	}
 
-	concentration, err := s.GetConcentration()
+	concentration, err := s.GetConcentration(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] concentration partial error: %v", err)
 		concentration = []dto.ConcentrationItem{}

@@ -18,6 +18,15 @@ func NewSectorSentimentHandler(service *service.SectorSentimentService) *SectorS
 	return &SectorSentimentHandler{service: service}
 }
 
+// getTradeDate extracts trade_date from query string; falls back to latest.
+func (h *SectorSentimentHandler) getTradeDate(c *gin.Context) string {
+	if d := c.Query("trade_date"); d != "" {
+		return d
+	}
+	latest, _ := h.service.GetLatestTradeDate()
+	return latest
+}
+
 // GetLatestDate returns the most recent trade_date.
 func (h *SectorSentimentHandler) GetLatestDate(c *gin.Context) {
 	date, err := h.service.GetLatestTradeDate()
@@ -30,7 +39,8 @@ func (h *SectorSentimentHandler) GetLatestDate(c *gin.Context) {
 
 // GetConsistentStrength returns 连强信号 data.
 func (h *SectorSentimentHandler) GetConsistentStrength(c *gin.Context) {
-	data, err := h.service.GetConsistentStrength()
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetConsistentStrength(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetConsistentStrength error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
@@ -41,7 +51,8 @@ func (h *SectorSentimentHandler) GetConsistentStrength(c *gin.Context) {
 
 // GetNewFaces returns 新面孔信号 data.
 func (h *SectorSentimentHandler) GetNewFaces(c *gin.Context) {
-	data, err := h.service.GetNewFaces()
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetNewFaces(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetNewFaces error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
@@ -52,7 +63,8 @@ func (h *SectorSentimentHandler) GetNewFaces(c *gin.Context) {
 
 // GetIceRecovery returns 冰点回升信号 data.
 func (h *SectorSentimentHandler) GetIceRecovery(c *gin.Context) {
-	data, err := h.service.GetIceRecovery()
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetIceRecovery(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetIceRecovery error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
@@ -63,7 +75,8 @@ func (h *SectorSentimentHandler) GetIceRecovery(c *gin.Context) {
 
 // GetDivergence returns 背离信号 data.
 func (h *SectorSentimentHandler) GetDivergence(c *gin.Context) {
-	data, err := h.service.GetDivergence()
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetDivergence(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetDivergence error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
@@ -74,7 +87,8 @@ func (h *SectorSentimentHandler) GetDivergence(c *gin.Context) {
 
 // GetConcentration returns 资金抱团度 data.
 func (h *SectorSentimentHandler) GetConcentration(c *gin.Context) {
-	data, err := h.service.GetConcentration()
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetConcentration(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetConcentration error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
@@ -85,7 +99,8 @@ func (h *SectorSentimentHandler) GetConcentration(c *gin.Context) {
 
 // GetFullReport returns all sector sentiment signals combined.
 func (h *SectorSentimentHandler) GetFullReport(c *gin.Context) {
-	data, err := h.service.GetFullReport()
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetFullReport(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetFullReport error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})

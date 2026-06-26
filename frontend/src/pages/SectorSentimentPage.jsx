@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip,
+  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker,
 } from 'antd'
 import {
   FireOutlined,
@@ -18,7 +18,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, BarChart, Bar, Cell, ReferenceLine,
 } from 'recharts'
-import { useGetFullReportQuery } from '../app/api'
+import { useGetFullReportQuery, useGetSectorSentimentLatestDateQuery } from '../app/api'
 import dayjs from 'dayjs'
 
 // ============================================================
@@ -630,7 +630,10 @@ function ConcentrationPanel({ data }) {
 // ============================================================
 
 export default function SectorSentimentPage() {
-  const { data, isLoading, isError, error } = useGetFullReportQuery()
+  const { data: latestDate } = useGetSectorSentimentLatestDateQuery()
+  const [selectedDate, setSelectedDate] = useState(null)
+  const queryDate = selectedDate || latestDate || undefined
+  const { data, isLoading, isError, error } = useGetFullReportQuery(queryDate, { skip: !queryDate })
 
   if (isLoading) {
     return (
@@ -673,7 +676,16 @@ export default function SectorSentimentPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>📊 板块情绪</h2>
-          <Tag color="processing">{dayjs(tradeDate).format('YYYY-MM-DD')}</Tag>
+          <DatePicker
+            value={selectedDate ? dayjs(selectedDate) : null}
+            onChange={(d) => setSelectedDate(d ? d.format('YYYY-MM-DD') : null)}
+            placeholder={latestDate || '选择日期'}
+            allowClear={true}
+            format="YYYY-MM-DD"
+            style={{ width: 150 }}
+          />
+          {!selectedDate && latestDate && <Tag color="processing">{dayjs(latestDate).format('YYYY-MM-DD')} (最新)</Tag>}
+          {selectedDate && <Tag color="purple">{dayjs(selectedDate).format('YYYY-MM-DD')}</Tag>}
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: '#8c8c8c' }}>
@@ -741,7 +753,7 @@ export default function SectorSentimentPage() {
                 <RocketOutlined style={{ marginRight: 8, color: '#b37feb' }} />
                 新面孔信号 · 捕捉黑马
                 <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-                  昨日30名外→今日冲进前5
+                  昨日30名外→今日冲进前10
                 </span>
               </span>
             }

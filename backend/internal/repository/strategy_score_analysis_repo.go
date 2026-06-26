@@ -86,6 +86,50 @@ func (r *StrategyScoreAnalysisRepository) GetBestBin(strategyName string) (*mode
 	return record, err
 }
 
+// DateBreadthRow is a single day's aggregated strategy data joined with market breadth.
+type DateBreadthRow struct {
+	TradeDate   string  `gorm:"column:trade_date"`
+	TotalTrades int     `gorm:"column:total_trades"`
+	WinRate     float64 `gorm:"column:win_rate"`
+	AvgReturn   float64 `gorm:"column:avg_return"`
+	Advancers   int     `gorm:"column:advancers"`
+}
+
+// GetDateBreadthData returns per-date aggregated strategy stats joined with market_breadths.
+func (r *StrategyScoreAnalysisRepository) GetDateBreadthData(strategyName string, days int) ([]DateBreadthRow, error) {
+	mappedName := mapToScoreAnalysisName(strategyName)
+	var rows []DateBreadthRow
+	sql := `
+		SELECT
+			ssa.trade_date,
+			SUM(ssa.total_trades) AS total_trades,
+			COALESCE(SUM(ssa.win_rate * ssa.total_trades) / NULLIF(SUM(ssa.total_trades), 0), 0) AS win_rate,
+			COALESCE(SUM(ssa.avg_return * ssa.total_trades) / NULLIF(SUM(ssa.total_trades), 0), 0) AS avg_return,
+			COALESCE(mb.advancers, 0) AS advancers
+		FROM strategy_score_analysis ssa
+		LEFT JOIN market_breadths mb ON ssa.trade_date = mb.trade_date
+		WHERE ssa.strategy_name = ?
+		GROUP BY ssa.trade_date
+		ORDER BY ssa.trade_date DESC
+		LIMIT ?
+	`
+	err := r.db.Raw(sql, mappedName, days).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		// Fallback by prefix
+		prefix := ""
+		if len(strategyName) >= 2 && strategyName[1] == '.' {
+			prefix = strategyName[:2]
+		}
+		if prefix != "" {
+			err = r.db.Raw(sql, prefix+"%", days).Scan(&rows).Error
+		}
+	}
+	return rows, err
+}
+
 func (r *StrategyScoreAnalysisRepository) getBestBinByName(name string) (*models.StrategyScoreAnalysis, error) {
 	var latestDate struct {
 		TradeDate string `gorm:"column:trade_date"`

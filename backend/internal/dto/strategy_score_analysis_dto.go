@@ -95,8 +95,25 @@ type StatusScoreTrendPoint struct {
 }
 
 type StatusScoreTrendResponse struct {
-	StrategyName  string                 `json:"strategy_name"`
-	Status        string                 `json:"status"`
-	ScoreRange    string                 `json:"score_range"`
+	StrategyName  string                  `json:"strategy_name"`
+	Status        string                  `json:"status"`
+	ScoreRange    string                  `json:"score_range"`
 	Trend         []StatusScoreTrendPoint `json:"trend"`
+}
+
+// MarketBreadthBucketItem holds aggregated stats for one advancer-count bucket.
+type MarketBreadthBucketItem struct {
+	BucketLabel string  `json:"bucket_label"` // "0-500", "501-1000", ..., "4000+"
+	BucketMin   int     `json:"bucket_min"`
+	BucketMax   int     `json:"bucket_max"` // 0 means unbounded (for "4000+")
+	WinRate     float64 `json:"win_rate"`
+	AvgReturn   float64 `json:"avg_return"`
+	SignalCount int     `json:"signal_count"`
+	Stability   float64 `json:"stability"`
+}
+
+// MarketBreadthBucketResponse is returned by the market-breadth-buckets endpoint.
+type MarketBreadthBucketResponse struct {
+	StrategyName string                     `json:"strategy_name"`
+	Buckets      []MarketBreadthBucketItem  `json:"buckets"`
 }
