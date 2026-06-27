@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"strconv"
 
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/service"
@@ -103,6 +104,37 @@ func (h *SectorSentimentHandler) GetFullReport(c *gin.Context) {
 	data, err := h.service.GetFullReport(tradeDate)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetFullReport error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}
+
+// GetSectorDrift returns rank drift data for a given sector.
+func (h *SectorSentimentHandler) GetSectorDrift(c *gin.Context) {
+	sectorName := c.Query("sector_name")
+	if sectorName == "" {
+		c.JSON(http.StatusBadRequest, dto.APIResponse{Code: 400, Message: "sector_name is required"})
+		return
+	}
+	days := 30
+	if d, err := strconv.Atoi(c.Query("days")); err == nil && d > 0 {
+		days = d
+	}
+	data, err := h.service.GetSectorDrift(sectorName, days)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetSectorDrift error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}
+
+// GetSectors returns distinct sector names for autocomplete.
+func (h *SectorSentimentHandler) GetSectors(c *gin.Context) {
+	data, err := h.service.GetSectorNames()
+	if err != nil {
+		log.Printf("[sector-sentiment] GetSectors error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
 		return
 	}

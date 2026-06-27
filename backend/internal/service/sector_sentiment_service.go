@@ -234,3 +234,42 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		Concentration:      concentration,
 	}, nil
 }
+
+// ============================================================
+// Sector Drift
+// ============================================================
+
+func (s *SectorSentimentService) GetSectorDrift(sectorName string, days int) (*dto.SectorDriftResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+	rows, err := s.repo.GetSectorDrift(sectorName, days)
+	if err != nil {
+		return nil, fmt.Errorf("板块漂移数据查询失败: %w", err)
+	}
+
+	points := make([]dto.SectorDriftPoint, len(rows))
+	// rows come in DESC order; reverse to ASC for chart
+	for i, row := range rows {
+		points[len(rows)-1-i] = dto.SectorDriftPoint{
+			TradeDate: row.TradeDate,
+			RankPos:   row.RankPos,
+			RedRate:   row.RedRate,
+		}
+	}
+
+	return &dto.SectorDriftResponse{
+		SectorName: sectorName,
+		Days:       days,
+		Points:     points,
+	}, nil
+}
+
+// GetSectorNames returns distinct industry sector names.
+func (s *SectorSentimentService) GetSectorNames() (*dto.SectorListResponse, error) {
+	names, err := s.repo.GetSectorNames()
+	if err != nil {
+		return nil, fmt.Errorf("板块列表查询失败: %w", err)
+	}
+	return &dto.SectorListResponse{Sectors: names}, nil
+}

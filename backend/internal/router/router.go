@@ -150,6 +150,8 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		sectorSentiment.GET("/divergence", handlers.SectorSentiment.GetDivergence)
 		sectorSentiment.GET("/concentration", handlers.SectorSentiment.GetConcentration)
 		sectorSentiment.GET("/full-report", handlers.SectorSentiment.GetFullReport)
+		sectorSentiment.GET("/sectors", handlers.SectorSentiment.GetSectors)
+		sectorSentiment.GET("/sector-drift", handlers.SectorSentiment.GetSectorDrift)
 	}
 
 	// Research Lab

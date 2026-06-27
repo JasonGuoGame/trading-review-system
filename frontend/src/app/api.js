@@ -537,6 +537,14 @@ export const apiSlice = createApi({
       query: (tradeDate) => `/sector-sentiment/full-report?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
+    getSectorNames: builder.query({
+      query: () => '/sector-sentiment/sectors',
+      transformResponse: (res) => res.data,
+    }),
+    getSectorDrift: builder.query({
+      query: ({ sector_name, days = 30 }) => `/sector-sentiment/sector-drift?sector_name=${encodeURIComponent(sector_name)}&days=${days}`,
+      transformResponse: (res) => res.data,
+    }),
 
     // === Research Lab ===
     getSavedSqls: builder.query({
@@ -645,6 +653,9 @@ export const {
   useGetSectorDivergenceQuery,
   useGetConcentrationQuery,
   useGetFullReportQuery,
+  useGetSectorNamesQuery,
+  useGetSectorDriftQuery,
+  useLazyGetSectorDriftQuery,
   useGetSavedSqlsQuery,
   useCreateSavedSqlMutation,
   useUpdateSavedSqlMutation,

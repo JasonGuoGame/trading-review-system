@@ -67,6 +67,11 @@ const ResearchLabPage = () => {
   const [editingRecord, setEditingRecord] = useState(null)
   const [saveForm] = Form.useForm()
 
+  // Rename modal
+  const [renameModalOpen, setRenameModalOpen] = useState(false)
+  const [renameRecord, setRenameRecord] = useState(null)
+  const [renameForm] = Form.useForm()
+
   // Build tree from saved SQLs grouped by category > strategy_type
   const treeData = useMemo(() => {
     const groups = {}
@@ -100,6 +105,17 @@ const ResearchLabPage = () => {
                   </span>
                   {s.favorite ? <StarFilled style={{ color: '#faad14', fontSize: 10 }} /> : null}
                 </Space>
+                <Button
+                  className="rename-sql-btn"
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined style={{ fontSize: 11 }} />}
+                  onClick={(e) => { e.stopPropagation(); handleRename(s) }}
+                  style={{ flexShrink: 0, marginLeft: 4, opacity: 0.5, color: '#8b949e' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = 1 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.5 }}
+                  title="重命名"
+                />
                 <Popconfirm
                   title="确定删除此收藏SQL？"
                   onConfirm={() => handleDelete(s.id)}
@@ -231,6 +247,33 @@ const ResearchLabPage = () => {
     message.success('已删除')
     if (activeSavedId === id) setActiveSavedId(null)
     refetchSaved()
+  }
+
+  const handleRename = (record) => {
+    setRenameRecord(record)
+    renameForm.setFieldsValue({ name: record.name })
+    setRenameModalOpen(true)
+  }
+
+  const handleRenameSubmit = async () => {
+    const values = await renameForm.validateFields()
+    if (!renameRecord) return
+    try {
+      await updateSaved({
+        id: renameRecord.id,
+        name: values.name,
+        category: renameRecord.category || '',
+        strategy_type: renameRecord.strategy_type || '',
+        description: renameRecord.description || '',
+        sql_text: renameRecord.sql_text || '',
+      }).unwrap()
+      message.success(`已重命名「${renameRecord.name}」→「${values.name}」`)
+      setRenameModalOpen(false)
+      setRenameRecord(null)
+      refetchSaved()
+    } catch (err) {
+      message.error('重命名失败')
+    }
   }
 
   const handleClearHistory = async () => {
@@ -530,6 +573,22 @@ const ResearchLabPage = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Rename Modal */}
+      <Modal
+        title={`重命名「${renameRecord?.name || ''}」`}
+        open={renameModalOpen}
+        onCancel={() => { setRenameModalOpen(false); setRenameRecord(null) }}
+        onOk={handleRenameSubmit}
+        okText="确认"
+        width={400}
+      >
+        <Form form={renameForm} layout="vertical">
+          <Form.Item name="name" label="新名称" rules={[{ required: true, message: '请输入新名称' }]}>
+            <Input placeholder="输入新的SQL名称" autoFocus />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Save/Edit Modal */}
       <Modal

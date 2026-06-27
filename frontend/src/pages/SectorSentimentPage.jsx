@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker,
+  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input,
 } from 'antd'
 import {
   FireOutlined,
@@ -18,7 +18,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, BarChart, Bar, Cell, ReferenceLine,
 } from 'recharts'
-import { useGetFullReportQuery, useGetSectorSentimentLatestDateQuery } from '../app/api'
+import { useGetFullReportQuery, useGetSectorSentimentLatestDateQuery, useGetSectorNamesQuery, useLazyGetSectorDriftQuery } from '../app/api'
 import dayjs from 'dayjs'
 
 // ============================================================
@@ -625,6 +625,161 @@ function ConcentrationPanel({ data }) {
   )
 }
 
+// ------ 板块排名漂移 ------
+
+function SectorDriftPanel() {
+  const { data: sectorList } = useGetSectorNamesQuery()
+  const [triggerDrift, { data: driftData, isFetching: driftLoading }] = useLazyGetSectorDriftQuery()
+  const [selectedSector, setSelectedSector] = useState(null)
+  const [options, setOptions] = useState([])
+
+  const sectors = sectorList?.sectors || []
+
+  const onSearch = (text) => {
+    if (!text) { setOptions([]); return }
+    setOptions(
+      sectors
+        .filter((s) => s.includes(text))
+        .slice(0, 15)
+        .map((s) => ({ value: s }))
+    )
+  }
+
+  const onSelect = (value) => {
+    setSelectedSector(value)
+    triggerDrift({ sector_name: value, days: 30 })
+  }
+
+  // Prepare chart data: rank is inverted so that rank 1 appears at the top
+  const chartData = useMemo(() => {
+    if (!driftData?.points) return []
+    const maxRank = Math.max(...driftData.points.map((p) => p.rank_pos || 999), 50)
+    return driftData.points.map((p) => ({
+      trade_date: p.trade_date,
+      rank: p.rank_pos,
+      // Invert rank: higher = better (maxRank - rank)
+      rank_score: p.rank_pos ? Math.max(0, maxRank - p.rank_pos) : null,
+      red_rate: p.red_rate,
+    }))
+  }, [driftData])
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ color: '#c9d1d9', fontWeight: 500, whiteSpace: 'nowrap' }}>板块名称：</span>
+        <AutoComplete
+          value={selectedSector}
+          options={options}
+          onSearch={onSearch}
+          onSelect={onSelect}
+          onChange={(v) => { if (!v) { setSelectedSector(null); setOptions([]) } }}
+          style={{ width: 240 }}
+          placeholder="输入板块名称搜索..."
+        >
+          <Input allowClear />
+        </AutoComplete>
+      </div>
+
+      {driftLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+
+      {driftData && chartData.length > 0 && (
+        <div>
+          <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
+            📉 排名漂移图（柱=排名 · 线=红盘率%）
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+              <XAxis
+                dataKey="trade_date"
+                tick={{ fill: '#8c8c8c', fontSize: 11 }}
+                tickFormatter={(v) => dayjs(v).format('MM/DD')}
+              />
+              {/* Inverted rank Y axis: top = rank 1 (best) */}
+              <YAxis
+                yAxisId="rank"
+                orientation="left"
+                tick={{ fill: '#1677ff', fontSize: 11 }}
+                reversed
+                domain={[1, 'auto']}
+                label={{ value: '排名 (↓越小越强)', angle: -90, position: 'insideLeft', style: { fill: '#1677ff', fontSize: 10 } }}
+              />
+              <YAxis
+                yAxisId="rate"
+                orientation="right"
+                tick={{ fill: '#fa8c16', fontSize: 11 }}
+                domain={[0, 100]}
+                label={{ value: '红盘率%', angle: 90, position: 'insideRight', style: { fill: '#fa8c16', fontSize: 10 } }}
+              />
+              <ReTooltip
+                contentStyle={{ background: '#141414', border: '1px solid #333', borderRadius: 8 }}
+                labelFormatter={(v) => dayjs(v).format('YYYY-MM-DD')}
+                formatter={(value, name) => {
+                  if (name === 'rank') return [`第 ${value} 名`, '排名']
+                  if (name === 'red_rate') return [`${value}%`, '红盘率']
+                  return [value, name]
+                }}
+              />
+              <ReferenceLine y={5} yAxisId="rank" stroke="#52c41a" strokeDasharray="4 4" />
+              <ReferenceLine y={10} yAxisId="rank" stroke="#faad14" strokeDasharray="4 4" />
+              <Line
+                type="monotone"
+                dataKey="rank"
+                yAxisId="rank"
+                stroke="#1677ff"
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#1677ff' }}
+                name="排名"
+              />
+              <Line
+                type="monotone"
+                dataKey="red_rate"
+                yAxisId="rate"
+                stroke="#fa8c16"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                dot={false}
+                name="红盘率"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          {/* Summary stats */}
+          <Row gutter={12} style={{ marginTop: 12 }}>
+            <Col span={8}>
+              <Statistic
+                title="当前排名"
+                value={chartData[chartData.length - 1]?.rank ?? '--'}
+                suffix="名"
+                valueStyle={{ fontSize: 18, color: '#1677ff' }}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="30日最佳"
+                value={Math.min(...chartData.filter(d => d.rank).map(d => d.rank))}
+                suffix="名"
+                valueStyle={{ fontSize: 18, color: '#52c41a' }}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="当前红盘率"
+                value={chartData[chartData.length - 1]?.red_rate ?? '--'}
+                suffix="%"
+                valueStyle={{ fontSize: 18, color: '#fa8c16' }}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
+
+      {driftData && chartData.length === 0 && !driftLoading && (
+        <Empty description={`暂无 "${selectedSector}" 的排名数据`} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+      )}
+    </div>
+  )
+}
+
 // ============================================================
 // Main Page Component
 // ============================================================
@@ -805,6 +960,25 @@ export default function SectorSentimentPage() {
         styles={{ header: { borderBottom: '1px solid #21262d' } }}
       >
         <ConcentrationPanel data={concentration} />
+      </Card>
+
+      {/* =========================================== */}
+      {/* Sector Rank Drift */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <RiseOutlined style={{ marginRight: 8, color: '#1677ff' }} />
+            板块排名漂移图
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              输入板块名称，查看近30日排名变化趋势
+            </span>
+          </span>
+        }
+        style={{ marginTop: 16 }}
+        styles={{ header: { borderBottom: '1px solid #21262d' } }}
+      >
+        <SectorDriftPanel />
       </Card>
 
       {/* Legend */}

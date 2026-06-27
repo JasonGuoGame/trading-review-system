@@ -84,3 +84,26 @@ type SectorSentimentFullResponse struct {
 	Divergence         *DivergenceResponse      `json:"divergence"`
 	Concentration      []ConcentrationItem      `json:"concentration"`
 }
+
+// ============================================================
+// Sector Drift — rank trend for a single sector
+// ============================================================
+
+// SectorDriftPoint is one day's rank/rate for a sector.
+type SectorDriftPoint struct {
+	TradeDate string  `json:"trade_date"`
+	RankPos   *int    `json:"rank_pos"`
+	RedRate   float64 `json:"red_rate"`
+}
+
+// SectorDriftResponse is the rank drift data for a sector.
+type SectorDriftResponse struct {
+	SectorName string             `json:"sector_name"`
+	Days       int                `json:"days"`
+	Points     []SectorDriftPoint `json:"points"`
+}
+
+// SectorListResponse is a simple list of sector names.
+type SectorListResponse struct {
+	Sectors []string `json:"sectors"`
+}

@@ -273,3 +273,43 @@ func (r *SectorSentimentRepository) GetConcentration(tradeDate string) ([]Concen
 	log.Printf("[sector-sentiment] concentration (%s): %d sectors", tradeDate, len(rows))
 	return rows, nil
 }
+
+// ============================================================
+// 6. Sector Drift — rank history for a single sector
+// ============================================================
+
+type SectorDriftRow struct {
+	TradeDate string  `gorm:"column:trade_date"`
+	RankPos   *int    `gorm:"column:rank_pos"`
+	RedRate   float64 `gorm:"column:red_rate"`
+}
+
+func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) ([]SectorDriftRow, error) {
+	sql := `
+		SELECT trade_date, rank_pos, red_rate
+		FROM stk_sector_breadths
+		WHERE sector_name = ? AND sector_type = 'industry'
+		ORDER BY trade_date DESC
+		LIMIT ?
+	`
+	var rows []SectorDriftRow
+	if err := r.db.Raw(sql, sectorName, days).Scan(&rows).Error; err != nil {
+		log.Printf("[sector-sentiment] GetSectorDrift error: %v", err)
+		return nil, err
+	}
+	log.Printf("[sector-sentiment] sector drift for %q: %d days", sectorName, len(rows))
+	return rows, nil
+}
+
+// GetSectorNames returns distinct industry sector names.
+func (r *SectorSentimentRepository) GetSectorNames() ([]string, error) {
+	var names []string
+	err := r.db.Raw(
+		"SELECT DISTINCT sector_name FROM stk_sector_breadths WHERE sector_type = 'industry' ORDER BY sector_name",
+	).Scan(&names).Error
+	if err != nil {
+		log.Printf("[sector-sentiment] GetSectorNames error: %v", err)
+		return nil, err
+	}
+	return names, nil
+}
