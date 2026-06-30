@@ -80,6 +80,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		// Market Breadth
 		api.GET("/market-breadth/:date", handlers.MarketBreadth.GetByDate)
 		api.PUT("/market-breadth/:date", handlers.MarketBreadth.Upsert)
+		api.GET("/market-breadth/top-sectors", handlers.MarketBreadth.GetTopSectorScores)
 
 		// Abnormal Capital
 		api.GET("/abnormal-capital/sectors", handlers.Abnormal.GetSectors)
@@ -126,6 +127,13 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			marketAttack.GET("/top", handlers.MarketAttack.GetTopAttacks)
 			marketAttack.GET("/sector/:name", handlers.MarketAttack.GetSectorDetail)
 			marketAttack.GET("/trend", handlers.MarketAttack.GetSectorTrend)
+		marketAttack.GET("/top-volume", handlers.MarketAttack.GetTopVolume)
+	}
+
+	// RAG AI Analysis
+	rag := api.Group("/rag")
+	{
+		rag.POST("/analyze", handlers.Rag.Analyze)
 	}
 
 	// Chip Monitor

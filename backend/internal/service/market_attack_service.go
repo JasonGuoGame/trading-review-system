@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"strings"
@@ -269,5 +270,160 @@ func (s *MarketAttackService) GetSectorTrend(sectorName string) (*dto.MarketAtta
 	return &dto.MarketAttackTrendResponse{
 		SectorName: sectorName,
 		Trend:      trend,
+	}, nil
+}
+
+// GetTopVolume returns the top 50 stocks by trading amount.
+func (s *MarketAttackService) GetTopVolume(tradeDate string) (*dto.TopVolumeResponse, error) {
+	rows, err := s.repo.GetTopVolumeStocks(tradeDate, 50)
+	if err != nil {
+		return nil, fmt.Errorf("成交量排名查询失败: %w", err)
+	}
+
+	// Collect symbols for batch sector lookup
+	symbols := make([]string, len(rows))
+	for i, row := range rows {
+		symbols[i] = row.Symbol
+	}
+
+	// Batch-fetch sector relations and build per-symbol map.
+	// Sector names are prefixed: "概念-XXX" or "行业-XXX".
+	type sectorGroups struct {
+		concept   string
+		industry  string
+		allConcepts   []string // all concepts for counting
+	allIndustries []string // all industries for counting
+	}
+	sectorMap := make(map[string]*sectorGroups)
+	conceptSet := make(map[string]bool)  // dedup concepts per stock
+	industrySet := make(map[string]bool) // dedup industries per stock
+	if srels, err := s.repo.GetSectorRelations(symbols); err == nil {
+		for _, sr := range srels {
+			name := sr.SectorName
+			// Check blacklist against the name after stripping prefix
+			checkName := name
+			isConcept := strings.HasPrefix(name, "概念-")
+			isIndustry := strings.HasPrefix(name, "行业-")
+			if isConcept {
+				checkName = strings.TrimPrefix(name, "概念-")
+			} else if isIndustry {
+				checkName = strings.TrimPrefix(name, "行业-")
+			}
+			blacklisted := false
+			for _, kw := range s.blacklist {
+				if strings.Contains(checkName, kw) {
+					blacklisted = true
+					break
+				}
+			}
+			if blacklisted {
+				continue
+			}
+			if sectorMap[sr.Symbol] == nil {
+				sectorMap[sr.Symbol] = &sectorGroups{}
+			}
+			sg := sectorMap[sr.Symbol]
+			if isIndustry {
+				if sg.industry == "" {
+					sg.industry = checkName
+				}
+				key := sr.Symbol + "|" + checkName
+				if !industrySet[key] {
+					industrySet[key] = true
+					sg.allIndustries = append(sg.allIndustries, checkName)
+				}
+			} else if isConcept {
+				if sg.concept == "" {
+					sg.concept = checkName
+				}
+				key := sr.Symbol + "|" + checkName
+				if !conceptSet[key] {
+					conceptSet[key] = true
+					sg.allConcepts = append(sg.allConcepts, checkName)
+				}
+			}
+		}
+	}
+
+	// Compute concept + industry rankings first (so we can pick the best per stock)
+	conceptCount := make(map[string]int)
+	industryCount := make(map[string]int)
+	for _, sg := range sectorMap {
+		for _, c := range sg.allConcepts {
+			conceptCount[c]++
+		}
+		for _, ind := range sg.allIndustries {
+			industryCount[ind]++
+		}
+	}
+
+	stocks := make([]dto.TopVolumeStock, len(rows))
+	for i, row := range rows {
+		sg := sectorMap[row.Symbol]
+		sectorStr := ""
+		if sg != nil {
+			// Pick the highest-ranked concept for this stock
+			bestConcept := ""
+			bestCount := -1
+			for _, c := range sg.allConcepts {
+				if conceptCount[c] > bestCount {
+					bestCount = conceptCount[c]
+					bestConcept = c
+				}
+			}
+			parts := []string{}
+			if bestConcept != "" {
+				parts = append(parts, bestConcept)
+			}
+			if sg.industry != "" {
+				parts = append(parts, sg.industry)
+			}
+			sectorStr = strings.Join(parts, " / ")
+		}
+		concepts := []string{}
+		if sg != nil {
+			concepts = sg.allConcepts
+		}
+		stocks[i] = dto.TopVolumeStock{
+			Symbol:       row.Symbol,
+			StockName:    row.StockName,
+			SectorName:   sectorStr,
+			Concepts:     concepts,
+			Close:        row.Close,
+			Volume:       row.Volume,
+			Amount:       row.Amount,
+			TurnoverRate: row.TurnoverRate,
+			PctChange:    row.PctChange,
+		}
+	}
+
+	// Build top N concepts for the response
+	type kv struct {
+		k string
+		v int
+	}
+	buildTopN := func(counts map[string]int, n int) []dto.TopConceptItem {
+		sorted := make([]kv, 0, len(counts))
+		for k, v := range counts {
+			sorted = append(sorted, kv{k, v})
+		}
+		sort.Slice(sorted, func(i, j int) bool { return sorted[i].v > sorted[j].v })
+		if len(sorted) < n {
+			n = len(sorted)
+		}
+		items := make([]dto.TopConceptItem, n)
+		for i := 0; i < n; i++ {
+			items[i] = dto.TopConceptItem{Name: sorted[i].k, Count: sorted[i].v}
+		}
+		return items
+	}
+	topConcepts := buildTopN(conceptCount, 10)
+	topIndustries := buildTopN(industryCount, 10)
+
+	return &dto.TopVolumeResponse{
+		TradeDate:     tradeDate,
+		Stocks:        stocks,
+		TopConcepts:   topConcepts,
+		TopIndustries: topIndustries,
 	}, nil
 }

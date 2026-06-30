@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"trading-review-system/backend/internal/dto"
@@ -65,4 +66,23 @@ func (h *MarketBreadthHandler) Upsert(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "Market breadth saved successfully", Data: req})
+}
+
+// GetTopSectorScores returns the top N sector scores for a given date.
+func (h *MarketBreadthHandler) GetTopSectorScores(c *gin.Context) {
+	tradeDate := c.Query("trade_date")
+	if tradeDate == "" {
+		// Default to today
+		tradeDate = time.Now().Format("2006-01-02")
+	}
+	limit := 3
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 {
+		limit = l
+	}
+	data, err := h.service.GetTopSectorScores(tradeDate, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }

@@ -86,3 +86,18 @@ func (h *MarketAttackHandler) GetSectorTrend(c *gin.Context) {
 		Data:    res,
 	})
 }
+
+// GetTopVolume returns the top 50 stocks by trading amount.
+func (h *MarketAttackHandler) GetTopVolume(c *gin.Context) {
+	tradeDate := c.Query("trade_date")
+	data, err := h.service.GetTopVolume(tradeDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    data,
+	})
+}

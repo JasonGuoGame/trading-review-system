@@ -42,7 +42,7 @@ const StrategyScoreAnalysisDrawer = ({ strategyName, onClose }) => {
   const [selectedStatusCell, setSelectedStatusCell] = useState(null);
   const [selectedRankingStatus, setSelectedRankingStatus] = useState(null);
   const { data, isFetching } = useGetStrategyScoreAnalysisQuery(
-    { strategy: strategyName, days: 30 },
+    { strategy: strategyName, days: 14 },
   );
 
   const cellBin = selectedCell?.bin || '';

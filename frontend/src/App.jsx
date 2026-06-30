@@ -13,6 +13,7 @@ import {
   AimOutlined,
   ReadOutlined,
   CodeOutlined,
+  RobotOutlined,
 } from '@ant-design/icons'
 import Dashboard from './pages/Dashboard'
 import Trades from './pages/Trades'
@@ -27,12 +28,14 @@ import StockPoolPage from './pages/StockPoolPage'
 import ChipMonitorPage from './pages/ChipMonitorPage'
 import SectorSentimentPage from './pages/SectorSentimentPage'
 import ResearchLabPage from './pages/ResearchLabPage'
+import RAGAnalysisPage from './pages/RAGAnalysisPage'
 import TradePlaybook from './pages/TradePlaybook'
 
 const { Sider, Content } = Layout
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
+  { key: '/rag-analysis', icon: <RobotOutlined />, label: 'AI 投研分析' },
   { key: '/stock-pool', icon: <FireOutlined />, label: '股票池' },
   { key: '/trade-playbook', icon: <ReadOutlined />, label: '规则手册' },
   { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
@@ -115,6 +118,7 @@ function App() {
         <Content style={{ minHeight: '100vh' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/rag-analysis" element={<RAGAnalysisPage />} />
             <Route path="/daily-review" element={<DailyReview />} />
             <Route path="/trades" element={<Trades />} />
             <Route path="/trades/new" element={<TradeForm />} />

@@ -6,6 +6,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// Broad indices that should be excluded from sector listings.
+var broadIndexBlacklist = []string{
+	"上证指数", "深证成指", "创业板指", "沪深300", "中证1000",
+}
+
 type SectorSentimentRepository struct {
 	db *gorm.DB
 }
@@ -28,7 +33,7 @@ func (r *SectorSentimentRepository) GetLatestTradeDate() (string, error) {
 
 // ============================================================
 // 1. 连强信号 — Consistent Strength
-//    Sectors with rank_pos <= 10 on 3+ of the last 7 trading days.
+//    Sectors with rank_pos <= 15 on 3+ of the last 7 trading days.
 // ============================================================
 
 type ConsistentStrengthRow struct {
@@ -38,14 +43,15 @@ type ConsistentStrengthRow struct {
 
 func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]ConsistentStrengthRow, error) {
 	sql := `
-		SELECT sector_name, COUNT(*) AS strong_days
-		FROM stk_sector_breadths
-		WHERE trade_date IN (
+		WITH RecentDates AS (
 			SELECT DISTINCT trade_date FROM stk_sector_breadths
 			WHERE trade_date <= ?
 			ORDER BY trade_date DESC LIMIT 7
 		)
-		  AND rank_pos <= 10
+		SELECT sector_name, COUNT(*) AS strong_days
+		FROM stk_sector_breadths
+		WHERE trade_date IN (SELECT trade_date FROM RecentDates)
+		  AND rank_pos <= 15
 		  AND sector_type = 'industry'
 		GROUP BY sector_name
 		HAVING strong_days >= 3
@@ -195,18 +201,19 @@ type DivergenceRow struct {
 
 func (r *SectorSentimentRepository) GetDivergenceTrend(tradeDate string) ([]DivergenceRow, error) {
 	sql := `
-		SELECT
-			trade_date,
-			COALESCE(AVG(CASE WHEN sector_type='broad' THEN red_rate END), 0) AS broad_avg_rate,
-			COALESCE(AVG(CASE WHEN sector_type='industry' THEN red_rate END), 0) AS industry_avg_rate,
-			COUNT(CASE WHEN sector_type='industry' AND red_rate >= 80 THEN 1 END) AS hot_sectors_count,
-			COUNT(CASE WHEN sector_type='industry' THEN 1 END) AS total_sectors
-		FROM stk_sector_breadths
-		WHERE trade_date IN (
+		WITH RecentDates AS (
 			SELECT DISTINCT trade_date FROM stk_sector_breadths
 			WHERE trade_date <= ?
 			ORDER BY trade_date DESC LIMIT 20
 		)
+		SELECT
+			trade_date,
+			COALESCE(AVG(CASE WHEN sector_type='broad' AND sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000') THEN red_rate END), 0) AS broad_avg_rate,
+			COALESCE(AVG(CASE WHEN sector_type='industry' THEN red_rate END), 0) AS industry_avg_rate,
+			COUNT(CASE WHEN sector_type='industry' AND red_rate >= 80 THEN 1 END) AS hot_sectors_count,
+			COUNT(CASE WHEN sector_type='industry' THEN 1 END) AS total_sectors
+		FROM stk_sector_breadths
+		WHERE trade_date IN (SELECT trade_date FROM RecentDates)
 		GROUP BY trade_date
 		ORDER BY trade_date ASC
 	`
@@ -261,6 +268,7 @@ func (r *SectorSentimentRepository) GetConcentration(tradeDate string) ([]Concen
 		SELECT sector_name, red_rate, total_stocks
 		FROM stk_sector_breadths
 		WHERE trade_date = ?
+		  AND sector_type = 'industry'
 		  AND total_stocks >= 20
 		  AND red_rate >= 85
 		ORDER BY red_rate DESC
@@ -301,11 +309,11 @@ func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) 
 	return rows, nil
 }
 
-// GetSectorNames returns distinct industry sector names.
+// GetSectorNames returns distinct industry sector names (excludes broad indices).
 func (r *SectorSentimentRepository) GetSectorNames() ([]string, error) {
 	var names []string
 	err := r.db.Raw(
-		"SELECT DISTINCT sector_name FROM stk_sector_breadths WHERE sector_type = 'industry' ORDER BY sector_name",
+		"SELECT DISTINCT sector_name FROM stk_sector_breadths WHERE sector_type = 'industry' AND sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000') ORDER BY sector_name",
 	).Scan(&names).Error
 	if err != nil {
 		log.Printf("[sector-sentiment] GetSectorNames error: %v", err)

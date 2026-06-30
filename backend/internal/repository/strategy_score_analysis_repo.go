@@ -37,8 +37,13 @@ func mapToScoreAnalysisName(fullName string) string {
 
 func (r *StrategyScoreAnalysisRepository) GetByStrategy(strategyName string, days int) ([]models.StrategyScoreAnalysis, error) {
 	mappedName := mapToScoreAnalysisName(strategyName)
+	if days <= 0 {
+		days = 30
+	}
+
 	var records []models.StrategyScoreAnalysis
 	err := r.db.Where("strategy_name = ?", mappedName).
+		Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
 		Order("trade_date ASC, score_range_start ASC").
 		Find(&records).Error
 	if err != nil {
@@ -52,6 +57,7 @@ func (r *StrategyScoreAnalysisRepository) GetByStrategy(strategyName string, day
 		}
 		if prefix != "" {
 			err = r.db.Where("strategy_name LIKE ?", prefix+"%").
+				Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
 				Order("trade_date ASC, score_range_start ASC").
 				Find(&records).Error
 		}

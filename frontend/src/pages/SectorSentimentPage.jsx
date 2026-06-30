@@ -889,7 +889,7 @@ export default function SectorSentimentPage() {
                 <FireOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
                 连强信号 · 寻找领头羊
                 <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-                  过去7天≥3天排名前10
+                  过去7天≥3天排名前15
                 </span>
               </span>
             }

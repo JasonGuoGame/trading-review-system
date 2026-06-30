@@ -22,3 +22,7 @@ func (s *MarketBreadthService) GetByDate(date time.Time) (*models.MarketBreadth,
 func (s *MarketBreadthService) Upsert(breadth *models.MarketBreadth) error {
 	return s.repo.Upsert(breadth)
 }
+
+func (s *MarketBreadthService) GetTopSectorScores(tradeDate string, limit int) ([]models.StkSectorScore, error) {
+	return s.repo.GetTopSectorScores(tradeDate, limit)
+}

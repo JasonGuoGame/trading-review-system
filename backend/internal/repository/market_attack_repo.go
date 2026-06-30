@@ -32,6 +32,72 @@ func (r *MarketAttackRepository) GetSectorStocks(date, sectorName string) ([]mod
 	return logs, err
 }
 
+// TopVolumeRow is a raw scan row for the top-volume query.
+type TopVolumeRow struct {
+	Symbol       string  `gorm:"column:symbol"`
+	StockName    string  `gorm:"column:stock_name"`
+	Close        float64 `gorm:"column:close"`
+	Volume       int64   `gorm:"column:volume"`
+	Amount       float64 `gorm:"column:amount"`
+	TurnoverRate float64 `gorm:"column:turnover_rate"`
+	PctChange    float64 `gorm:"column:pct_change"`
+}
+
+// SectorRelationRow is a row from stock_sector_relation.
+type SectorRelationRow struct {
+	Symbol     string `gorm:"column:symbol"`
+	SectorName string `gorm:"column:sector_name"`
+}
+
+// GetTopVolumeStocks returns the top N stocks by trading amount for a given date.
+func (r *MarketAttackRepository) GetTopVolumeStocks(tradeDate string, limit int) ([]TopVolumeRow, error) {
+	sql := `
+		SELECT
+			k.symbol,
+			COALESCE(f.stock_name, k.symbol) AS stock_name,
+			k.close,
+			k.volume,
+			k.amount,
+			COALESCE(k.turnover_rate, 0) AS turnover_rate,
+			COALESCE(((k.close - prev.close) / NULLIF(prev.close, 0)) * 100, 0) AS pct_change
+		FROM quant_db.stk_daily_kline k
+		LEFT JOIN quant_db.stk_stock_fund_flow f
+			ON k.symbol COLLATE utf8mb4_unicode_ci = f.symbol COLLATE utf8mb4_unicode_ci
+		   AND k.trade_date = f.trade_date
+		LEFT JOIN quant_db.stk_daily_kline prev
+			ON k.symbol COLLATE utf8mb4_unicode_ci = prev.symbol COLLATE utf8mb4_unicode_ci
+		   AND prev.trade_date = (
+				SELECT DISTINCT trade_date FROM quant_db.stk_daily_kline
+				WHERE trade_date < k.trade_date
+				ORDER BY trade_date DESC LIMIT 1
+		   )
+		WHERE k.trade_date = ?
+		  AND k.symbol NOT IN ('000001.SH','399001.SZ','399006.SZ','000300.SH','000852.SH')
+		ORDER BY k.amount DESC
+		LIMIT ?
+	`
+	var rows []TopVolumeRow
+	if err := r.db.Raw(sql, tradeDate, limit).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// GetSectorRelations returns all sector relations for the given symbols from quant_db.stock_sector_relation.
+func (r *MarketAttackRepository) GetSectorRelations(symbols []string) ([]SectorRelationRow, error) {
+	if len(symbols) == 0 {
+		return nil, nil
+	}
+	var rows []SectorRelationRow
+	err := r.db.Raw(
+		"SELECT symbol, sector_name FROM quant_db.stock_sector_relation WHERE symbol IN ?", symbols,
+	).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (r *MarketAttackRepository) GetHistoricalSectorStats(sectorName string, limit int) ([]models.StkMarketAttackLog, error) {
 	var logs []models.StkMarketAttackLog
 	// We need unique trade_date + sector_name records.

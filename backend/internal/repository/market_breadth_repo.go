@@ -62,3 +62,13 @@ func (r *MarketBreadthRepository) Upsert(breadth *models.MarketBreadth) error {
 	breadth.CreatedAt = existing.CreatedAt
 	return r.db.Save(breadth).Error
 }
+
+// GetTopSectorScores returns the top N sectors by total_score for a given date.
+func (r *MarketBreadthRepository) GetTopSectorScores(tradeDate string, limit int) ([]models.StkSectorScore, error) {
+	var scores []models.StkSectorScore
+	err := r.db.Where("trade_date = ?", tradeDate).
+		Order("total_score DESC").
+		Limit(limit).
+		Find(&scores).Error
+	return scores, err
+}

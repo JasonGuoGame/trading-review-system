@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  useGetMarketBreadthQuery, useGetRecentTradesQuery,
+  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetRecentTradesQuery,
   useGetSectorFundFlowQuery, useGetTopMarketAttacksQuery,
   useGetMarketEarningEffectQuery, useGetStockPoolQuery,
   useGetTradeChecklistQuery, useUpsertTradeChecklistMutation,
@@ -46,10 +46,10 @@ const StepHeader = ({ step, title, icon, passed }) => (
   </div>
 );
 
-const StatCard = ({ label, value, suffix = '', color = '#fff', sub }) => (
-  <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.06)' }}>
-    <Text type="secondary" style={{ fontSize: 11 }}>{label}</Text>
-    <div style={{ fontSize: 24, fontWeight: 700, color, lineHeight: 1.3 }}>{value}{suffix}</div>
+const StatCard = ({ label, value, suffix = '', color = '#fff', sub, small }) => (
+  <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: small ? '8px 10px' : '12px 16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.06)', height: '100%' }}>
+    <Text type="secondary" style={{ fontSize: small ? 10 : 11 }}>{label}</Text>
+    <div style={{ fontSize: small ? 18 : 24, fontWeight: 700, color, lineHeight: 1.3 }}>{value}{suffix}</div>
     {sub && <Text type="secondary" style={{ fontSize: 10 }}>{sub}</Text>}
   </div>
 );
@@ -60,13 +60,15 @@ const TradePlaybook = () => {
   const isToday = selectedDateStr === dayjs().format('YYYY-MM-DD');
   const [checkItems, setCheckItems] = useState({});
 
-  const { data: breadth } = useGetMarketBreadthQuery(selectedDateStr);
-  const { data: recentTrades } = useGetRecentTradesQuery();
-  const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 10, date: selectedDateStr });
-  const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 10, trade_date: selectedDateStr });
-  const { data: stockPool } = useGetStockPoolQuery({ trade_date: selectedDateStr });
-  const { data: earningEffect } = useGetMarketEarningEffectQuery();
-  const { data: checklist, isFetching: checklistLoading } = useGetTradeChecklistQuery(selectedDateStr);
+  const { data: breadth } = useGetMarketBreadthQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
+  const { data: topSectorScoresRaw } = useGetTopSectorScoresQuery({ trade_date: selectedDateStr, limit: 3 }, { refetchOnMountOrArgChange: true });
+  const topSectorScores = Array.isArray(topSectorScoresRaw) ? topSectorScoresRaw : [];
+  const { data: recentTrades } = useGetRecentTradesQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 10, date: selectedDateStr }, { refetchOnMountOrArgChange: true });
+  const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 10, trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
+  const { data: stockPool } = useGetStockPoolQuery({ trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
+  const { data: earningEffect } = useGetMarketEarningEffectQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: checklist, isFetching: checklistLoading } = useGetTradeChecklistQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
   const [saveChecklist, { isLoading: saving }] = useUpsertTradeChecklistMutation();
 
   useEffect(() => {
@@ -104,10 +106,33 @@ const TradePlaybook = () => {
   const limitDown = breadth?.limit_down || 0;
   const totalStocks = advancers + decliners;
   const upRatio = totalStocks > 0 ? (advancers / totalStocks * 100).toFixed(1) : '--';
+  const brokenRate = breadth?.broken_rate ?? 0;
+  const brokenLimit = breadth?.broken_limit ?? 0;
+  const yesterdayLimitUp = breadth?.yesterday_limit_up ?? 0;
+  const limitUpPremium = breadth?.limit_up_premium ?? 0;
+  const firstBoardPremium = breadth?.first_board_premium ?? 0;
+  const secondBoardPremium = breadth?.second_board_premium ?? 0;
+  const thirdBoardPremium = breadth?.third_board_premium ?? 0;
+  const highestBoard = breadth?.highest_board ?? 0;
+  const board2Count = breadth?.board2_count ?? 0;
+  const board3Count = breadth?.board3_count ?? 0;
+  const board4Count = breadth?.board4_count ?? 0;
+  const board5Count = breadth?.board5_count ?? 0;
+  const totalTurnover = breadth?.total_turnover ?? 0;
+  const turnoverChange = breadth?.turnover_change ?? 0;
+  const strongestSector = breadth?.strongest_sector || '--';
+  const strongestScore = breadth?.strongest_sector_score ?? 0;
+  const marketScore = breadth?.market_score ?? 0;
+  const emotionStage = breadth?.emotion_stage || '未知';
+  const tradingLevel = breadth?.trading_level ?? 0;
+  const tradingAdvice = breadth?.trading_advice || '--';
 
   const posAdvice = getPositionAdvice(advancers, decliners);
   const step1Passed = advancers >= 2800;
   const fourKdown = decliners >= 4000;
+
+  const tradingLevelLabel = { 0: '🚫 休息', 1: '⚠️ 谨慎', 2: '✅ 正常', 3: '🔥 积极' }[tradingLevel] || '未知';
+  const emotionColor = { '冰点': 'blue', '修复': 'cyan', '发酵': 'orange', '高潮': 'red', '退潮': 'purple' }[emotionStage] || 'default';
 
   const recentList = Array.isArray(recentTrades) ? recentTrades : [];
   const recentPnls = recentList.slice(0, 10).map((t) => t.total_pnl || 0);
@@ -172,14 +197,69 @@ const TradePlaybook = () => {
             <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
           ) : (
             <>
+              {/* Row 1: Core breadth stats */}
               <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col span={4}><StatCard label="上涨家数" value={advancers.toLocaleString()} color="#52c41a" /></Col>
                 <Col span={4}><StatCard label="下跌家数" value={decliners.toLocaleString()} color="#ff4d4f" /></Col>
                 <Col span={4}><StatCard label="上涨占比" value={upRatio} suffix="%" color={upRatio > 50 ? '#52c41a' : '#ff4d4f'} /></Col>
-                <Col span={4}><StatCard label="涨停" value={limitUp} suffix="家" color="#ff7a45" /></Col>
+                <Col span={4}><StatCard label="涨停" value={limitUp} suffix="家" color="#ff7a45" sub={`炸板${brokenLimit}家`} /></Col>
                 <Col span={4}><StatCard label="跌停" value={limitDown} suffix="家" color="#ff4d4f" /></Col>
-                <Col span={4}><StatCard label="成交额" value={breadth?.total_stocks?.toLocaleString() || '--'} suffix="" sub="待接入" /></Col>
+                <Col span={4}><StatCard label="炸板率" value={brokenRate.toFixed(1)} suffix="%" color={brokenRate > 30 ? '#ff4d4f' : '#52c41a'} /></Col>
               </Row>
+
+              {/* Row 2: Turnover + Market Health */}
+              <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col span={4}><StatCard label="成交额" value={totalTurnover > 0 ? (totalTurnover / 10000).toFixed(2) : '--'} suffix="万亿" color="#1677ff" /></Col>
+                <Col span={4}><StatCard label="成交额环比" value={turnoverChange > 0 ? `+${turnoverChange.toFixed(1)}` : turnoverChange.toFixed(1)} suffix="%" color={turnoverChange >= 0 ? '#52c41a' : '#ff4d4f'} /></Col>
+                <Col span={4}><StatCard label="市场评分" value={marketScore} suffix="/100" color={marketScore >= 60 ? '#52c41a' : marketScore >= 40 ? '#faad14' : '#ff4d4f'} /></Col>
+                <Col span={4}>
+                  <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, height: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>情绪阶段</Text>
+                    <div><Tag color={emotionColor} style={{ fontSize: 14, marginTop: 4 }}>{emotionStage}</Tag></div>
+                  </div>
+                </Col>
+                <Col span={4}>
+                  <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, height: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>交易建议</Text>
+                    <div style={{ marginTop: 4, fontWeight: 600, color: '#fff', fontSize: 12 }}>{tradingLevelLabel}</div>
+                  </div>
+                </Col>
+                <Col span={4}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.06)', height: '100%' }}>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>最强板块 TOP3</Text>
+                  {(topSectorScores && topSectorScores.length > 0) ? topSectorScores.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                      <span style={{ color: '#c9d1d9', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                        {i + 1}. {s.sector_name}
+                      </span>
+                      <span style={{ color: '#faad14', fontSize: 11, fontWeight: 600, flexShrink: 0, marginLeft: 4 }}>{s.total_score?.toFixed(1)}</span>
+                    </div>
+                  )) : <Text type="secondary" style={{ fontSize: 11 }}>{strongestSector !== '--' ? `1. ${strongestSector}` : '暂无数据'}</Text>}
+                </div>
+              </Col>
+              </Row>
+
+              {/* Row 3: Limit-up chain */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Text strong style={{ color: '#fff', fontSize: 13, display: 'block', marginBottom: 10 }}>📊 涨停梯队</Text>
+                <Row gutter={[12, 8]}>
+                  <Col span={4}><StatCard label="昨日涨停溢价" value={limitUpPremium > 0 ? `+${limitUpPremium.toFixed(2)}` : limitUpPremium.toFixed(2)} suffix="%" color={limitUpPremium >= 0 ? '#52c41a' : '#ff4d4f'} small /></Col>
+                  <Col span={4}><StatCard label="首板溢价" value={firstBoardPremium > 0 ? `+${firstBoardPremium.toFixed(2)}` : firstBoardPremium.toFixed(2)} suffix="%" color={firstBoardPremium >= 0 ? '#52c41a' : '#ff4d4f'} small /></Col>
+                  <Col span={4}><StatCard label="二板溢价" value={secondBoardPremium > 0 ? `+${secondBoardPremium.toFixed(2)}` : secondBoardPremium.toFixed(2)} suffix="%" color={secondBoardPremium >= 0 ? '#52c41a' : '#ff4d4f'} small /></Col>
+                  <Col span={4}><StatCard label="三板溢价" value={thirdBoardPremium > 0 ? `+${thirdBoardPremium.toFixed(2)}` : thirdBoardPremium.toFixed(2)} suffix="%" color={thirdBoardPremium >= 0 ? '#52c41a' : '#ff4d4f'} small /></Col>
+                  <Col span={4}><StatCard label="最高连板" value={highestBoard} suffix="板" color="#ff7a45" small /></Col>
+                  <Col span={4}>
+                    <div style={{ textAlign: 'center', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: 6 }}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>板数分布</Text>
+                      <div style={{ color: '#c9d1d9', fontSize: 11, marginTop: 2 }}>
+                        2板{board2Count} · 3板{board3Count} · 4板{board4Count} · 5板+{board5Count}
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* AI Advice + Position */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
                 <Text strong style={{ color: '#fff' }}>自动判定：</Text>
                 <MarketPhaseBadge advancers={advancers} decliners={decliners} limitUp={limitUp} limitDown={limitDown} />
@@ -188,7 +268,11 @@ const TradePlaybook = () => {
                 <Tag color={posAdvice.color === '#52c41a' ? 'success' : posAdvice.color === '#ff4d4f' ? 'error' : 'warning'}>
                   {posAdvice.label}
                 </Tag>
+                {tradingAdvice !== '--' && (
+                  <Tag color="processing" style={{ fontSize: 12, maxWidth: 300 }}>{tradingAdvice}</Tag>
+                )}
               </div>
+
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <Text strong style={{ color: '#fff', fontSize: 13 }}>规则对照：</Text>
                 <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>

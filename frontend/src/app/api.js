@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf', 'TradeChecklist', 'ResearchLab', 'ResearchLabHistory'],
+  tagTypes: ['Trade', 'TradeDetail', 'Tags', 'Dashboard', 'Analysis', 'StockPool', 'MarketAttack', 'MarketEarning', 'StrategyPerf', 'TradeChecklist', 'ResearchLab', 'ResearchLabHistory', 'RagAnalysis'],
   endpoints: (builder) => ({
     // === Trades ===
     getTrades: builder.query({
@@ -252,6 +252,10 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
       providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg }],
     }),
+    getTopSectorScores: builder.query({
+      query: ({ trade_date, limit = 3 }) => `/market-breadth/top-sectors?trade_date=${trade_date}&limit=${limit}`,
+      transformResponse: (res) => res.data,
+    }),
     upsertMarketBreadth: builder.mutation({
       query: ({ date, ...body }) => ({
         url: `/market-breadth/${date}`,
@@ -477,6 +481,10 @@ export const apiSlice = createApi({
       }),
       transformResponse: (res) => res.data,
     }),
+    getTopVolumeStocks: builder.query({
+      query: (tradeDate) => `/market-attack/top-volume?trade_date=${tradeDate}`,
+      transformResponse: (res) => res.data,
+    }),
 
     // === Chip Monitor ===
     getChipLatestDate: builder.query({
@@ -546,6 +554,16 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    // === RAG AI Analysis ===
+    analyzeRag: builder.mutation({
+      query: (body) => ({
+        url: '/rag/analyze',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (res) => res.data,
+    }),
+
     // === Research Lab ===
     getSavedSqls: builder.query({
       query: () => '/research-lab/saved',
@@ -610,6 +628,7 @@ export const {
   useGetDailyReviewQuery,
   useUpsertDailyReviewMutation,
   useGetMarketBreadthQuery,
+  useGetTopSectorScoresQuery,
   useUpsertMarketBreadthMutation,
   useGetAbnormalCapitalQuery,
   useGetAbnormalSectorsQuery,
@@ -638,6 +657,7 @@ export const {
   useGetTopMarketAttacksQuery,
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,
+  useGetTopVolumeStocksQuery,
   useGetChipLatestDateQuery,
   useGetChipRadarQuery,
   useGetChipAccumulationQuery,
@@ -663,4 +683,5 @@ export const {
   useExecuteSqlMutation,
   useGetSqlHistoryQuery,
   useClearSqlHistoryMutation,
+  useAnalyzeRagMutation,
 } = apiSlice

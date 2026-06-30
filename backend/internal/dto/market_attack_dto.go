@@ -65,3 +65,30 @@ type MarketAttackTrendResponse struct {
 	SectorName string            `json:"sector_name"`
 	Trend      []AttackTrendItem `json:"trend"`
 }
+
+// TopVolumeStock represents a single stock in the top-volume ranking.
+type TopVolumeStock struct {
+	Symbol       string   `json:"symbol"`
+	StockName    string   `json:"stock_name"`
+	SectorName   string   `json:"sector_name"`
+	Concepts     []string `json:"concepts"`
+	Close        float64  `json:"close"`
+	Volume       int64    `json:"volume"`
+	Amount       float64  `json:"amount"`
+	TurnoverRate float64  `json:"turnover_rate"`
+	PctChange    float64  `json:"pct_change"`
+}
+
+// TopConceptItem holds a concept name and its occurrence count.
+type TopConceptItem struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// TopVolumeResponse is the API response for top-volume stocks.
+type TopVolumeResponse struct {
+	TradeDate    string           `json:"trade_date"`
+	Stocks       []TopVolumeStock `json:"stocks"`
+	TopConcepts  []TopConceptItem `json:"top_concepts"`
+	TopIndustries []TopConceptItem `json:"top_industries"`
+}
