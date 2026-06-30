@@ -137,3 +137,15 @@ docker compose up --build
 | 前端 Vite build | ✅ 构建成功 (3847 modules, 24.5s) |
 | 后端代码结构 | ✅ 9 个模块, 26 个文件 |
 | Docker Compose 配置 | ✅ 3 个服务 (db + backend + frontend) |
+
+
+# 增量 — 只灌没 embedding 过的新帖子（推荐）
+python backend/scripts/ingest_from_mysql.py
+
+# 全量 — 忽略 embedding_done，重新灌所有
+python backend/scripts/ingest_from_mysql.py --all
+流程：
+
+SELECT ... FROM forum_post WHERE embedding_done IS NULL OR embedding_done = 0 → 只拿新帖
+bge-m3 embedding → 写入 ChromaDB
+UPDATE forum_post SET embedding_done = 1 WHERE id IN (...) → 标记已完成

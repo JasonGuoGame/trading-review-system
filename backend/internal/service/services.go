@@ -1,6 +1,8 @@
 package service
 
 import (
+	"gorm.io/gorm"
+
 	"trading-review-system/backend/internal/config"
 	"trading-review-system/backend/internal/repository"
 )
@@ -27,7 +29,7 @@ type Services struct {
 	Rag             *RagService
 }
 
-func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
+func NewServices(repos *repository.Repositories, cfg *config.Config, db *gorm.DB) *Services {
 	return &Services{
 		Trade:         NewTradeService(repos),
 		Order:         NewOrderService(repos),
@@ -41,12 +43,12 @@ func NewServices(repos *repository.Repositories, cfg *config.Config) *Services {
 		StockPool:     NewStockPoolService(repos.StockPool, repos.FundFlow, repos.Kline),
 		MarketAttack:  NewMarketAttackService(repos.MarketAttack, cfg.SectorBlacklist),
 		MarketEarning: NewMarketEarningService(repos.MarketEarning),
-		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis, repos.StockPool, repos.Kline),
+		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis, repos.StockPool, repos.Kline, repos.MarketBreadth),
 		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis, repos.StockPool, repos.Kline, repos.MarketBreadth),
 		TradeChecklist: NewTradeChecklistService(repos.TradeChecklist),
 		ChipMonitor:     NewChipMonitorService(repos.ChipMonitor),
 		ResearchSql:     NewResearchSqlService(repos.ResearchSql),
 		SectorSentiment: NewSectorSentimentService(repos.SectorSentiment),
-		Rag:             NewRagService(cfg),
+		Rag:             NewRagService(cfg, db),
 	}
 }

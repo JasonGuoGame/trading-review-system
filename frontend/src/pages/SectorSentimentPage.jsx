@@ -235,22 +235,28 @@ function ConsistentStrengthPanel({ data }) {
       render: (name, record) => (
         <span>
           {name}
+          {record.source === 'both' && (
+            <Tag color="gold" style={{ fontSize: 10, marginLeft: 4, padding: '0 4px', lineHeight: '16px' }}>双源</Tag>
+          )}
+          {record.source === 'score' && (
+            <Tag color="purple" style={{ fontSize: 10, marginLeft: 4, padding: '0 4px', lineHeight: '16px' }}>评分</Tag>
+          )}
           {record.strong_days >= 5 && (
-            <Tooltip title="连续5天进入Top10，市场主线！">
+            <Tooltip title="连续5天进入前15，市场主线！">
               <span style={{ marginLeft: 4 }}>
                 {[...Array(3)].map((_, i) => <FireOutlined key={i} style={GOLD_STYLE} />)}
               </span>
             </Tooltip>
           )}
           {record.strong_days === 4 && (
-            <Tooltip title="连续4天进入Top10">
+            <Tooltip title="连续4天进入前15">
               <span style={{ marginLeft: 4 }}>
                 {[...Array(2)].map((_, i) => <FireOutlined key={i} style={FLAME_STYLE} />)}
               </span>
             </Tooltip>
           )}
           {record.strong_days === 3 && (
-            <Tooltip title="连续3天进入Top10">
+            <Tooltip title="连续3天进入前15">
               <FireOutlined style={FLAME_STYLE} />
             </Tooltip>
           )}
@@ -274,17 +280,17 @@ function ConsistentStrengthPanel({ data }) {
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {[...Array(5)].map((_, i) => {
             const r = (ranks && ranks[i]) || null
-            const inTop10 = r !== null && r <= 10
+            const inTop15 = r !== null && r <= 15
             return (
               <Tooltip key={i} title={r !== null ? `排名 ${r}` : '无数据'}>
                 <div style={{
                   width: 28, height: 28, borderRadius: 4,
-                  background: inTop10
+                  background: inTop15
                     ? (i >= 3 ? '#faad14' : '#fa541c')
                     : '#1f1f1f',
-                  border: inTop10 ? '1px solid #fa8c16' : '1px solid #333',
+                  border: inTop15 ? '1px solid #fa8c16' : '1px solid #333',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, color: inTop10 ? '#fff' : '#8c8c8c',
+                  fontSize: 11, color: inTop15 ? '#fff' : '#8c8c8c',
                   transition: 'all 0.3s',
                 }}>
                   {r !== null ? r : '-'}

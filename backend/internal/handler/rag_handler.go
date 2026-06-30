@@ -42,3 +42,35 @@ func (h *RagHandler) Analyze(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: result})
 }
+
+// GetHotTopics handles GET /api/rag/hot-topics.
+func (h *RagHandler) GetHotTopics(c *gin.Context) {
+	topics, err := h.service.GetHotTopics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	if topics == nil {
+		topics = []service.HotTopic{}
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: topics})
+}
+
+// GetAuthors handles GET /api/rag/authors.
+func (h *RagHandler) GetAuthors(c *gin.Context) {
+	authors, err := h.service.GetAuthors()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	if authors == nil {
+		authors = []string{}
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: authors})
+}
+
+// GetSystemStatus handles GET /api/rag/system-status.
+func (h *RagHandler) GetSystemStatus(c *gin.Context) {
+	status := h.service.GetSystemStatus()
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: status})
+}

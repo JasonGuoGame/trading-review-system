@@ -40,14 +40,15 @@ var strategyIcons = map[string]string{
 }
 
 type StrategyPerformanceService struct {
-	repo      *repository.StrategyPerformanceRepository
-	scoreRepo *repository.StrategyScoreAnalysisRepository
-	stockRepo *repository.StockPoolRepository
-	klineRepo *repository.KlineRepository
+	repo             *repository.StrategyPerformanceRepository
+	scoreRepo        *repository.StrategyScoreAnalysisRepository
+	stockRepo        *repository.StockPoolRepository
+	klineRepo        *repository.KlineRepository
+	marketBreadthRepo *repository.MarketBreadthRepository
 }
 
-func NewStrategyPerformanceService(repo *repository.StrategyPerformanceRepository, scoreRepo *repository.StrategyScoreAnalysisRepository, stockRepo *repository.StockPoolRepository, klineRepo *repository.KlineRepository) *StrategyPerformanceService {
-	return &StrategyPerformanceService{repo: repo, scoreRepo: scoreRepo, stockRepo: stockRepo, klineRepo: klineRepo}
+func NewStrategyPerformanceService(repo *repository.StrategyPerformanceRepository, scoreRepo *repository.StrategyScoreAnalysisRepository, stockRepo *repository.StockPoolRepository, klineRepo *repository.KlineRepository, mbRepo *repository.MarketBreadthRepository) *StrategyPerformanceService {
+	return &StrategyPerformanceService{repo: repo, scoreRepo: scoreRepo, stockRepo: stockRepo, klineRepo: klineRepo, marketBreadthRepo: mbRepo}
 }
 
 func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerformanceResponse, error) {
@@ -210,11 +211,15 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 	}
 
 	commentary := generateCommentary(strategies)
+	// Recommendation uses fixed 30-day window for statistical significance
+	recDays := 30
+	recommendation := s.buildAdvancerRecommendation(trendData, recDays)
 
 	return &dto.StrategyPerformanceResponse{
-		Strategies: result,
-		TrendData:  trendData,
-		Commentary: commentary,
+		Strategies:     result,
+		TrendData:      trendData,
+		Commentary:     commentary,
+		Recommendation: recommendation,
 	}, nil
 }
 
@@ -433,4 +438,90 @@ func generateCommentary(strategies []strategyScore) string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// findAdvancerBucket returns the bucket label and boundaries for a given advancers count.
+func findAdvancerBucket(advancers int) (label string, advMin, advMax int) {
+	for _, b := range advancerBuckets {
+		if b.Max == 0 {
+			if advancers >= b.Min {
+				return b.Label, b.Min, b.Max
+			}
+		} else {
+			if advancers >= b.Min && advancers <= b.Max {
+				return b.Label, b.Min, b.Max
+			}
+		}
+	}
+	return "未知", 0, 0
+}
+
+// buildAdvancerRecommendation builds the market-breadth-based strategy recommendation.
+func (s *StrategyPerformanceService) buildAdvancerRecommendation(trendData []dto.StrategyTrendPoint, days int) *dto.AdvancerRecommendation {
+	if s.scoreRepo == nil {
+		return nil
+	}
+
+	// Get today's advancers directly from market_breadths table
+	var advancers int
+	if s.marketBreadthRepo != nil {
+		advancers, _ = s.marketBreadthRepo.GetLatestAdvancers()
+	}
+	// Fallback to trend data if market_breadths query fails
+	if advancers <= 0 && len(trendData) > 0 {
+		advancers = trendData[len(trendData)-1].MarketUpCount
+	}
+	if advancers <= 0 {
+		return nil
+	}
+
+	bucketLabel, advMin, advMax := findAdvancerBucket(advancers)
+	log.Printf("[recommend] today advancers=%d -> bucket=%s (min=%d max=%d)", advancers, bucketLabel, advMin, advMax)
+
+	rows, err := s.scoreRepo.GetStrategiesByAdvancerRange(advMin, advMax, days)
+	if err != nil || len(rows) == 0 {
+		log.Printf("[recommend] GetStrategiesByAdvancerRange error: %v, rows=%d", err, len(rows))
+		return nil
+	}
+
+	// Map short names back to full names
+	shortToFull := map[string]string{}
+	for _, name := range strategyNames {
+		mapped := mapToScoreAnalysisName(name)
+		shortToFull[mapped] = name
+	}
+
+	var ranked []dto.AdvancerRankedStrategy
+	var topStrategy string
+	var topWR, topAR float64
+	var topTrades int
+
+	for i, row := range rows {
+		fullName := shortToFull[row.StrategyName]
+		if fullName == "" {
+			fullName = row.StrategyName
+		}
+		ranked = append(ranked, dto.AdvancerRankedStrategy{
+			Name:        fullName,
+			WinRate:     row.WinRate / 100.0,
+			AvgReturn:   row.AvgReturn,
+			TotalTrades: row.TotalTrades,
+		})
+		if i == 0 {
+			topStrategy = fullName
+			topWR = row.WinRate / 100.0
+			topAR = row.AvgReturn
+			topTrades = row.TotalTrades
+		}
+	}
+
+	return &dto.AdvancerRecommendation{
+		Advancers:      advancers,
+		BucketLabel:    bucketLabel,
+		TopStrategy:    topStrategy,
+		TopWinRate:     topWR,
+		TopAvgReturn:   topAR,
+		TopTotalTrades: topTrades,
+		AllRanked:      ranked,
+	}
 }

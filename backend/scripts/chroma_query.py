@@ -22,7 +22,7 @@ import requests
 import chromadb
 
 # ---- config ----
-CHROMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'v_db_shuimu')
+CHROMA_PATH = os.environ.get("CHROMA_DB_PATH", "C:/ws/trading-polices/v_db_shuimu")
 COLLECTION_NAME = "market_sentiment"
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 EMBED_MODEL = "bge-m3:latest"

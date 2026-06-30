@@ -19,8 +19,26 @@ type StrategyTrendPoint struct {
 	MarketPctChg  float64            `json:"market_pct_chg"`
 }
 
+type AdvancerRecommendation struct {
+	Advancers       int     `json:"advancers"`
+	BucketLabel     string  `json:"bucket_label"`
+	TopStrategy     string  `json:"top_strategy"`
+	TopWinRate      float64 `json:"top_win_rate"`
+	TopAvgReturn    float64 `json:"top_avg_return"`
+	TopTotalTrades  int     `json:"top_total_trades"`
+	AllRanked       []AdvancerRankedStrategy `json:"all_ranked"`
+}
+
+type AdvancerRankedStrategy struct {
+	Name        string  `json:"name"`
+	WinRate     float64 `json:"win_rate"`
+	AvgReturn   float64 `json:"avg_return"`
+	TotalTrades int     `json:"total_trades"`
+}
+
 type StrategyPerformanceResponse struct {
-	Strategies []StrategyLatest       `json:"strategies"`
-	TrendData  []StrategyTrendPoint   `json:"trend_data"`
-	Commentary string                 `json:"commentary"`
+	Strategies     []StrategyLatest         `json:"strategies"`
+	TrendData      []StrategyTrendPoint     `json:"trend_data"`
+	Commentary     string                   `json:"commentary"`
+	Recommendation *AdvancerRecommendation  `json:"recommendation,omitempty"`
 }

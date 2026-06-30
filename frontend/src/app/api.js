@@ -563,6 +563,14 @@ export const apiSlice = createApi({
       }),
       transformResponse: (res) => res.data,
     }),
+    getRagHotTopics: builder.query({
+      query: () => '/rag/hot-topics',
+      transformResponse: (res) => res.data,
+    }),
+    getRagAuthors: builder.query({
+      query: () => '/rag/authors',
+      transformResponse: (res) => res.data,
+    }),
 
     // === Research Lab ===
     getSavedSqls: builder.query({
@@ -684,4 +692,6 @@ export const {
   useGetSqlHistoryQuery,
   useClearSqlHistoryMutation,
   useAnalyzeRagMutation,
+  useGetRagHotTopicsQuery,
+  useGetRagAuthorsQuery,
 } = apiSlice

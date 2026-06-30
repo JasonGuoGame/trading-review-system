@@ -34,36 +34,76 @@ func (r *SectorSentimentRepository) GetLatestTradeDate() (string, error) {
 // ============================================================
 // 1. 连强信号 — Consistent Strength
 //    Sectors with rank_pos <= 15 on 3+ of the last 7 trading days.
+//    Sources: stk_sector_breadths + stk_sector_scores (merged).
 // ============================================================
 
 type ConsistentStrengthRow struct {
 	SectorName string `gorm:"column:sector_name"`
 	StrongDays int    `gorm:"column:strong_days"`
+	Source     string `gorm:"column:source"`
 }
 
 func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]ConsistentStrengthRow, error) {
 	sql := `
-		WITH RecentDates AS (
+		WITH BreadthDates AS (
 			SELECT DISTINCT trade_date FROM stk_sector_breadths
 			WHERE trade_date <= ?
 			ORDER BY trade_date DESC LIMIT 7
+		),
+		ScoreDates AS (
+			SELECT DISTINCT trade_date FROM stk_sector_scores
+			WHERE trade_date <= ?
+			ORDER BY trade_date DESC LIMIT 7
 		)
-		SELECT sector_name, COUNT(*) AS strong_days
-		FROM stk_sector_breadths
-		WHERE trade_date IN (SELECT trade_date FROM RecentDates)
-		  AND rank_pos <= 15
-		  AND sector_type = 'industry'
+		SELECT sector_name, MAX(strong_days) AS strong_days,
+			CASE WHEN SUM(src_b) > 0 AND SUM(src_s) > 0 THEN 'both'
+			     WHEN SUM(src_b) > 0 THEN 'breadth'
+			     ELSE 'score' END AS source
+		FROM (
+			SELECT sector_name, COUNT(*) AS strong_days, 1 AS src_b, 0 AS src_s
+			FROM stk_sector_breadths
+			WHERE trade_date IN (SELECT trade_date FROM BreadthDates)
+			  AND rank_pos <= 15 AND sector_type = 'industry'
+			GROUP BY sector_name
+			HAVING strong_days >= 3
+			UNION ALL
+			SELECT sector_name, COUNT(*) AS strong_days, 0 AS src_b, 1 AS src_s
+			FROM stk_sector_scores
+			WHERE trade_date IN (SELECT trade_date FROM ScoreDates)
+			  AND rank_pos <= 15
+			GROUP BY sector_name
+			HAVING strong_days >= 3
+		) combined
 		GROUP BY sector_name
-		HAVING strong_days >= 3
 		ORDER BY strong_days DESC
 	`
 	var rows []ConsistentStrengthRow
-	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		log.Printf("[sector-sentiment] GetConsistentStrength error: %v", err)
 		return nil, err
 	}
 	log.Printf("[sector-sentiment] consistent strength (%s): %d sectors", tradeDate, len(rows))
 	return rows, nil
+}
+
+func (r *SectorSentimentRepository) GetSectorRecentRanksFromScores(sectorName, tradeDate string) ([]*int, error) {
+	type rankRow struct {
+		RankPos *int `gorm:"column:rank_pos"`
+	}
+	var rows []rankRow
+	sql := `
+		SELECT rank_pos FROM stk_sector_scores
+		WHERE sector_name = ? AND trade_date <= ?
+		ORDER BY trade_date DESC LIMIT 5
+	`
+	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	ranks := make([]*int, len(rows))
+	for i, row := range rows {
+		ranks[len(rows)-1-i] = row.RankPos
+	}
+	return ranks, nil
 }
 
 func (r *SectorSentimentRepository) GetSectorRecentRanks(sectorName, tradeDate string) ([]*int, error) {

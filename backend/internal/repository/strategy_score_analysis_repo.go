@@ -166,3 +166,52 @@ func (r *StrategyScoreAnalysisRepository) getBestBinByName(name string) (*models
 	}
 	return &record, nil
 }
+
+// AdvancerBucketStrategyRow is one strategy's aggregated performance within an advancer count range.
+type AdvancerBucketStrategyRow struct {
+	StrategyName string  `gorm:"column:strategy_name"`
+	WinRate      float64 `gorm:"column:win_rate"`
+	AvgReturn    float64 `gorm:"column:avg_return"`
+	TotalTrades  int     `gorm:"column:total_trades"`
+}
+
+// GetStrategiesByAdvancerRange returns per-strategy aggregated stats for dates where
+// market advancers fall within [advMin, advMax] (advMax=0 means unbounded).
+func (r *StrategyScoreAnalysisRepository) GetStrategiesByAdvancerRange(advMin, advMax int, days int) ([]AdvancerBucketStrategyRow, error) {
+	maxCond := ""
+	args := []interface{}{advMin, days}
+	if advMax > 0 {
+		maxCond = " AND mb.advancers <= ?"
+		args = []interface{}{advMin, advMax, days}
+	}
+	// First aggregate per strategy+date (weighted avg across score bins),
+	// then simple average across dates — matches GetMarketBreadthBuckets logic.
+	sql := `
+		WITH DateAgg AS (
+			SELECT
+				ssa.strategy_name,
+				ssa.trade_date,
+				COALESCE(SUM(ssa.win_rate * ssa.total_trades) / NULLIF(SUM(ssa.total_trades), 0), 0) AS day_win_rate,
+				COALESCE(SUM(ssa.avg_return * ssa.total_trades) / NULLIF(SUM(ssa.total_trades), 0), 0) AS day_avg_return,
+				SUM(ssa.total_trades) AS day_trades
+			FROM strategy_score_analysis ssa
+			JOIN market_breadths mb ON ssa.trade_date = mb.trade_date
+			WHERE mb.advancers >= ?` + maxCond + `
+			  AND ssa.trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+			GROUP BY ssa.strategy_name, ssa.trade_date
+		)
+		SELECT
+			strategy_name,
+			AVG(day_win_rate) AS win_rate,
+			AVG(day_avg_return) AS avg_return,
+			SUM(day_trades) AS total_trades
+		FROM DateAgg
+		GROUP BY strategy_name
+		ORDER BY win_rate DESC
+	`
+	var rows []AdvancerBucketStrategyRow
+	if err := r.db.Raw(sql, args...).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}

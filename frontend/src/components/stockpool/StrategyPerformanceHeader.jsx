@@ -275,6 +275,8 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
   const [analysisStrategy, setAnalysisStrategy] = useState(null);
   const [selectedStrategy, setSelectedStrategy] = useState(null);
 
+  const [collapsedRec, setCollapsedRec] = useState(false);
+
   const [hiddenStrategies, setHiddenStrategies] = useState(() => {
     try {
       const saved = localStorage.getItem('hidden_strategies');
@@ -328,7 +330,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
 
   if (!data) return null;
 
-  const { strategies = [], trend_data = [], commentary = '' } = data;
+  const { strategies = [], trend_data = [], commentary = '', recommendation } = data;
 
   const DELETED_STRATEGIES = ['1. 短线黑马股', '2. 价值长线股'];
 
@@ -561,8 +563,121 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
         </ResponsiveContainer>
       </Card>
 
-      {/* AI Commentary */}
-      {commentary && (
+      {/* Market Breadth Strategy Recommendation */}
+      {recommendation ? (
+        <Card
+          style={{
+            marginTop: 12,
+            background: 'rgba(250,173,20,0.08)',
+            border: '1px solid rgba(250,173,20,0.3)',
+            borderRadius: 10,
+          }}
+          bodyStyle={{ padding: collapsedRec ? '0' : '16px 20px', display: collapsedRec ? 'none' : 'block' }}
+          title={
+            <div
+              onClick={() => setCollapsedRec(!collapsedRec)}
+              style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' }}
+            >
+              <Space>
+                <TrophyOutlined style={{ color: '#faad14' }} />
+                <Text strong style={{ color: '#faad14', fontSize: 14 }}>
+                  大盘红盘率策略推荐
+                </Text>
+                <Tag color="gold" style={{ fontSize: 11 }}>
+                  {recommendation.bucket_label} · {recommendation.advancers}只上涨
+                </Tag>
+                {!collapsedRec && (
+                  <Text strong style={{ color: '#52c41a', fontSize: 13 }}>
+                    🏆 {recommendation.top_strategy} {(recommendation.top_win_rate * 100).toFixed(0)}%
+                  </Text>
+                )}
+              </Space>
+              {collapsedRec ? <DownOutlined style={{ color: '#8b949e' }} /> : <UpOutlined style={{ color: '#8b949e' }} />}
+            </div>
+          }
+        >
+          <div style={{ marginBottom: 12 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
+              当前上涨 {recommendation.advancers} 只股票，处于红盘率分段
+              <Text strong style={{ color: '#faad14' }}> {recommendation.bucket_label} </Text>
+              。在此市场环境下，历史胜率最高的策略是：
+            </Text>
+          </div>
+
+          {/* Top Pick */}
+          <div style={{
+            background: 'rgba(250,173,20,0.12)',
+            border: '1px solid rgba(250,173,20,0.25)',
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 12,
+          }}>
+            <Row align="middle">
+              <Col flex="auto">
+                <Text style={{ color: '#faad14', fontSize: 16, fontWeight: 700 }}>
+                  🏆 {recommendation.top_strategy}
+                </Text>
+                <div style={{ marginTop: 4 }}>
+                  <Text style={{ color: '#52c41a', fontSize: 22, fontWeight: 700 }}>
+                    {(recommendation.top_win_rate * 100).toFixed(0)}%
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12, marginLeft: 6 }}>胜率</Text>
+                  <Text style={{ color: recommendation.top_avg_return > 0 ? '#52c41a' : '#ff4d4f', fontSize: 14, fontWeight: 600, marginLeft: 12 }}>
+                    {recommendation.top_avg_return > 0 ? '+' : ''}{recommendation.top_avg_return.toFixed(2)}%
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>平均收益</Text>
+                </div>
+              </Col>
+              <Col>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  {recommendation.top_total_trades} 笔交易
+                </Text>
+              </Col>
+            </Row>
+          </div>
+
+          {/* All Rankings */}
+          {recommendation.all_ranked && recommendation.all_ranked.length > 1 && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 6 }}>
+                同分段各策略胜率排名：
+              </Text>
+              {recommendation.all_ranked.map((s, i) => {
+                const color = LINE_COLORS[s.name] || '#8b949e';
+                const isTop = i === 0;
+                return (
+                  <div key={s.name} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '4px 8px',
+                    marginBottom: 2,
+                    background: isTop ? 'rgba(250,173,20,0.08)' : 'transparent',
+                    borderRadius: 4,
+                  }}>
+                    <Space size={8}>
+                      <span style={{ color, fontSize: 12, fontWeight: isTop ? 700 : 400 }}>
+                        #{i + 1}
+                      </span>
+                      <span style={{ color: '#c9d1d9', fontSize: 12 }}>
+                        {SHORT_NAMES[s.name] || s.name}
+                      </span>
+                    </Space>
+                    <Space size={16}>
+                      <span style={{ color: '#52c41a', fontSize: 12, fontWeight: 600 }}>
+                        {(s.win_rate * 100).toFixed(0)}%
+                      </span>
+                      <span style={{ color: '#8b949e', fontSize: 11 }}>
+                        {s.total_trades}笔
+                      </span>
+                    </Space>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      ) : commentary ? (
         <Card
           style={{
             marginTop: 12,
@@ -576,7 +691,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
             {commentary}
           </Text>
         </Card>
-      )}
+      ) : null}
 
       {/* Score Analysis Drawer */}
       {analysisStrategy && (

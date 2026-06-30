@@ -33,6 +33,12 @@ type OllamaChatRequest struct {
 	Model    string          `json:"model"`
 	Messages []OllamaMessage `json:"messages"`
 	Stream   bool            `json:"stream"`
+	Options  *OllamaOptions  `json:"options,omitempty"`
+}
+
+// OllamaOptions holds model runtime parameters.
+type OllamaOptions struct {
+	NumCtx int `json:"num_ctx,omitempty"` // context window size
 }
 
 // OllamaMessage is a single message in the Ollama chat payload.
@@ -46,4 +52,18 @@ type OllamaChatResponse struct {
 	Model   string        `json:"model"`
 	Message OllamaMessage `json:"message"`
 	Done    bool          `json:"done"`
+}
+
+// SystemStatusItem is the health status of one dependency.
+type SystemStatusItem struct {
+	Name    string `json:"name"`
+	Status  string `json:"status"` // "ok" | "error"
+	Message string `json:"message"`
+}
+
+// SystemStatusResponse is the aggregated system health check.
+type SystemStatusResponse struct {
+	Ollama    SystemStatusItem `json:"ollama"`
+	ChromaDB  SystemStatusItem `json:"chromadb"`
+	MySQL     SystemStatusItem `json:"mysql"`
 }

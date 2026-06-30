@@ -72,3 +72,14 @@ func (r *MarketBreadthRepository) GetTopSectorScores(tradeDate string, limit int
 		Find(&scores).Error
 	return scores, err
 }
+
+// GetLatestAdvancers returns the advancers count for the most recent trade_date.
+func (r *MarketBreadthRepository) GetLatestAdvancers() (int, error) {
+	var advancers int
+	err := r.db.Model(&models.MarketBreadth{}).
+		Select("advancers").
+		Order("trade_date DESC").
+		Limit(1).
+		Scan(&advancers).Error
+	return advancers, err
+}

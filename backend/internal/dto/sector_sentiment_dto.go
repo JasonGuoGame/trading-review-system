@@ -8,9 +8,10 @@ package dto
 // for 3+ days over the past 7 trading days.
 type ConsistentStrengthItem struct {
 	SectorName string `json:"sector_name"`
-	StrongDays int    `json:"strong_days"` // count of days in top 5
+	StrongDays int    `json:"strong_days"` // count of days in top 15 (max from both sources)
 	// recent_ranks: rank_pos for last 5 trading days (index 0 = oldest, 4 = newest)
 	RecentRanks []*int `json:"recent_ranks"`
+	Source      string `json:"source"` // "breadth", "score", or "both"
 }
 
 // ============================================================

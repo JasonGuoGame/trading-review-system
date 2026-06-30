@@ -134,6 +134,9 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 	rag := api.Group("/rag")
 	{
 		rag.POST("/analyze", handlers.Rag.Analyze)
+		rag.GET("/hot-topics", handlers.Rag.GetHotTopics)
+		rag.GET("/authors", handlers.Rag.GetAuthors)
+		rag.GET("/system-status", handlers.Rag.GetSystemStatus)
 	}
 
 	// Chip Monitor

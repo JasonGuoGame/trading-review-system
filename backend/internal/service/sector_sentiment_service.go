@@ -33,15 +33,23 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 
 	items := make([]dto.ConsistentStrengthItem, len(rows))
 	for i, row := range rows {
-		ranks, err := s.repo.GetSectorRecentRanks(row.SectorName, tradeDate)
-		if err != nil {
-			log.Printf("[sector-sentiment] GetSectorRecentRanks for %q: %v", row.SectorName, err)
+		// Prefer breadth ranks; fall back to scores ranks for score-only sectors
+		var ranks []*int
+		var rankErr error
+		if row.Source == "score" {
+			ranks, rankErr = s.repo.GetSectorRecentRanksFromScores(row.SectorName, tradeDate)
+		} else {
+			ranks, rankErr = s.repo.GetSectorRecentRanks(row.SectorName, tradeDate)
+		}
+		if rankErr != nil {
+			log.Printf("[sector-sentiment] GetSectorRecentRanks for %q (source=%s): %v", row.SectorName, row.Source, rankErr)
 			ranks = make([]*int, 5)
 		}
 		items[i] = dto.ConsistentStrengthItem{
 			SectorName:  row.SectorName,
 			StrongDays:  row.StrongDays,
 			RecentRanks: ranks,
+			Source:      row.Source,
 		}
 	}
 	return items, nil
