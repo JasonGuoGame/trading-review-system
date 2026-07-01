@@ -685,3 +685,73 @@ func (s *StockPoolService) CalculateScore(stock *models.StockPool) {
 		stock.Score = 80
 	}
 }
+
+// GetAdvancerBucketStocks returns all stocks for a strategy on dates where
+// market advancers fall within the given range, enriched with kline performance.
+func (s *StockPoolService) GetAdvancerBucketStocks(strategyName string, advMin, advMax, days int) ([]dto.AdvancerBucketStock, error) {
+	poolType, ok := strategyToPoolType[strategyName]
+	if !ok {
+		poolType = models.StockPoolType(strategyName)
+	}
+
+	stocks, err := s.repo.ListByAdvancerRange(poolType, advMin, advMax, days)
+	if err != nil || len(stocks) == 0 {
+		return []dto.AdvancerBucketStock{}, err
+	}
+
+	// Group by trade_date and collect symbols
+	type dateGroup struct {
+		stocks  []models.StockPool
+		symbols []string
+	}
+	byDate := make(map[string]*dateGroup)
+	var dates []string
+	for _, st := range stocks {
+		ds := st.TradeDate.Format("2006-01-02")
+		if byDate[ds] == nil {
+			byDate[ds] = &dateGroup{}
+			dates = append(dates, ds)
+		}
+		byDate[ds].stocks = append(byDate[ds].stocks, st)
+		byDate[ds].symbols = append(byDate[ds].symbols, st.Symbol)
+	}
+
+	// Fetch klines per date
+	klinesByDate := make(map[string]map[string][]models.StkDailyKline)
+	for _, ds := range dates {
+		dg := byDate[ds]
+		targetDate, err := time.Parse("2006-01-02", ds)
+		if err != nil {
+			continue
+		}
+		klines, err := s.klineRepo.GetNextTwoKlines(dg.symbols, targetDate)
+		if err == nil {
+			klinesByDate[ds] = klines
+		}
+	}
+
+	// Build response
+	var result []dto.AdvancerBucketStock
+	for _, st := range stocks {
+		ds := st.TradeDate.Format("2006-01-02")
+		item := dto.AdvancerBucketStock{
+			Symbol:    st.Symbol,
+			StockName: st.StockName,
+			TradeDate: ds,
+			Score:     st.Score,
+			Status:    st.Status,
+		}
+		if klines, ok := klinesByDate[ds]; ok {
+			if rows := klines[st.Symbol]; len(rows) >= 2 {
+				item.EntryClose = rows[0].Close
+				item.ExitClose = rows[1].Close
+				item.ReturnPct = (rows[1].Close - rows[0].Close) / rows[0].Close * 100
+				item.IsWin = rows[1].Close > rows[0].Close
+				item.HasKline = true
+			}
+		}
+		result = append(result, item)
+	}
+
+	return result, nil
+}

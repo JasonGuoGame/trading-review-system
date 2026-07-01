@@ -200,6 +200,27 @@ func (h *StockPoolHandler) GetStrategyStocks(c *gin.Context) {
 	})
 }
 
+// GetAdvancerBucketStocks handles GET /api/strategy-analysis/advancer-bucket-stocks
+func (h *StockPoolHandler) GetAdvancerBucketStocks(c *gin.Context) {
+	strategy := c.Query("strategy")
+	if strategy == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "strategy is required"})
+		return
+	}
+	advMin, _ := strconv.Atoi(c.DefaultQuery("adv_min", "0"))
+	advMax, _ := strconv.Atoi(c.DefaultQuery("adv_max", "0"))
+	days := 30
+	if d, err := strconv.Atoi(c.DefaultQuery("days", "30")); err == nil && d > 0 {
+		days = d
+	}
+	result, err := h.service.GetAdvancerBucketStocks(strategy, advMin, advMax, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: http.StatusOK, Message: "Success", Data: result})
+}
+
 func (h *StockPoolHandler) GetModeRanking(c *gin.Context) {
 	days := 30
 	if daysStr := c.Query("days"); daysStr != "" {

@@ -139,6 +139,9 @@ docker compose up --build
 | Docker Compose 配置 | ✅ 3 个服务 (db + backend + frontend) |
 
 
+chroma_server.py 在后台跑着（它需要一直运行）。如果重启过电脑，先启动它：
+python backend/scripts/chroma_server.py --port 8001
+
 # 增量 — 只灌没 embedding 过的新帖子（推荐）
 python backend/scripts/ingest_from_mysql.py
 

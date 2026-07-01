@@ -129,6 +129,19 @@ func (r *StockPoolRepository) ListByScoreRange(poolType models.StockPoolType, tr
 	return stocks, err
 }
 
+// ListByAdvancerRange returns stock_pool entries for a pool type, filtered to dates
+// where market_breadths.advancers falls within [advMin, advMax].
+func (r *StockPoolRepository) ListByAdvancerRange(poolType models.StockPoolType, advMin, advMax int, days int) ([]models.StockPool, error) {
+	var stocks []models.StockPool
+	query := r.applyPoolTypeFilter(poolType).
+		Joins("JOIN market_breadths mb ON stock_pools.trade_date = mb.trade_date").
+		Where("mb.advancers >= ? AND mb.advancers <= ?", advMin, advMax).
+		Where("stock_pools.trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
+		Order("stock_pools.trade_date DESC, stock_pools.score DESC")
+	err := query.Find(&stocks).Error
+	return stocks, err
+}
+
 func (r *StockPoolRepository) GetSignals(symbol string) ([]models.StockPoolSignal, error) {
 	var signals []models.StockPoolSignal
 	err := r.db.Where("symbol = ?", symbol).Order("trade_date DESC").Limit(10).Find(&signals).Error

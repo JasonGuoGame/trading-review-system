@@ -518,6 +518,8 @@ func (s *StrategyPerformanceService) buildAdvancerRecommendation(trendData []dto
 	return &dto.AdvancerRecommendation{
 		Advancers:      advancers,
 		BucketLabel:    bucketLabel,
+		AdvMin:         advMin,
+		AdvMax:         advMax,
 		TopStrategy:    topStrategy,
 		TopWinRate:     topWR,
 		TopAvgReturn:   topAR,

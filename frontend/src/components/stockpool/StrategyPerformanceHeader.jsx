@@ -10,8 +10,9 @@ import {
   TrophyOutlined,
   UpOutlined
 } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Spin, Tag, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Spin, Tag, Typography, Modal, Table } from 'antd';
 import React, { useState } from 'react';
+import { useGetAdvancerBucketStocksQuery } from '../../app/api';
 import {
   Bar,
   CartesianGrid,
@@ -276,6 +277,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
   const [selectedStrategy, setSelectedStrategy] = useState(null);
 
   const [collapsedRec, setCollapsedRec] = useState(false);
+  const [bucketDialog, setBucketDialog] = useState(null); // { strategy, advMin, advMax, bucketLabel }
 
   const [hiddenStrategies, setHiddenStrategies] = useState(() => {
     try {
@@ -646,7 +648,15 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
                 const color = LINE_COLORS[s.name] || '#8b949e';
                 const isTop = i === 0;
                 return (
-                  <div key={s.name} style={{
+                  <div key={s.name}
+                    onDoubleClick={() => setBucketDialog({
+                      strategy: s.name,
+                      advMin: recommendation.adv_min,
+                      advMax: recommendation.adv_max,
+                      bucketLabel: recommendation.bucket_label,
+                    })}
+                    title="双击查看该策略在此红盘率区间的所有股票"
+                    style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -654,6 +664,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
                     marginBottom: 2,
                     background: isTop ? 'rgba(250,173,20,0.08)' : 'transparent',
                     borderRadius: 4,
+                    cursor: 'pointer',
                   }}>
                     <Space size={8}>
                       <span style={{ color, fontSize: 12, fontWeight: isTop ? 700 : 400 }}>
@@ -700,7 +711,72 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
           onClose={() => setAnalysisStrategy(null)}
         />
       )}
+
+      {/* Advancer Bucket Stocks Dialog */}
+      <BucketStocksDialog
+        open={bucketDialog}
+        onClose={() => setBucketDialog(null)}
+      />
     </div>
+  );
+};
+
+const BucketStocksDialog = ({ open, onClose }) => {
+  const strategy = open?.strategy || '';
+  const bucketLabel = open?.bucketLabel || '';
+  const { data: stocks = [], isFetching } = useGetAdvancerBucketStocksQuery(
+    { strategy, adv_min: open?.advMin ?? 0, adv_max: open?.advMax ?? 0, days: 30 },
+    { skip: !open },
+  );
+
+  const columns = [
+    { title: '日期', dataIndex: 'trade_date', width: 100 },
+    { title: '代码', dataIndex: 'symbol', width: 90 },
+    { title: '名称', dataIndex: 'stock_name', width: 80 },
+    { title: '评分', dataIndex: 'score', width: 60, align: 'right' },
+    {
+      title: '收益', dataIndex: 'return_pct', width: 80, align: 'right',
+      render: (v, r) => r.has_kline
+        ? <span style={{ color: v > 0 ? '#52c41a' : '#ff4d4f' }}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>
+        : <span style={{ color: '#8b949e' }}>-</span>,
+    },
+    {
+      title: '胜负', dataIndex: 'is_win', width: 60, align: 'center',
+      render: (v, r) => r.has_kline ? (v ? '✅' : '❌') : '-',
+    },
+    { title: '状态', dataIndex: 'status', width: 100 },
+  ];
+
+  const wins = stocks.filter(s => s.is_win).length;
+  const total = stocks.filter(s => s.has_kline).length;
+
+  return (
+    <Modal
+      title={`${SHORT_NAMES[strategy] || strategy} — 红盘率分段 ${bucketLabel} 股票明细`}
+      open={!!open}
+      onCancel={onClose}
+      width={800}
+      footer={null}
+    >
+      {total > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Tag color="gold">{bucketLabel} 红盘率区间</Tag>
+          <Tag color="blue">{stocks.length} 只股票</Tag>
+          <Tag color={wins / total > 0.5 ? 'green' : 'red'}>
+            胜率 {total > 0 ? (wins / total * 100).toFixed(0) : 0}% ({wins}/{total})
+          </Tag>
+        </div>
+      )}
+      <Table
+        columns={columns}
+        dataSource={stocks}
+        rowKey={(r) => `${r.symbol}_${r.trade_date}`}
+        loading={isFetching}
+        size="small"
+        pagination={{ pageSize: 20 }}
+        scroll={{ y: 400 }}
+      />
+    </Modal>
   );
 };
 

@@ -112,6 +112,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		api.GET("/strategy-analysis/trend", handlers.ScoreAnalysis.GetTrend)
 		api.GET("/strategy-analysis/market-breadth-buckets", handlers.ScoreAnalysis.GetMarketBreadthBuckets)
 		api.GET("/strategy-analysis/stocks", handlers.StockPool.GetStrategyStocks)
+	api.GET("/strategy-analysis/advancer-bucket-stocks", handlers.StockPool.GetAdvancerBucketStocks)
 		api.GET("/strategy-analysis/status-heatmap", handlers.StockPool.GetStatusHeatmap)
 		api.GET("/strategy-analysis/mode-ranking", handlers.StockPool.GetModeRanking)
 		api.GET("/strategy-analysis/status-ranking", handlers.StockPool.GetStatusRanking)

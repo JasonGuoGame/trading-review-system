@@ -449,6 +449,14 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    getAdvancerBucketStocks: builder.query({
+      query: (params) => ({
+        url: '/strategy-analysis/advancer-bucket-stocks',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
+
     getStatusScoreTrend: builder.query({
       query: (params) => ({
         url: '/strategy-analysis/status-score-trend',
@@ -660,6 +668,7 @@ export const {
   useGetModeRankingQuery,
   useGetStatusRankingQuery,
   useGetStatusScoreTrendQuery,
+  useGetAdvancerBucketStocksQuery,
   useGetTradeChecklistQuery,
   useUpsertTradeChecklistMutation,
   useGetTopMarketAttacksQuery,

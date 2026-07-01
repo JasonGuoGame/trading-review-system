@@ -22,6 +22,8 @@ type StrategyTrendPoint struct {
 type AdvancerRecommendation struct {
 	Advancers       int     `json:"advancers"`
 	BucketLabel     string  `json:"bucket_label"`
+	AdvMin          int     `json:"adv_min"`
+	AdvMax          int     `json:"adv_max"`
 	TopStrategy     string  `json:"top_strategy"`
 	TopWinRate      float64 `json:"top_win_rate"`
 	TopAvgReturn    float64 `json:"top_avg_return"`
