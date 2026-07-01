@@ -42,8 +42,14 @@ func (r *StrategyScoreAnalysisRepository) GetByStrategy(strategyName string, day
 	}
 
 	var records []models.StrategyScoreAnalysis
+	// Use last N *trading* days (distinct trade_dates), not calendar days
 	err := r.db.Where("strategy_name = ?", mappedName).
-		Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
+		Where(`trade_date IN (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM strategy_score_analysis
+				ORDER BY trade_date DESC LIMIT ?
+			) t
+		)`, days).
 		Order("trade_date ASC, score_range_start ASC").
 		Find(&records).Error
 	if err != nil {
@@ -57,7 +63,12 @@ func (r *StrategyScoreAnalysisRepository) GetByStrategy(strategyName string, day
 		}
 		if prefix != "" {
 			err = r.db.Where("strategy_name LIKE ?", prefix+"%").
-				Where("trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", days).
+				Where(`trade_date IN (
+					SELECT trade_date FROM (
+						SELECT DISTINCT trade_date FROM strategy_score_analysis
+						ORDER BY trade_date DESC LIMIT ?
+					) t
+				)`, days).
 				Order("trade_date ASC, score_range_start ASC").
 				Find(&records).Error
 		}
@@ -197,7 +208,7 @@ func (r *StrategyScoreAnalysisRepository) GetStrategiesByAdvancerRange(advMin, a
 			FROM strategy_score_analysis ssa
 			JOIN market_breadths mb ON ssa.trade_date = mb.trade_date
 			WHERE mb.advancers >= ?` + maxCond + `
-			  AND ssa.trade_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+			  AND ssa.trade_date IN (SELECT trade_date FROM (SELECT DISTINCT trade_date FROM strategy_score_analysis ORDER BY trade_date DESC LIMIT ?) t)
 			GROUP BY ssa.strategy_name, ssa.trade_date
 		)
 		SELECT

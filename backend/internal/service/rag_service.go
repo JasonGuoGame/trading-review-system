@@ -356,9 +356,15 @@ func (s *RagService) buildPrompt(query string, contextStr string, author string,
 		routingHint = "请根据检索到的帖子进行深度分析。如涉及特定股票，归纳利好利空并关注技术位。"
 	}
 
+	today := time.Now().Format("2006-01-02")
+
 	return fmt.Sprintf(`你是一个资深A股量化策略分析师。
 
 只能基于提供的资料分析，不允许编造。如果资料中没有直接答案，诚实说明。
+
+### 核心约束 ###
+1. 今天的日期是 %s。
+2. 资料中越接近今天的言论，参考权重越高。超过30天的旧帖仅作背景参考。
 
 %s
 
@@ -385,7 +391,7 @@ func (s *RagService) buildPrompt(query string, contextStr string, author string,
 2. 当前阶段（启动/加速/分歧/退潮）
 3. 是否可参与（给出明确结论）
 4. 操作建议（短线/中线）
-5. 涉及个股（如有）：列出股票代码/名称及观点方向（看好/看空/中性）`, routingHint, hotSummary, contextStr, query)
+5. 涉及个股（如有）：列出股票代码/名称及观点方向（看好/看空/中性）`, today, routingHint, hotSummary, contextStr, query)
 }
 
 // parseOutput splits the raw LLM output into thinking and report sections.
