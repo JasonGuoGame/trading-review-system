@@ -34,8 +34,9 @@ type ChipStockItem struct {
 	CurrentPrice      float64 `json:"current_price"`        // current_price
 	ChipWidth70       float64 `json:"chip_width70"`         // chip_width70
 	CostProfitPct     float64 `json:"cost_profit_pct"`      // cost_profit_pct
-	ChipResonanceScore int   `json:"chip_resonance_score"`  // computed score
+	ChipResonanceScore int     `json:"chip_resonance_score"`  // computed score
 	ResonanceRating   string  `json:"resonance_rating"`     // star rating
+	ChangePct         *float64 `json:"change_pct"`           // next-day return % (nil if no kline)
 }
 
 // ChipTabResponse wraps results for a single tab

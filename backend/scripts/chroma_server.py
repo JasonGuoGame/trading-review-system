@@ -88,6 +88,16 @@ class ChromaHandler(BaseHTTPRequestHandler):
         else:
             self._send_json(404, {"error": "not found"})
 
+    def do_POST(self):
+        if self.path == '/query':
+            self._handle_query()
+        elif self.path == '/add':
+            self._handle_add()
+        elif self.path == '/reset':
+            self._handle_reset()
+        else:
+            self._send_json(404, {"error": "not found"})
+
     def _decode_body(self, raw: bytes) -> str:
         """Decode request body, trying UTF-8 first, then GBK (Windows compat)."""
         try:
@@ -98,52 +108,84 @@ class ChromaHandler(BaseHTTPRequestHandler):
             except UnicodeDecodeError:
                 return raw.decode('utf-8', errors='replace')
 
-    def do_POST(self):
-        if self.path == '/query':
-            try:
-                length = int(self.headers.get('Content-Length', 0))
-                raw = self.rfile.read(length)
-                body_str = self._decode_body(raw)
-                body = json.loads(body_str)
+    def _handle_query(self):
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            raw = self.rfile.read(length)
+            body_str = self._decode_body(raw)
+            body = json.loads(body_str)
 
-                query_text = body.get('query_text', '')
-                n_results = body.get('n_results', 8)
-                author = body.get('author', '')
+            query_text = body.get('query_text', '')
+            n_results = body.get('n_results', 8)
+            author = body.get('author', '')
 
-                if not query_text:
-                    self._send_json(400, {"error": "query_text is required"})
-                    return
+            if not query_text:
+                self._send_json(400, {"error": "query_text is required"})
+                return
 
-                print(f"[query] text='{query_text[:60]}...' n={n_results} author='{author}'")
+            print(f"[query] text='{query_text[:60]}...' n={n_results} author='{author}'")
 
-                # Embed via bge-m3
-                query_vec = get_embedding(query_text)
+            query_vec = get_embedding(query_text)
+            col = get_collection()
+            kwargs = {"query_embeddings": [query_vec], "n_results": n_results}
+            if author:
+                kwargs["where"] = {"author": author}
+            results = col.query(**kwargs)
 
-                # Query ChromaDB
-                col = get_collection()
-                kwargs = {"query_embeddings": [query_vec], "n_results": n_results}
-                if author:
-                    kwargs["where"] = {"author": author}
+            self._send_json(200, {
+                "documents": results.get("documents", [[]]),
+                "metadatas": results.get("metadatas", [[]]),
+                "distances": results.get("distances", [[]]),
+                "error": None,
+            })
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._send_json(500, {
+                "documents": [[]], "metadatas": [[]], "distances": [[]],
+                "error": str(e),
+            })
 
-                results = col.query(**kwargs)
+    def _handle_add(self):
+        """POST /add — add documents via HTTP (single-process safe)."""
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            raw = self.rfile.read(length)
+            body_str = self._decode_body(raw)
+            body = json.loads(body_str)
+            ids = body.get('ids', [])
+            if not ids:
+                self._send_json(400, {"error": "ids is required"})
+                return
+            col = get_collection()
+            col.add(
+                ids=ids,
+                documents=body.get('documents', []),
+                embeddings=body.get('embeddings', []),
+                metadatas=body.get('metadatas', []),
+            )
+            print(f"[add] ingested {len(ids)} docs, collection now {col.count()}")
+            self._send_json(200, {"status": "ok", "count": len(ids)})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._send_json(500, {"error": str(e)})
 
-                self._send_json(200, {
-                    "documents": results.get("documents", [[]]),
-                    "metadatas": results.get("metadatas", [[]]),
-                    "distances": results.get("distances", [[]]),
-                    "error": None,
-                })
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                self._send_json(500, {
-                    "documents": [[]],
-                    "metadatas": [[]],
-                    "distances": [[]],
-                    "error": str(e),
-                })
-        else:
-            self._send_json(404, {"error": "not found"})
+    def _handle_reset(self):
+        """POST /reset — delete and recreate collection."""
+        global _collection
+        try:
+            _collection = None
+            col = get_collection()
+            client = chromadb.PersistentClient(path=CHROMA_PATH)
+            client.delete_collection(name=COLLECTION_NAME)
+            _collection = client.get_or_create_collection(name=COLLECTION_NAME)
+            print(f"[reset] collection recreated, count: {_collection.count()}")
+            self._send_json(200, {"status": "ok", "count": _collection.count()})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._send_json(500, {"error": str(e)})
 
 
 def main():

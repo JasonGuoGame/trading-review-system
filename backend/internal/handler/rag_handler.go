@@ -64,7 +64,7 @@ func (h *RagHandler) GetAuthors(c *gin.Context) {
 		return
 	}
 	if authors == nil {
-		authors = []string{}
+		authors = []service.AuthorInfo{}
 	}
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: authors})
 }

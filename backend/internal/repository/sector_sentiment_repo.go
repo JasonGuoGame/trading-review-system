@@ -128,7 +128,7 @@ func (r *SectorSentimentRepository) GetSectorRecentRanks(sectorName, tradeDate s
 
 // ============================================================
 // 2. 新面孔信号 — New Faces
-//    Today in top 10, yesterday > 30.
+//    Today in top 10, previous 5 days ALL outside top 30.
 // ============================================================
 
 type NewFaceRow struct {
@@ -142,19 +142,23 @@ func (r *SectorSentimentRepository) GetNewFaces(tradeDate string) ([]NewFaceRow,
 	sql := `
 		SELECT t.sector_name,
 		       t.rank_pos AS today_rank,
-		       COALESCE(y.rank_pos, 999) AS yesterday_rank,
-		       (COALESCE(y.rank_pos, 999) - t.rank_pos) AS rank_jump
+		       COALESCE(y.min_rank, 999) AS yesterday_rank,
+		       (COALESCE(y.min_rank, 999) - t.rank_pos) AS rank_jump
 		FROM stk_sector_breadths t
-		JOIN stk_sector_breadths y
-			ON t.sector_name = y.sector_name COLLATE utf8mb4_unicode_ci
-		   AND y.trade_date = (
+		JOIN (
+			SELECT sector_name, MIN(rank_pos) AS min_rank
+			FROM stk_sector_breadths
+			WHERE trade_date IN (
 				SELECT DISTINCT trade_date FROM stk_sector_breadths
 				WHERE trade_date < ?
-				ORDER BY trade_date DESC LIMIT 1
-		   )
+				ORDER BY trade_date DESC LIMIT 5
+			)
+			AND sector_type = 'industry'
+			GROUP BY sector_name
+			HAVING MIN(rank_pos) > 30
+		) y ON t.sector_name = y.sector_name COLLATE utf8mb4_unicode_ci
 		WHERE t.trade_date = ?
 		  AND t.rank_pos <= 10
-		  AND y.rank_pos > 30
 		  AND t.sector_type = 'industry'
 		ORDER BY rank_jump DESC
 	`

@@ -139,7 +139,7 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 						continue
 					}
 					total++
-					if rows[1].Close >= rows[0].Close {
+					if rows[1].Close > rows[0].Close {
 						wins++
 					}
 				}

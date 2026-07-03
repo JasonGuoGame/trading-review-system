@@ -145,6 +145,9 @@ python backend/scripts/chroma_server.py --port 8001
 # 增量 — 只灌没 embedding 过的新帖子（推荐）
 python backend/scripts/ingest_from_mysql.py
 
+# 增量 — 灌输和重建collection
+python "c:/ws/trading-review-system/backend/scripts/ingest_from_mysql.py" --reset --all 2>&1
+
 # 全量 — 忽略 embedding_done，重新灌所有
 python backend/scripts/ingest_from_mysql.py --all
 流程：

@@ -65,6 +65,10 @@ const commonColumns = (showBehavior, showPeak, showWidth, showDist) => {
       { title: '主力净流入', dataIndex: 'main_net_inflow', width: 100, sorter: (a, b) => a.main_net_inflow - b.main_net_inflow,
         render: (v) => <span style={{ color: v > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}亿</span> },
       { title: '连续流入', dataIndex: 'inflow_days', width: 80, render: (v) => <span style={{ color: v >= 3 ? '#ff4d4f' : '#faad14', fontWeight: 600 }}>{v || 0}天</span> },
+      { title: '涨跌', dataIndex: 'change_pct', width: 80,
+        render: (v) => v != null
+          ? <span style={{ color: v > 0 ? '#ff4d4f' : v < 0 ? '#52c41a' : '#8b949e', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span>
+          : <span style={{ color: '#8b949e' }}>-</span> },
     )
   }
   if (showPeak) {
@@ -73,6 +77,10 @@ const commonColumns = (showBehavior, showPeak, showWidth, showDist) => {
         render: (v) => <span style={{ color: v > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
       { title: '主力成本', dataIndex: 'estimated_main_cost', width: 90, render: (v) => <span style={{ color: '#c9d1d9' }}>{v?.toFixed(2)}</span> },
       { title: '现价', dataIndex: 'current_price', width: 80, render: (v) => <span style={{ color: '#fff' }}>{v?.toFixed(2)}</span> },
+      { title: '涨跌', dataIndex: 'change_pct', width: 80,
+        render: (v) => v != null
+          ? <span style={{ color: v > 0 ? '#ff4d4f' : v < 0 ? '#52c41a' : '#8b949e', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span>
+          : <span style={{ color: '#8b949e' }}>-</span> },
     )
   }
   if (showWidth) {

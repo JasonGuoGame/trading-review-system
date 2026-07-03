@@ -326,7 +326,7 @@ var poolTypeMap = map[string]string{
 }
 
 // computeLiveStats calculates live win rate + avg return for the most recent
-// stock pool entries of the given pool type using kline data.
+// stock pool entries that have complete kline data (yesterday or earlier).
 func (s *StrategyPerformanceService) computeLiveStats(poolType string) (winRate, avgReturn float64, signalCount int) {
 	stocks, err := s.stockRepo.List(models.StockPoolType(poolType), 30, "")
 	if err != nil || len(stocks) == 0 {
@@ -334,66 +334,68 @@ func (s *StrategyPerformanceService) computeLiveStats(poolType string) (winRate,
 		return 0, 0, 0
 	}
 
-	// Find the most recent trade_date among these stocks
-	var latestDate time.Time
+	// Collect distinct trade_dates, newest first
+	dateSet := make(map[string]bool)
 	for _, st := range stocks {
-		if st.TradeDate.After(latestDate) {
-			latestDate = st.TradeDate
+		dateSet[st.TradeDate.Format("2006-01-02")] = true
+	}
+	var dates []string
+	for d := range dateSet {
+		dates = append(dates, d)
+	}
+	sort.Strings(dates)
+	// Try dates newest-first until we find one with valid klines
+	for di := len(dates) - 1; di >= 0; di-- {
+		ds := dates[di]
+		targetDate, _ := time.Parse("2006-01-02", ds)
+
+		// Filter stocks for this date
+		var dateStocks []models.StockPool
+		for _, st := range stocks {
+			if st.TradeDate.Format("2006-01-02") == ds {
+				dateStocks = append(dateStocks, st)
+			}
 		}
-	}
-	if latestDate.IsZero() {
-		return 0, 0, 0
-	}
 
-	// Filter to only the latest date
-	var latestStocks []models.StockPool
-	for _, st := range stocks {
-		if st.TradeDate.Format("2006-01-02") == latestDate.Format("2006-01-02") {
-			latestStocks = append(latestStocks, st)
+		symbols := make([]string, len(dateStocks))
+		for i, st := range dateStocks {
+			symbols[i] = st.Symbol
 		}
-	}
-	if len(latestStocks) == 0 {
-		return 0, 0, 0
-	}
-
-	// Get kline data
-	symbols := make([]string, len(latestStocks))
-	for i, st := range latestStocks {
-		symbols[i] = st.Symbol
-	}
-	klines, err := s.klineRepo.GetNextTwoKlines(symbols, latestDate)
-	if err != nil {
-		log.Printf("[liveStats] poolType=%s: kline query error: %v", poolType, err)
-		return 0, 0, 0
-	}
-
-	var wins int
-	var totalReturn float64
-	var total int
-	for _, st := range latestStocks {
-		rows := klines[st.Symbol]
-		if len(rows) < 2 {
-			log.Printf("[liveStats] poolType=%s symbol=%s: only %d klines (need 2), skipping", poolType, st.Symbol, len(rows))
+		klines, err := s.klineRepo.GetNextTwoKlines(symbols, targetDate)
+		if err != nil {
 			continue
 		}
-		total++
-		returnPct := (rows[1].Close - rows[0].Close) / rows[0].Close * 100
-		totalReturn += returnPct
-		isWin := rows[1].Close > rows[0].Close
-		if isWin {
-			wins++
+
+		var wins int
+		var totalReturn float64
+		var total int
+		for _, st := range dateStocks {
+			rows := klines[st.Symbol]
+			if len(rows) < 2 {
+				continue
+			}
+			total++
+			returnPct := (rows[1].Close - rows[0].Close) / rows[0].Close * 100
+			totalReturn += returnPct
+			isWin := rows[1].Close > rows[0].Close
+			if isWin {
+				wins++
+			}
+			log.Printf("[liveStats] poolType=%s symbol=%s date=%s: entry=%.2f exit=%.2f return=%.2f%% win=%v",
+				poolType, st.Symbol, ds, rows[0].Close, rows[1].Close, returnPct, isWin)
 		}
-		log.Printf("[liveStats] poolType=%s symbol=%s: entry=%.2f exit=%.2f return=%.2f%% win=%v",
-			poolType, st.Symbol, rows[0].Close, rows[1].Close, returnPct, isWin)
+
+		if total > 0 {
+			winRate = float64(wins) / float64(total)
+			avgReturn = totalReturn / float64(total)
+			log.Printf("[liveStats] poolType=%s date=%s FINAL: wins=%d total=%d winRate=%.4f(%.0f%%) avgReturn=%.2f%%",
+				poolType, ds, wins, total, winRate, winRate*100, avgReturn)
+			return winRate, avgReturn, total
+		}
+		// No valid klines for this date, try the previous date
 	}
-	if total == 0 {
-		return 0, 0, 0
-	}
-	winRate = float64(wins) / float64(total)
-	avgReturn = totalReturn / float64(total)
-	log.Printf("[liveStats] poolType=%s FINAL: wins=%d total=%d winRate=%.4f(%.0f%%) avgReturn=%.2f%%",
-		poolType, wins, total, winRate, winRate*100, avgReturn)
-	return winRate, avgReturn, total
+
+	return 0, 0, 0
 }
 
 func generateCommentary(strategies []strategyScore) string {

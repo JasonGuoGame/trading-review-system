@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"time"
 
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/models"
@@ -11,11 +12,12 @@ import (
 )
 
 type ChipMonitorService struct {
-	repo *repository.ChipMonitorRepository
+	repo      *repository.ChipMonitorRepository
+	klineRepo *repository.KlineRepository
 }
 
-func NewChipMonitorService(repo *repository.ChipMonitorRepository) *ChipMonitorService {
-	return &ChipMonitorService{repo: repo}
+func NewChipMonitorService(repo *repository.ChipMonitorRepository, klineRepo *repository.KlineRepository) *ChipMonitorService {
+	return &ChipMonitorService{repo: repo, klineRepo: klineRepo}
 }
 
 // GetLatestTradeDate returns the most recent trade_date in stk_chip_factor.
@@ -45,7 +47,30 @@ func (s *ChipMonitorService) GetAccumulation(tradeDate string) (*dto.ChipTabResp
 		return nil, err
 	}
 	items := buildItems(rows)
+	enrichChangePct(items, rows, tradeDate, s.klineRepo)
 	return &dto.ChipTabResponse{Stocks: items, Total: len(items)}, nil
+}
+
+// enrichChangePct adds next-day return % to each item (nil if no kline available).
+func enrichChangePct(items []dto.ChipStockItem, rows []models.AccumulationRow, tradeDate string, klineRepo *repository.KlineRepository) {
+	targetDate, _ := time.Parse("2006-01-02", tradeDate)
+	if targetDate.IsZero() || klineRepo == nil || len(rows) == 0 {
+		return
+	}
+	symbols := make([]string, len(rows))
+	for i, r := range rows {
+		symbols[i] = r.Symbol
+	}
+	klines, err := klineRepo.GetNextTwoKlines(symbols, targetDate)
+	if err != nil {
+		return
+	}
+	for i := range items {
+		if klines[rows[i].Symbol] != nil && len(klines[rows[i].Symbol]) >= 2 {
+			pct := (klines[rows[i].Symbol][1].Close - klines[rows[i].Symbol][0].Close) / klines[rows[i].Symbol][0].Close * 100
+			items[i].ChangePct = &pct
+		}
+	}
 }
 
 func (s *ChipMonitorService) GetPeakMove(tradeDate string) (*dto.ChipTabResponse, error) {
@@ -54,6 +79,7 @@ func (s *ChipMonitorService) GetPeakMove(tradeDate string) (*dto.ChipTabResponse
 		return nil, err
 	}
 	items := buildItems(rows)
+	enrichChangePct(items, rows, tradeDate, s.klineRepo)
 	return &dto.ChipTabResponse{Stocks: items, Total: len(items)}, nil
 }
 

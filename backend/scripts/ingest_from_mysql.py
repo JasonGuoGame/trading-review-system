@@ -23,6 +23,7 @@ import chromadb
 
 # ---- config ----
 CHROMA_PATH = os.environ.get("CHROMA_DB_PATH", "C:/ws/trading-polices/v_db_shuimu")
+SIDECAR_URL = os.environ.get("CHROMA_SIDECAR_URL", "http://127.0.0.1:8001")
 COLLECTION_NAME = "market_sentiment"
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 EMBED_MODEL = "bge-m3:latest"
@@ -39,7 +40,7 @@ MYSQL_CONFIG = {
 def get_embedding(text: str) -> list:
     url = f"{OLLAMA_URL}/api/embeddings"
     payload = {"model": EMBED_MODEL, "prompt": text[:800]}
-    resp = requests.post(url, json=payload, proxies={'http': None, 'https': None}, timeout=30)
+    resp = requests.post(url, json=payload, proxies={'http': None, 'https': None}, timeout=120)
     resp.raise_for_status()
     return resp.json()['embedding']
 
@@ -105,17 +106,19 @@ def ingest(reset: bool = False, batch_size: int = 20, delay: float = 0.1, all_po
         conn.close()
         return
 
-    # Connect to ChromaDB
-    client = chromadb.PersistentClient(path=CHROMA_PATH)
+    # Reset via HTTP if requested
     if reset:
-        try:
-            client.delete_collection(name=COLLECTION_NAME)
-            print(f"Deleted existing collection '{COLLECTION_NAME}'")
-        except Exception:
-            pass
+        resp = requests.post(f"{SIDECAR_URL}/reset", proxies={'http': None, 'https': None})
+        print(f"Reset collection: {resp.json()}")
 
-    collection = client.get_or_create_collection(name=COLLECTION_NAME)
-    print(f"Collection '{COLLECTION_NAME}' has {collection.count()} documents")
+    # Get current count
+    try:
+        health = requests.get(f"{SIDECAR_URL}/health", proxies={'http': None, 'https': None}).json()
+        print(f"Collection '{COLLECTION_NAME}' has {health.get('count', '?')} documents")
+    except Exception:
+        print("WARNING: sidecar not reachable, falling back to direct ChromaDB")
+        _ingest_direct(posts, conn, reset, batch_size, delay)
+        return
 
     total = len(posts)
     ingested = 0
@@ -129,8 +132,6 @@ def ingest(reset: bool = False, batch_size: int = 20, delay: float = 0.1, all_po
         for post in batch:
             pid = f"mysql_{post['id']}"
             doc_text = build_document(post)
-
-            # Build metadata with all useful fields
             meta = {
                 "author": post.get('author') or '',
                 "title": post.get('title') or '',
@@ -140,8 +141,6 @@ def ingest(reset: bool = False, batch_size: int = 20, delay: float = 0.1, all_po
             }
             if post.get('created_time'):
                 meta["created_time"] = post['created_time']
-
-            # Remove empty string values (ChromaDB doesn't like them)
             meta = {k: v for k, v in meta.items() if v != ''}
 
             vec = get_embedding(doc_text)
@@ -149,26 +148,68 @@ def ingest(reset: bool = False, batch_size: int = 20, delay: float = 0.1, all_po
             documents.append(doc_text)
             embeddings.append(vec)
             metadatas.append(meta)
-
             if delay > 0:
                 time.sleep(delay)
 
         if ids:
-            collection.add(
-                ids=ids,
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
+            resp = requests.post(
+                f"{SIDECAR_URL}/add",
+                json={"ids": ids, "documents": documents, "embeddings": embeddings, "metadatas": metadatas},
+                proxies={'http': None, 'https': None},
             )
-            ingested += len(ids)
-            print(f"  Batch {i // batch_size + 1}: {len(ids)} posts ({ingested}/{total})")
+            if resp.status_code == 200:
+                ingested += len(ids)
+                print(f"  Batch {i // batch_size + 1}: {len(ids)} posts ({ingested}/{total})")
+            else:
+                print(f"  Batch {i // batch_size + 1}: FAILED — {resp.text}")
 
     # Mark posts as embedded in MySQL
     mysql_ids = [p['id'] for p in posts]
     mark_embedded(conn, mysql_ids)
     conn.close()
     print(f"Marked {len(mysql_ids)} posts as embedding_done=1")
-    print(f"\nDone! Collection '{COLLECTION_NAME}' now has {collection.count()} documents.")
+
+    try:
+        health = requests.get(f"{SIDECAR_URL}/health", proxies={'http': None, 'https': None}).json()
+        print(f"Done! Collection now has {health.get('count', '?')} documents.")
+    except Exception:
+        print("Done!")
+
+
+def _ingest_direct(posts, conn, reset, batch_size, delay):
+    """Fallback: direct ChromaDB access (use only if sidecar is down)."""
+    import chromadb as cd
+    client = cd.PersistentClient(path=CHROMA_PATH)
+    if reset:
+        try:
+            client.delete_collection(name=COLLECTION_NAME)
+        except Exception:
+            pass
+    collection = client.get_or_create_collection(name=COLLECTION_NAME)
+    total = len(posts)
+    ingested = 0
+    for i in range(0, total, batch_size):
+        batch = posts[i:i + batch_size]
+        ids, documents, embeddings, metadatas = [], [], [], []
+        for post in batch:
+            pid = f"mysql_{post['id']}"
+            doc_text = build_document(post)
+            meta = {"author": post.get('author') or '', "title": post.get('title') or '',
+                    "topic": post.get('topic') or '', "source": post.get('source') or '', "mysql_id": post['id']}
+            if post.get('created_time'):
+                meta["created_time"] = post['created_time']
+            meta = {k: v for k, v in meta.items() if v != ''}
+            vec = get_embedding(doc_text)
+            ids.append(pid); documents.append(doc_text); embeddings.append(vec); metadatas.append(meta)
+            if delay > 0: time.sleep(delay)
+        if ids:
+            collection.add(ids=ids, documents=documents, embeddings=embeddings, metadatas=metadatas)
+            ingested += len(ids)
+            print(f"  Batch {i // batch_size + 1}: {len(ids)} posts ({ingested}/{total})")
+    mysql_ids = [p['id'] for p in posts]
+    mark_embedded(conn, mysql_ids)
+    conn.close()
+    print(f"Done! Collection has {collection.count()} documents.")
 
 
 if __name__ == "__main__":

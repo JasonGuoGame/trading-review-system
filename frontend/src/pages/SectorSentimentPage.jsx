@@ -914,7 +914,7 @@ export default function SectorSentimentPage() {
                 <RocketOutlined style={{ marginRight: 8, color: '#b37feb' }} />
                 新面孔信号 · 捕捉黑马
                 <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-                  昨日30名外→今日冲进前10
+                  近5天均30名外→今日冲进前10
                 </span>
               </span>
             }

@@ -46,7 +46,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config, db *gorm.DB
 		StrategyPerf:  NewStrategyPerformanceService(repos.StrategyPerf, repos.ScoreAnalysis, repos.StockPool, repos.Kline, repos.MarketBreadth),
 		ScoreAnalysis:  NewStrategyScoreAnalysisService(repos.ScoreAnalysis, repos.StockPool, repos.Kline, repos.MarketBreadth),
 		TradeChecklist: NewTradeChecklistService(repos.TradeChecklist),
-		ChipMonitor:     NewChipMonitorService(repos.ChipMonitor),
+		ChipMonitor:     NewChipMonitorService(repos.ChipMonitor, repos.Kline),
 		ResearchSql:     NewResearchSqlService(repos.ResearchSql),
 		SectorSentiment: NewSectorSentimentService(repos.SectorSentiment),
 		Rag:             NewRagService(cfg, db),

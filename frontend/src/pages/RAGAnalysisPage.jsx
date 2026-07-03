@@ -122,11 +122,18 @@ const RAGAnalysisPage = () => {
               style={{ width: '100%' }}
               options={[
                 { label: '🌐 全场（不限作者）', value: '' },
-                ...authors.map((a) => ({ label: a, value: a })),
+                ...authors.map((a) => {
+                  const typeLabel = a.author_type === 'expert' ? '🧠' : a.author_type === 'indicator' ? '📡' : '💬'
+                  return {
+                    label: `${typeLabel} ${a.author_id} · ${(a.reliability_score || 0).toFixed(0)}%${a.tags ? ' · ' + a.tags : ''}`,
+                    value: a.author_id,
+                  }
+                }),
               ]}
               filterOption={(input, option) =>
                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
               }
+              optionFilterProp="label"
             />
           </Card>
         </Col>

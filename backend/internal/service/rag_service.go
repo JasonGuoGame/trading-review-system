@@ -69,22 +69,29 @@ func (s *RagService) GetHotTopics() ([]HotTopic, error) {
 	return topics, nil
 }
 
-// GetAuthors returns recent distinct authors for the filter dropdown.
-func (s *RagService) GetAuthors() ([]string, error) {
+// AuthorInfo represents a focused author from forum_author_focus.
+type AuthorInfo struct {
+	AuthorID         string  `json:"author_id"`
+	AuthorType       string  `json:"author_type"`       // expert, indicator, noise
+	SpecialFocus     bool    `json:"special_focus"`     // 重点关注
+	ReliabilityScore float64 `json:"reliability_score"` // 0-100
+	Tags             string  `json:"tags"`              // 擅长领域
+}
+
+// GetAuthors returns focused authors from forum_author_focus table.
+func (s *RagService) GetAuthors() ([]AuthorInfo, error) {
 	if s.db == nil {
 		return nil, nil
 	}
-	var authors []string
+	var authors []AuthorInfo
 	err := s.db.Raw(`
-		SELECT author FROM (
-			SELECT DISTINCT author, MAX(id) AS max_id
-			FROM forum_post
-			WHERE author != ''
-			GROUP BY author
-		) t
-		ORDER BY max_id DESC LIMIT 50
+		SELECT author_id, author_type, special_focus, reliability_score, COALESCE(tags, '') AS tags
+		FROM forum_author_focus
+		WHERE special_focus = 1
+		ORDER BY reliability_score DESC
 	`).Scan(&authors).Error
 	if err != nil {
+		log.Printf("[rag] GetAuthors error: %v", err)
 		return nil, err
 	}
 	return authors, nil

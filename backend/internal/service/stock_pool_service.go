@@ -444,6 +444,11 @@ func (s *StockPoolService) GetStatusHeatmap(days int) (*dto.StatusHeatmapRespons
 	}
 	sort.Strings(dates)
 
+	// Keep only last 14 trading days
+	if len(dates) > 14 {
+		dates = dates[len(dates)-14:]
+	}
+
 	statuses := []string{"启动突破", "主升接力"} // fixed order
 
 	var cells []dto.StatusHeatmapCell
