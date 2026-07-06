@@ -140,3 +140,15 @@ func (h *SectorSentimentHandler) GetSectors(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
+
+// GetClimbingSectors returns 暗线挖掘 data.
+func (h *SectorSentimentHandler) GetClimbingSectors(c *gin.Context) {
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetClimbingSectors(tradeDate)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetClimbingSectors error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}

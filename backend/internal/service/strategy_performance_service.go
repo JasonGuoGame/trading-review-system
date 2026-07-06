@@ -112,19 +112,23 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 	// Override latest win rates with live kline data for strategies with stock pools
 	if s.stockRepo != nil && s.klineRepo != nil {
 		for name, poolType := range poolTypeMap {
-			liveWR, liveAR, liveCount := s.computeLiveStats(poolType)
-			if liveCount > 0 {
-				if rec, ok := latestMap[name]; ok {
+			liveWR, liveAR, liveCount, wr30d, count30d := s.computeLiveStats(poolType)
+			if rec, ok := latestMap[name]; ok {
+				if liveCount > 0 {
 					rec.WinRate = liveWR
 					rec.AvgReturn = liveAR
 					rec.SignalCount = liveCount
-					latestMap[name] = rec
-				} else {
-					latestMap[name] = models.StrategyPerformanceHistory{
-						WinRate:     liveWR,
-						AvgReturn:   liveAR,
-						SignalCount: liveCount,
-					}
+				}
+				rec.WinRate30d = wr30d
+				rec.SignalCount30d = count30d
+				latestMap[name] = rec
+			} else if liveCount > 0 || count30d > 0 {
+				latestMap[name] = models.StrategyPerformanceHistory{
+					WinRate:        liveWR,
+					AvgReturn:      liveAR,
+					SignalCount:    liveCount,
+					WinRate30d:     wr30d,
+					SignalCount30d: count30d,
 				}
 			}
 		}
@@ -175,6 +179,8 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 			s.WinRate = rec.WinRate
 			s.AvgReturn = rec.AvgReturn
 			s.SignalCount = rec.SignalCount
+			s.WinRate30d = rec.WinRate30d
+			s.SignalCount30d = rec.SignalCount30d
 			s.BestReturn = rec.BestReturn
 			s.WorstReturn = rec.WorstReturn
 		}
@@ -202,6 +208,8 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 			WinRate:        st.WinRate,
 			AvgReturn:      st.AvgReturn,
 			SignalCount:    st.SignalCount,
+			WinRate30d:     st.WinRate30d,
+			SignalCount30d: st.SignalCount30d,
 			BestReturn:     st.BestReturn,
 			WorstReturn:    st.WorstReturn,
 			Trend:          st.Trend,
@@ -224,15 +232,17 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 }
 
 type strategyScore struct {
-	Name        string
-	WinRate     float64
-	AvgReturn   float64
-	SignalCount int
-	BestReturn  float64
-	WorstReturn float64
-	Trend       string
-	Stability   float64
-	Score       float64
+	Name           string
+	WinRate        float64
+	AvgReturn      float64
+	SignalCount    int
+	WinRate30d     float64
+	SignalCount30d int
+	BestReturn     float64
+	WorstReturn    float64
+	Trend          string
+	Stability      float64
+	Score          float64
 }
 
 func detectTrend(name string, trendData []dto.StrategyTrendPoint) string {
@@ -325,13 +335,14 @@ var poolTypeMap = map[string]string{
 	"GPT资金共振":         "gpt_fund",
 }
 
-// computeLiveStats calculates live win rate + avg return for the most recent
-// stock pool entries that have complete kline data (yesterday or earlier).
-func (s *StrategyPerformanceService) computeLiveStats(poolType string) (winRate, avgReturn float64, signalCount int) {
+// computeLiveStats calculates:
+// - Yesterday's live win rate + avg return (for the card)
+// - 30-day aggregate win rate + total count (across all dates with kline data)
+func (s *StrategyPerformanceService) computeLiveStats(poolType string) (winRate, avgReturn float64, signalCount int, wr30d float64, count30d int) {
 	stocks, err := s.stockRepo.List(models.StockPoolType(poolType), 30, "")
 	if err != nil || len(stocks) == 0 {
 		log.Printf("[liveStats] poolType=%s: no stocks (err=%v, len=%d)", poolType, err, len(stocks))
-		return 0, 0, 0
+		return 0, 0, 0, 0, 0
 	}
 
 	// Collect distinct trade_dates, newest first
@@ -344,12 +355,18 @@ func (s *StrategyPerformanceService) computeLiveStats(poolType string) (winRate,
 		dates = append(dates, d)
 	}
 	sort.Strings(dates)
-	// Try dates newest-first until we find one with valid klines
+
+	// 30-day aggregate: accumulate across ALL dates with valid klines
+	var aggWins, aggTotal int
+	var aggReturn float64
+
+	// Yesterday's stats: find the most recent date with valid klines
+	var foundYesterday bool
+
 	for di := len(dates) - 1; di >= 0; di-- {
 		ds := dates[di]
 		targetDate, _ := time.Parse("2006-01-02", ds)
 
-		// Filter stocks for this date
 		var dateStocks []models.StockPool
 		for _, st := range stocks {
 			if st.TradeDate.Format("2006-01-02") == ds {
@@ -366,36 +383,47 @@ func (s *StrategyPerformanceService) computeLiveStats(poolType string) (winRate,
 			continue
 		}
 
-		var wins int
-		var totalReturn float64
-		var total int
+		var dayWins, dayTotal int
+		var dayReturn float64
 		for _, st := range dateStocks {
 			rows := klines[st.Symbol]
 			if len(rows) < 2 {
 				continue
 			}
-			total++
+			dayTotal++
 			returnPct := (rows[1].Close - rows[0].Close) / rows[0].Close * 100
-			totalReturn += returnPct
-			isWin := rows[1].Close > rows[0].Close
-			if isWin {
-				wins++
+			dayReturn += returnPct
+			if rows[1].Close > rows[0].Close {
+				dayWins++
 			}
-			log.Printf("[liveStats] poolType=%s symbol=%s date=%s: entry=%.2f exit=%.2f return=%.2f%% win=%v",
-				poolType, st.Symbol, ds, rows[0].Close, rows[1].Close, returnPct, isWin)
 		}
 
-		if total > 0 {
-			winRate = float64(wins) / float64(total)
-			avgReturn = totalReturn / float64(total)
-			log.Printf("[liveStats] poolType=%s date=%s FINAL: wins=%d total=%d winRate=%.4f(%.0f%%) avgReturn=%.2f%%",
-				poolType, ds, wins, total, winRate, winRate*100, avgReturn)
-			return winRate, avgReturn, total
+		if dayTotal > 0 {
+			// Accumulate for 30-day stats
+			aggWins += dayWins
+			aggTotal += dayTotal
+			aggReturn += dayReturn
+
+			// Use the newest date with data for "yesterday" stats
+			if !foundYesterday {
+				winRate = float64(dayWins) / float64(dayTotal)
+				avgReturn = dayReturn / float64(dayTotal)
+				signalCount = dayTotal
+				foundYesterday = true
+				log.Printf("[liveStats] poolType=%s yesterday=%s: wins=%d total=%d winRate=%.0f%% avgReturn=%.2f%%",
+					poolType, ds, dayWins, dayTotal, winRate*100, avgReturn)
+			}
 		}
-		// No valid klines for this date, try the previous date
 	}
 
-	return 0, 0, 0
+	if aggTotal > 0 {
+		wr30d = float64(aggWins) / float64(aggTotal)
+		count30d = aggTotal
+		log.Printf("[liveStats] poolType=%s 30d: wins=%d total=%d winRate=%.0f%%",
+			poolType, aggWins, aggTotal, wr30d*100)
+	}
+
+	return winRate, avgReturn, signalCount, wr30d, count30d
 }
 
 func generateCommentary(strategies []strategyScore) string {

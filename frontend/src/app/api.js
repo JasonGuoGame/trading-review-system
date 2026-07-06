@@ -557,6 +557,10 @@ export const apiSlice = createApi({
       query: () => '/sector-sentiment/sectors',
       transformResponse: (res) => res.data,
     }),
+    getClimbingSectors: builder.query({
+      query: () => '/sector-sentiment/climbing-sectors',
+      transformResponse: (res) => res.data,
+    }),
     getSectorDrift: builder.query({
       query: ({ sector_name, days = 30 }) => `/sector-sentiment/sector-drift?sector_name=${encodeURIComponent(sector_name)}&days=${days}`,
       transformResponse: (res) => res.data,
@@ -693,6 +697,7 @@ export const {
   useGetSectorNamesQuery,
   useGetSectorDriftQuery,
   useLazyGetSectorDriftQuery,
+  useGetClimbingSectorsQuery,
   useGetSavedSqlsQuery,
   useCreateSavedSqlMutation,
   useUpdateSavedSqlMutation,

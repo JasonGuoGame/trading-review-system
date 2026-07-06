@@ -7,23 +7,24 @@ package dto
 // ConsistentStrengthItem represents a sector that appeared in top-N ranks
 // for 3+ days over the past 7 trading days.
 type ConsistentStrengthItem struct {
-	SectorName string `json:"sector_name"`
-	StrongDays int    `json:"strong_days"` // count of days in top 15 (max from both sources)
-	// recent_ranks: rank_pos for last 5 trading days (index 0 = oldest, 4 = newest)
-	RecentRanks []*int `json:"recent_ranks"`
-	Source      string `json:"source"` // "breadth", "score", or "both"
+	SectorName  string `json:"sector_name"`
+	StrongDays  int    `json:"strong_days"` // count of days in top 15 (max from both sources)
+	RecentRanks []*int `json:"recent_ranks"` // rank_pos for last 5 trading days (index 0 = oldest, 4 = newest)
+	Source      string `json:"source"` // "sector_score" or "sector_breadth"
+	IsNew       bool   `json:"is_new"` // not in yesterday's list
 }
 
 // ============================================================
 // 2. 新面孔信号 — New Faces
 // ============================================================
 
-// NewFaceItem represents a sector that jumped from rank>30 to top 5 today.
+// NewFaceItem represents a sector that jumped from rank>30 to top 10 today.
 type NewFaceItem struct {
-	SectorName     string `json:"sector_name"`
-	TodayRank      int    `json:"today_rank"`
-	YesterdayRank  int    `json:"yesterday_rank"`
-	RankJump       int    `json:"rank_jump"` // yesterday_rank - today_rank (positive = jumped up)
+	SectorName    string `json:"sector_name"`
+	TodayRank     int    `json:"today_rank"`
+	YesterdayRank int    `json:"yesterday_rank"`
+	RankJump      int    `json:"rank_jump"` // yesterday_rank - today_rank (positive = jumped up)
+	Source        string `json:"source"`    // "sector_score" or "sector_breadth"
 }
 
 // ============================================================
@@ -78,12 +79,13 @@ type ConcentrationItem struct {
 
 // SectorSentimentFullResponse combines all signals.
 type SectorSentimentFullResponse struct {
-	TradeDate        string                    `json:"trade_date"`
+	TradeDate          string                    `json:"trade_date"`
 	ConsistentStrength []ConsistentStrengthItem `json:"consistent_strength"`
 	NewFaces           []NewFaceItem            `json:"new_faces"`
 	IceRecovery        []IceRecoveryItem        `json:"ice_recovery"`
 	Divergence         *DivergenceResponse      `json:"divergence"`
 	Concentration      []ConcentrationItem      `json:"concentration"`
+	ClimbingSectors    []ClimbingSectorItem     `json:"climbing_sectors"`
 }
 
 // ============================================================
@@ -104,7 +106,22 @@ type SectorDriftResponse struct {
 	Points     []SectorDriftPoint `json:"points"`
 }
 
+// ============================================================
+// 6. 暗线挖掘 — Hidden Trend Discovery (Climbing Sectors)
+// ============================================================
+
+// ClimbingSectorItem represents a sector steadily climbing the ranks.
+type ClimbingSectorItem struct {
+	SectorName string  `json:"sector_name"`
+	RankT2     int     `json:"rank_t2"`
+	RankT1     int     `json:"rank_t1"`
+	RankT0     int     `json:"rank_t0"`
+	RankJump   int     `json:"rank_jump"`
+	MoneyT0    float64 `json:"money_t0"`
+}
+
 // SectorListResponse is a simple list of sector names.
 type SectorListResponse struct {
 	Sectors []string `json:"sectors"`
 }
+

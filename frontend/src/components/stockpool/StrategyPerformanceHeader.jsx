@@ -169,7 +169,21 @@ const StrategyCard = ({ s, rank, onAnalyze, isSelected, onSelect, anySelected, o
         <>
           <Row gutter={6}>
             <Col span={12}>
-              <Text type="secondary" style={{ fontSize: 11 }}>胜率</Text>
+              <Text type="secondary" style={{ fontSize: 11 }}>胜率 <span style={{ color: '#6e7681' }}>30日</span></Text>
+              <div style={{ fontSize: 15, fontWeight: 600, color: (s.win_rate_30d || 0) > 0.5 ? '#52c41a' : (s.win_rate_30d || 0) > 0.35 ? '#faad14' : '#ff4d4f' }}>
+                {((s.win_rate_30d || 0) * 100).toFixed(0)}%
+              </div>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary" style={{ fontSize: 11 }}>信号 <span style={{ color: '#6e7681' }}>30日</span></Text>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#c9d1d9' }}>
+                {s.signal_count_30d || 0}
+              </div>
+            </Col>
+          </Row>
+          <Row gutter={6} style={{ marginTop: 4 }}>
+            <Col span={12}>
+              <Text type="secondary" style={{ fontSize: 11 }}>昨日胜率</Text>
               <div style={{ fontSize: 20, fontWeight: 700, color: s.win_rate > 0.5 ? '#52c41a' : s.win_rate > 0.35 ? '#faad14' : '#ff4d4f' }}>
                 {(s.win_rate * 100).toFixed(0)}%
               </div>
@@ -334,7 +348,7 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
 
   const { strategies = [], trend_data = [], commentary = '', recommendation } = data;
 
-  const DELETED_STRATEGIES = ['1. 短线黑马股', '2. 价值长线股'];
+  const DELETED_STRATEGIES = ['1. 短线黑马股'];
 
   const visibleStrategies = strategies.filter((s) => !hiddenStrategies.includes(s.name) && !DELETED_STRATEGIES.includes(s.name));
 

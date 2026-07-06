@@ -163,6 +163,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		sectorSentiment.GET("/concentration", handlers.SectorSentiment.GetConcentration)
 		sectorSentiment.GET("/full-report", handlers.SectorSentiment.GetFullReport)
 		sectorSentiment.GET("/sectors", handlers.SectorSentiment.GetSectors)
+		sectorSentiment.GET("/climbing-sectors", handlers.SectorSentiment.GetClimbingSectors)
 		sectorSentiment.GET("/sector-drift", handlers.SectorSentiment.GetSectorDrift)
 	}
 

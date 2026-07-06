@@ -31,6 +31,16 @@ func (r *SectorSentimentRepository) GetLatestTradeDate() (string, error) {
 	return date, nil
 }
 
+// GetPreviousTradeDate returns the trade_date just before the given one.
+func (r *SectorSentimentRepository) GetPreviousTradeDate(tradeDate string) (string, error) {
+	var date string
+	err := r.db.Raw("SELECT MAX(trade_date) FROM stk_sector_breadths WHERE trade_date < ?", tradeDate).Scan(&date).Error
+	if err != nil {
+		return "", err
+	}
+	return date, nil
+}
+
 // ============================================================
 // 1. 连强信号 — Consistent Strength
 //    Sectors with rank_pos <= 15 on 3+ of the last 7 trading days.
@@ -44,37 +54,17 @@ type ConsistentStrengthRow struct {
 }
 
 func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]ConsistentStrengthRow, error) {
+	// Uses pre-computed persistence_7d and is_leader columns (populated by ETL)
 	sql := `
-		WITH BreadthDates AS (
-			SELECT DISTINCT trade_date FROM stk_sector_breadths
-			WHERE trade_date <= ?
-			ORDER BY trade_date DESC LIMIT 7
-		),
-		ScoreDates AS (
-			SELECT DISTINCT trade_date FROM stk_sector_scores
-			WHERE trade_date <= ?
-			ORDER BY trade_date DESC LIMIT 7
-		)
-		SELECT sector_name, MAX(strong_days) AS strong_days,
-			CASE WHEN SUM(src_b) > 0 AND SUM(src_s) > 0 THEN 'both'
-			     WHEN SUM(src_b) > 0 THEN 'breadth'
-			     ELSE 'score' END AS source
-		FROM (
-			SELECT sector_name, COUNT(*) AS strong_days, 1 AS src_b, 0 AS src_s
-			FROM stk_sector_breadths
-			WHERE trade_date IN (SELECT trade_date FROM BreadthDates)
-			  AND rank_pos <= 15 AND sector_type = 'industry'
-			GROUP BY sector_name
-			HAVING strong_days >= 3
-			UNION ALL
-			SELECT sector_name, COUNT(*) AS strong_days, 0 AS src_b, 1 AS src_s
-			FROM stk_sector_scores
-			WHERE trade_date IN (SELECT trade_date FROM ScoreDates)
-			  AND rank_pos <= 15
-			GROUP BY sector_name
-			HAVING strong_days >= 3
-		) combined
-		GROUP BY sector_name
+		SELECT sector_name, persistence_7d AS strong_days,
+			'sector_score' AS source
+		FROM stk_sector_scores
+		WHERE trade_date = ? AND is_leader = 1
+		UNION ALL
+		SELECT sector_name, persistence_7d AS strong_days,
+			'sector_breadth' AS source
+		FROM stk_sector_breadths
+		WHERE trade_date = ? AND is_leader = 1 AND sector_type = 'industry'
 		ORDER BY strong_days DESC
 	`
 	var rows []ConsistentStrengthRow
@@ -136,31 +126,76 @@ type NewFaceRow struct {
 	TodayRank     int    `gorm:"column:today_rank"`
 	YesterdayRank int    `gorm:"column:yesterday_rank"`
 	RankJump      int    `gorm:"column:rank_jump"`
+	Source        string `gorm:"column:source"` // "sector_score" or "sector_breadth"
 }
 
 func (r *SectorSentimentRepository) GetNewFaces(tradeDate string) ([]NewFaceRow, error) {
+	// Query both stk_sector_scores and stk_sector_breadths, union results
 	sql := `
-		SELECT t.sector_name,
-		       t.rank_pos AS today_rank,
-		       COALESCE(y.min_rank, 999) AS yesterday_rank,
-		       (COALESCE(y.min_rank, 999) - t.rank_pos) AS rank_jump
-		FROM stk_sector_breadths t
-		JOIN (
-			SELECT sector_name, MIN(rank_pos) AS min_rank
-			FROM stk_sector_breadths
-			WHERE trade_date IN (
-				SELECT DISTINCT trade_date FROM stk_sector_breadths
-				WHERE trade_date < ?
-				ORDER BY trade_date DESC LIMIT 5
-			)
-			AND sector_type = 'industry'
+		WITH ScoreDates AS (
+			SELECT DISTINCT trade_date FROM stk_sector_scores
+			WHERE trade_date <= ?
+			ORDER BY trade_date DESC LIMIT 6
+		),
+		ScoreLatest AS (SELECT MAX(trade_date) AS d_today FROM ScoreDates),
+		ScoreHistory AS (
+			SELECT trade_date FROM ScoreDates WHERE trade_date < (SELECT d_today FROM ScoreLatest)
+		),
+		ScoreToday AS (
+			SELECT sector_name, rank_pos AS today_rank
+			FROM stk_sector_scores
+			WHERE trade_date = (SELECT d_today FROM ScoreLatest) AND rank_pos <= 10
+		),
+		ScorePast AS (
+			SELECT sector_name, MIN(rank_pos) AS min_past_rank
+			FROM stk_sector_scores
+			WHERE trade_date IN (SELECT trade_date FROM ScoreHistory)
 			GROUP BY sector_name
-			HAVING MIN(rank_pos) > 30
-		) y ON t.sector_name = y.sector_name COLLATE utf8mb4_unicode_ci
-		WHERE t.trade_date = ?
-		  AND t.rank_pos <= 10
-		  AND t.sector_type = 'industry'
-		ORDER BY rank_jump DESC
+		),
+		ScoreResult AS (
+			SELECT s.sector_name, s.today_rank,
+			       CAST(COALESCE(p.min_past_rank, 999) AS SIGNED) AS yesterday_rank,
+			       CAST(COALESCE(p.min_past_rank, 999) - s.today_rank AS SIGNED) AS rank_jump,
+			       'sector_score' AS source
+			FROM ScoreToday s
+			JOIN ScorePast p ON s.sector_name = p.sector_name
+			WHERE p.min_past_rank > 30
+		),
+		BreadthDates AS (
+			SELECT DISTINCT trade_date FROM stk_sector_breadths
+			WHERE trade_date <= ?
+			ORDER BY trade_date DESC LIMIT 6
+		),
+		BreadthLatest AS (SELECT MAX(trade_date) AS d_today FROM BreadthDates),
+		BreadthHistory AS (
+			SELECT trade_date FROM BreadthDates WHERE trade_date < (SELECT d_today FROM BreadthLatest)
+		),
+		BreadthToday AS (
+			SELECT sector_name, rank_pos AS today_rank
+			FROM stk_sector_breadths
+			WHERE trade_date = (SELECT d_today FROM BreadthLatest)
+			  AND rank_pos <= 10 AND sector_type = 'industry'
+		),
+		BreadthPast AS (
+			SELECT sector_name, MIN(rank_pos) AS min_past_rank
+			FROM stk_sector_breadths
+			WHERE trade_date IN (SELECT trade_date FROM BreadthHistory)
+			  AND sector_type = 'industry'
+			GROUP BY sector_name
+		),
+		BreadthResult AS (
+			SELECT b.sector_name, b.today_rank,
+			       CAST(COALESCE(p.min_past_rank, 999) AS SIGNED) AS yesterday_rank,
+			       CAST(COALESCE(p.min_past_rank, 999) - b.today_rank AS SIGNED) AS rank_jump,
+			       'sector_breadth' AS source
+			FROM BreadthToday b
+			JOIN BreadthPast p ON b.sector_name = p.sector_name
+			WHERE p.min_past_rank > 30
+		)
+		SELECT * FROM ScoreResult
+		UNION ALL
+		SELECT * FROM BreadthResult
+		ORDER BY today_rank ASC
 	`
 	var rows []NewFaceRow
 	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
@@ -350,6 +385,52 @@ func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) 
 		return nil, err
 	}
 	log.Printf("[sector-sentiment] sector drift for %q: %d days", sectorName, len(rows))
+	return rows, nil
+}
+
+// ============================================================
+// 6. 暗线挖掘 — Hidden Trend Discovery (Climbing Sectors)
+// ============================================================
+
+type ClimbingSectorRow struct {
+	SectorName string  `gorm:"column:sector_name"`
+	RankT2     int     `gorm:"column:rank_t2"`
+	RankT1     int     `gorm:"column:rank_t1"`
+	RankT0     int     `gorm:"column:rank_t0"`
+	RankJump   int     `gorm:"column:rank_jump"`
+	MoneyT0    float64 `gorm:"column:money_t0"`
+}
+
+func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]ClimbingSectorRow, error) {
+	sql := `
+		WITH DailyRank AS (
+			SELECT sector_name, trade_date, rank_pos, money_score,
+				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
+			FROM stk_sector_scores
+			WHERE trade_date <= ?
+		),
+		TrendAnalysis AS (
+			SELECT sector_name,
+				MAX(CASE WHEN day_idx = 1 THEN rank_pos END) AS rank_t0,
+				MAX(CASE WHEN day_idx = 2 THEN rank_pos END) AS rank_t1,
+				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2,
+				MAX(CASE WHEN day_idx = 1 THEN money_score END) AS money_t0
+			FROM DailyRank
+			WHERE day_idx <= 3
+			GROUP BY sector_name
+		)
+		SELECT sector_name, rank_t2, rank_t1, rank_t0,
+			(rank_t2 - rank_t0) AS rank_jump, money_t0
+		FROM TrendAnalysis
+		WHERE rank_t0 BETWEEN 11 AND 25
+		  AND rank_t1 < rank_t2
+		  AND rank_t0 < rank_t1
+		ORDER BY rank_jump DESC
+	`
+	var rows []ClimbingSectorRow
+	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
 	return rows, nil
 }
 

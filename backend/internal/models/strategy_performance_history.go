@@ -12,6 +12,8 @@ type StrategyPerformanceHistory struct {
 	WorstReturn   float64   `gorm:"column:worst_return;type:decimal(10,4)" json:"worst_return"`
 	MarketUpCount int       `gorm:"column:market_up_count" json:"market_up_count"`
 	MarketPctChg  float64   `gorm:"column:market_pct_chg;type:decimal(10,4)" json:"market_pct_chg"`
+	WinRate30d     float64 `gorm:"-" json:"win_rate_30d"`           // computed live, not persisted
+	SignalCount30d int     `gorm:"-" json:"signal_count_30d"`       // computed live, not persisted
 }
 
 func (StrategyPerformanceHistory) TableName() string {

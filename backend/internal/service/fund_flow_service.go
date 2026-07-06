@@ -86,6 +86,23 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			continue
 		}
 
+		// Only include sectors whose most recent data is within the lookback window
+		selectedDate, _ := time.Parse("2006-01-02", endDateStr)
+		if !selectedDate.IsZero() {
+			if daysToLookBack == 1 {
+				// 1d: exact date match required
+				if flows[0].TradeDate.Format("2006-01-02") != endDateStr {
+					continue
+				}
+			} else {
+				// 3d/5d: most recent data must be within lookback + 3 day buffer
+				cutoff := selectedDate.AddDate(0, 0, -(daysToLookBack + 3))
+				if flows[0].TradeDate.Before(cutoff) {
+					continue
+				}
+			}
+		}
+
 		todayRate := flows[0].InflowRate
 		leader := flows[0].TopStock
 

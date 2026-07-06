@@ -31,12 +31,20 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 		return nil, fmt.Errorf("连强信号查询失败: %w", err)
 	}
 
+	// Detect new entries (not in yesterday's list)
+	yesterdaySet := make(map[string]bool)
+	if prev, _ := s.repo.GetPreviousTradeDate(tradeDate); prev != "" {
+		prevRows, _ := s.repo.GetConsistentStrength(prev)
+		for _, r := range prevRows {
+			yesterdaySet[r.SectorName] = true
+		}
+	}
+
 	items := make([]dto.ConsistentStrengthItem, len(rows))
 	for i, row := range rows {
-		// Prefer breadth ranks; fall back to scores ranks for score-only sectors
 		var ranks []*int
 		var rankErr error
-		if row.Source == "score" {
+		if row.Source == "sector_score" {
 			ranks, rankErr = s.repo.GetSectorRecentRanksFromScores(row.SectorName, tradeDate)
 		} else {
 			ranks, rankErr = s.repo.GetSectorRecentRanks(row.SectorName, tradeDate)
@@ -50,6 +58,7 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			StrongDays:  row.StrongDays,
 			RecentRanks: ranks,
 			Source:      row.Source,
+			IsNew:       !yesterdaySet[row.SectorName],
 		}
 	}
 	return items, nil
@@ -72,6 +81,7 @@ func (s *SectorSentimentService) GetNewFaces(tradeDate string) ([]dto.NewFaceIte
 			TodayRank:     row.TodayRank,
 			YesterdayRank: row.YesterdayRank,
 			RankJump:      row.RankJump,
+			Source:        row.Source,
 		}
 	}
 	return items, nil
@@ -233,6 +243,12 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		concentration = []dto.ConcentrationItem{}
 	}
 
+	climbing, err := s.GetClimbingSectors(tradeDate)
+	if err != nil {
+		log.Printf("[sector-sentiment] climbing sectors partial error: %v", err)
+		climbing = []dto.ClimbingSectorItem{}
+	}
+
 	return &dto.SectorSentimentFullResponse{
 		TradeDate:          tradeDate,
 		ConsistentStrength: consistent,
@@ -240,7 +256,28 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		IceRecovery:        iceRecovery,
 		Divergence:         divergence,
 		Concentration:      concentration,
+		ClimbingSectors:    climbing,
 	}, nil
+}
+
+// GetClimbingSectors returns sectors steadily climbing the ranks.
+func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.ClimbingSectorItem, error) {
+	rows, err := s.repo.GetClimbingSectors(tradeDate)
+	if err != nil {
+		return nil, fmt.Errorf("暗线挖掘查询失败: %w", err)
+	}
+	items := make([]dto.ClimbingSectorItem, len(rows))
+	for i, row := range rows {
+		items[i] = dto.ClimbingSectorItem{
+			SectorName: row.SectorName,
+			RankT2:     row.RankT2,
+			RankT1:     row.RankT1,
+			RankT0:     row.RankT0,
+			RankJump:   row.RankJump,
+			MoneyT0:    row.MoneyT0,
+		}
+	}
+	return items, nil
 }
 
 // ============================================================

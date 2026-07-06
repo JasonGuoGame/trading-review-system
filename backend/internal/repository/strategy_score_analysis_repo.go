@@ -148,32 +148,32 @@ func (r *StrategyScoreAnalysisRepository) GetDateBreadthData(strategyName string
 }
 
 func (r *StrategyScoreAnalysisRepository) getBestBinByName(name string) (*models.StrategyScoreAnalysis, error) {
-	var latestDate struct {
-		TradeDate string `gorm:"column:trade_date"`
-	}
-	err := r.db.Model(&models.StrategyScoreAnalysis{}).
-		Select("trade_date").
-		Where("strategy_name = ?", name).
-		Order("trade_date DESC").
-		Limit(1).
-		Scan(&latestDate).Error
-	if err != nil {
-		return nil, err
-	}
-	if latestDate.TradeDate == "" {
-		return nil, nil
-	}
-
+	// Aggregate across last 30 trading days, weighted by total_trades
 	var record models.StrategyScoreAnalysis
-	err = r.db.Where("strategy_name = ? AND trade_date = ?", name, latestDate.TradeDate).
-		Order("win_rate DESC").
-		Limit(1).
-		First(&record).Error
+	err := r.db.Raw(`
+		SELECT score_range_start, score_range_end,
+		       SUM(win_rate * total_trades) / NULLIF(SUM(total_trades), 0) AS win_rate,
+		       SUM(total_trades) AS total_trades
+		FROM strategy_score_analysis
+		WHERE strategy_name = ?
+		  AND trade_date IN (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM strategy_score_analysis
+				ORDER BY trade_date DESC LIMIT 30
+			) t
+		  )
+		GROUP BY score_range_start, score_range_end
+		ORDER BY win_rate DESC
+		LIMIT 1
+	`, name).Scan(&record).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, err
+	}
+	if record.TotalTrades == 0 {
+		return nil, nil
 	}
 	return &record, nil
 }

@@ -13,6 +13,7 @@ import {
   WarningOutlined,
   CheckCircleOutlined,
   ExperimentOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -234,32 +235,10 @@ function ConsistentStrengthPanel({ data }) {
       key: 'sector_name',
       render: (name, record) => (
         <span>
+          {record.is_new && (
+            <Tag color="green" style={{ fontSize: 10, marginRight: 4, padding: '0 4px', lineHeight: '16px' }}>NEW</Tag>
+          )}
           {name}
-          {record.source === 'both' && (
-            <Tag color="gold" style={{ fontSize: 10, marginLeft: 4, padding: '0 4px', lineHeight: '16px' }}>双源</Tag>
-          )}
-          {record.source === 'score' && (
-            <Tag color="purple" style={{ fontSize: 10, marginLeft: 4, padding: '0 4px', lineHeight: '16px' }}>评分</Tag>
-          )}
-          {record.strong_days >= 5 && (
-            <Tooltip title="连续5天进入前15，市场主线！">
-              <span style={{ marginLeft: 4 }}>
-                {[...Array(3)].map((_, i) => <FireOutlined key={i} style={GOLD_STYLE} />)}
-              </span>
-            </Tooltip>
-          )}
-          {record.strong_days === 4 && (
-            <Tooltip title="连续4天进入前15">
-              <span style={{ marginLeft: 4 }}>
-                {[...Array(2)].map((_, i) => <FireOutlined key={i} style={FLAME_STYLE} />)}
-              </span>
-            </Tooltip>
-          )}
-          {record.strong_days === 3 && (
-            <Tooltip title="连续3天进入前15">
-              <FireOutlined style={FLAME_STYLE} />
-            </Tooltip>
-          )}
         </span>
       ),
     },
@@ -270,6 +249,14 @@ function ConsistentStrengthPanel({ data }) {
       width: 80,
       align: 'center',
       render: (d) => <b style={{ color: d >= 5 ? '#faad14' : '#fa8c16' }}>{d}天</b>,
+    },
+    {
+      title: '数据源',
+      dataIndex: 'source',
+      key: 'source',
+      width: 70,
+      align: 'center',
+      render: (s) => <Tag color={s === 'sector_score' ? 'purple' : 'blue'}>{s === 'sector_score' ? '评分' : '宽度'}</Tag>,
     },
     {
       title: '近5日排名阶梯',
@@ -349,6 +336,7 @@ function NewFacesPanel({ data }) {
       title: '板块',
       dataIndex: 'sector_name',
       key: 'sector_name',
+      sorter: (a, b) => a.sector_name.localeCompare(b.sector_name, 'zh'),
       render: (name, record) => {
         const isFirstTimer = record.yesterday_rank > 30
         return (
@@ -368,6 +356,7 @@ function NewFacesPanel({ data }) {
       key: 'today_rank',
       width: 80,
       align: 'center',
+      sorter: (a, b) => a.today_rank - b.today_rank,
       render: (r) => <Tag color="gold">🏆 {r}</Tag>,
     },
     {
@@ -376,7 +365,17 @@ function NewFacesPanel({ data }) {
       key: 'yesterday_rank',
       width: 80,
       align: 'center',
+      sorter: (a, b) => a.yesterday_rank - b.yesterday_rank,
       render: (r) => <span style={{ color: '#8c8c8c' }}>{r > 30 ? `${r}名外` : r}</span>,
+    },
+    {
+      title: '数据源',
+      dataIndex: 'source',
+      key: 'source',
+      width: 80,
+      align: 'center',
+      sorter: (a, b) => a.source.localeCompare(b.source),
+      render: (s) => <Tag color={s === 'sector_score' ? 'purple' : 'blue'}>{s === 'sector_score' ? '评分' : '宽度'}</Tag>,
     },
     {
       title: '位次跃升',
@@ -384,6 +383,7 @@ function NewFacesPanel({ data }) {
       key: 'rank_jump',
       width: 120,
       align: 'center',
+      sorter: (a, b) => a.rank_jump - b.rank_jump,
       render: (jump, record) => {
         const isBigJump = jump >= 30
         return (
@@ -418,6 +418,77 @@ function NewFacesPanel({ data }) {
         locale={{ emptyText: '暂无新面孔异动' }}
       />
     </div>
+  )
+}
+
+// ------ 暗线挖掘 (Climbing Sectors) ------
+
+function ClimbingSectorsPanel({ data }) {
+  if (!data || data.length === 0) {
+    return <Empty description="暂无爬坡板块" />
+  }
+
+  const columns = [
+    {
+      title: '板块',
+      dataIndex: 'sector_name',
+      key: 'sector_name',
+    },
+    {
+      title: '前天',
+      dataIndex: 'rank_t2',
+      key: 'rank_t2',
+      width: 60,
+      align: 'center',
+      render: (r) => <span style={{ color: '#8c8c8c' }}>{r}</span>,
+    },
+    {
+      title: '昨天',
+      dataIndex: 'rank_t1',
+      key: 'rank_t1',
+      width: 60,
+      align: 'center',
+      render: (r) => <span style={{ color: '#faad14' }}>{r}</span>,
+    },
+    {
+      title: '今天',
+      dataIndex: 'rank_t0',
+      key: 'rank_t0',
+      width: 60,
+      align: 'center',
+      render: (r) => <Tag color="cyan">{r}</Tag>,
+    },
+    {
+      title: '位次跃升',
+      dataIndex: 'rank_jump',
+      key: 'rank_jump',
+      width: 90,
+      align: 'center',
+      sorter: (a, b) => a.rank_jump - b.rank_jump,
+      render: (jump) => (
+        <span style={{ color: '#13c2c2', fontWeight: 600 }}>
+          <RiseOutlined style={{ marginRight: 4 }} />+{jump}
+        </span>
+      ),
+    },
+    {
+      title: '资金分',
+      dataIndex: 'money_t0',
+      key: 'money_t0',
+      width: 70,
+      align: 'right',
+      render: (v) => <span style={{ color: '#c9d1d9' }}>{v?.toFixed(1)}</span>,
+    },
+  ]
+
+  return (
+    <Table
+      dataSource={data}
+      columns={columns}
+      rowKey="sector_name"
+      size="small"
+      pagination={false}
+    />
   )
 }
 
@@ -826,6 +897,7 @@ export default function SectorSentimentPage() {
     ice_recovery: iceRecovery = [],
     divergence,
     concentration = [],
+    climbing_sectors: climbingSectors = [],
   } = data
 
   return (
@@ -925,6 +997,30 @@ export default function SectorSentimentPage() {
           </Card>
         </Col>
       </Row>
+
+      {/* =========================================== */}
+      {/* MIDDLE ROW 2: 暗线挖掘 */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <EyeOutlined style={{ marginRight: 8, color: '#13c2c2' }} />
+            暗线挖掘 · 二梯队爬坡
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              11-25名区间连续3天排名攀升
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{
+          header: {
+            borderBottom: '1px solid #21262d',
+            background: 'linear-gradient(90deg, rgba(19,194,194,0.06) 0%, rgba(82,196,26,0.04) 100%)',
+          },
+        }}
+      >
+        <ClimbingSectorsPanel data={climbingSectors} />
+      </Card>
 
       {/* =========================================== */}
       {/* BOTTOM: 冰点回升信号 (破冰) */}

@@ -2,9 +2,11 @@ package dto
 
 type StrategyLatest struct {
 	Name              string  `json:"name"`
-	WinRate           float64 `json:"win_rate"`
-	AvgReturn         float64 `json:"avg_return"`
-	SignalCount       int     `json:"signal_count"`
+	WinRate           float64 `json:"win_rate"`            // yesterday's live win rate
+	AvgReturn         float64 `json:"avg_return"`          // yesterday's live avg return
+	SignalCount       int     `json:"signal_count"`        // yesterday's stock count
+	WinRate30d        float64 `json:"win_rate_30d"`        // last 30 trading days win rate
+	SignalCount30d    int     `json:"signal_count_30d"`    // last 30 trading days stock count
 	BestReturn        float64 `json:"best_return"`
 	WorstReturn       float64 `json:"worst_return"`
 	Trend             string  `json:"trend"`

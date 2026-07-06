@@ -1,6 +1,7 @@
 import { Tabs } from 'antd';
 
 const TAB_CONFIG = [
+  { key: 'long', emoji: '🌊', label: '价值长线' },
   { key: 'gpt_fund', emoji: '🤖', label: 'GPT资金共振' },
   { key: 'four_dim', emoji: '📡', label: '四维共振' },
   { key: 'macd_boll', emoji: '🔥', label: '0轴金叉' },

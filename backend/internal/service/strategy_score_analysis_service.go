@@ -199,9 +199,9 @@ func (s *StrategyScoreAnalysisService) GetStrategyAnalysis(strategyName string, 
 		}
 		bins = append(bins, summary)
 
-		score := avgWR*0.6 + stability*0.4
-		if score > bestScore {
-			bestScore = score
+		// Best bin: highest win rate (min 10 trades to avoid small-sample bias)
+		if avgWR > bestScore && ba.trades >= 10 {
+			bestScore = avgWR
 			copy := summary
 			bestBin = &copy
 		}
