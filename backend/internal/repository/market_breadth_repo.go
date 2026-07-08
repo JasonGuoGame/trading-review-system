@@ -73,6 +73,32 @@ func (r *MarketBreadthRepository) GetTopSectorScores(tradeDate string, limit int
 	return scores, err
 }
 
+// MarketBreadthSnapshot holds date-level market breadth summary.
+type MarketBreadthSnapshot struct {
+	Advancers int
+	UpRatio   float64
+}
+
+// GetBreadthSnapshots returns advancers and up_ratio for the given dates.
+func (r *MarketBreadthRepository) GetBreadthSnapshots(dates []string) (map[string]MarketBreadthSnapshot, error) {
+	if len(dates) == 0 {
+		return map[string]MarketBreadthSnapshot{}, nil
+	}
+	var rows []models.MarketBreadth
+	err := r.db.Where("trade_date IN ?", dates).Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]MarketBreadthSnapshot, len(rows))
+	for _, row := range rows {
+		result[row.TradeDate.Format("2006-01-02")] = MarketBreadthSnapshot{
+			Advancers: row.Advancers,
+			UpRatio:   row.UpRatio,
+		}
+	}
+	return result, nil
+}
+
 // GetLatestAdvancers returns the advancers count for the most recent trade_date.
 func (r *MarketBreadthRepository) GetLatestAdvancers() (int, error) {
 	var advancers int

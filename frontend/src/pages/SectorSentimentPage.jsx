@@ -316,7 +316,7 @@ function ConsistentStrengthPanel({ data }) {
     <Table
       dataSource={data}
       columns={columns}
-      rowKey="sector_name"
+      rowKey={(record) => `${record.sector_name}-${record.source}`}
       size="small"
       pagination={false}
       locale={{ emptyText: '暂无连续走强板块' }}
@@ -435,6 +435,14 @@ function ClimbingSectorsPanel({ data }) {
       key: 'sector_name',
     },
     {
+      title: '数据源',
+      dataIndex: 'source',
+      key: 'source',
+      width: 70,
+      align: 'center',
+      render: (s) => <Tag color={s === 'sector_score' ? 'purple' : 'blue'}>{s === 'sector_score' ? '评分' : '宽度'}</Tag>,
+    },
+    {
       title: '前天',
       dataIndex: 'rank_t2',
       key: 'rank_t2',
@@ -485,7 +493,7 @@ function ClimbingSectorsPanel({ data }) {
     <Table
       dataSource={data}
       columns={columns}
-      rowKey="sector_name"
+      rowKey={(record) => `${record.sector_name}-${record.source}`}
       size="small"
       pagination={false}
     />

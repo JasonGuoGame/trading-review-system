@@ -19,24 +19,47 @@ func NewSectorSentimentRepository(db *gorm.DB) *SectorSentimentRepository {
 	return &SectorSentimentRepository{db: db}
 }
 
-// GetLatestTradeDate returns the most recent trade_date in stk_sector_breadths.
+// GetLatestTradeDate returns the most recent trade_date across both
+// stk_sector_breadths and stk_sector_scores (consistent strength sources).
 func (r *SectorSentimentRepository) GetLatestTradeDate() (string, error) {
 	var date string
-	err := r.db.Raw("SELECT MAX(trade_date) FROM stk_sector_breadths").Scan(&date).Error
+	err := r.db.Raw(`
+		SELECT MAX(trade_date) FROM (
+			SELECT trade_date FROM stk_sector_breadths
+			UNION
+			SELECT trade_date FROM stk_sector_scores
+		) AS t
+	`).Scan(&date).Error
 	if err != nil {
 		log.Printf("[sector-sentiment] GetLatestTradeDate error: %v", err)
 		return "", err
+	}
+	// Normalize to YYYY-MM-DD (MySQL may return full timestamp)
+	if len(date) > 10 {
+		date = date[:10]
 	}
 	log.Printf("[sector-sentiment] latest trade_date: %q", date)
 	return date, nil
 }
 
 // GetPreviousTradeDate returns the trade_date just before the given one.
+// It checks both stk_sector_breadths and stk_sector_scores, since consistent
+// strength data is sourced from both tables.
 func (r *SectorSentimentRepository) GetPreviousTradeDate(tradeDate string) (string, error) {
 	var date string
-	err := r.db.Raw("SELECT MAX(trade_date) FROM stk_sector_breadths WHERE trade_date < ?", tradeDate).Scan(&date).Error
+	err := r.db.Raw(`
+		SELECT MAX(trade_date) FROM (
+			SELECT trade_date FROM stk_sector_breadths WHERE trade_date < ?
+			UNION
+			SELECT trade_date FROM stk_sector_scores WHERE trade_date < ?
+		) AS t
+	`, tradeDate, tradeDate).Scan(&date).Error
 	if err != nil {
 		return "", err
+	}
+	// Normalize to YYYY-MM-DD (MySQL may return full timestamp)
+	if len(date) > 10 {
+		date = date[:10]
 	}
 	return date, nil
 }
@@ -399,36 +422,67 @@ type ClimbingSectorRow struct {
 	RankT0     int     `gorm:"column:rank_t0"`
 	RankJump   int     `gorm:"column:rank_jump"`
 	MoneyT0    float64 `gorm:"column:money_t0"`
+	Source     string  `gorm:"column:source"`
 }
 
 func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]ClimbingSectorRow, error) {
 	sql := `
-		WITH DailyRank AS (
+		WITH ScoreDailyRank AS (
 			SELECT sector_name, trade_date, rank_pos, money_score,
 				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
 			FROM stk_sector_scores
 			WHERE trade_date <= ?
 		),
-		TrendAnalysis AS (
+		ScoreTrend AS (
 			SELECT sector_name,
 				MAX(CASE WHEN day_idx = 1 THEN rank_pos END) AS rank_t0,
 				MAX(CASE WHEN day_idx = 2 THEN rank_pos END) AS rank_t1,
 				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2,
 				MAX(CASE WHEN day_idx = 1 THEN money_score END) AS money_t0
-			FROM DailyRank
+			FROM ScoreDailyRank
 			WHERE day_idx <= 3
 			GROUP BY sector_name
+		),
+		ScoreResult AS (
+			SELECT sector_name, rank_t2, rank_t1, rank_t0,
+				(rank_t2 - rank_t0) AS rank_jump, money_t0,
+				'sector_score' AS source
+			FROM ScoreTrend
+			WHERE rank_t0 BETWEEN 11 AND 25
+			  AND rank_t1 < rank_t2
+			  AND rank_t0 < rank_t1
+		),
+		BreadthDailyRank AS (
+			SELECT sector_name, trade_date, rank_pos,
+				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
+			FROM stk_sector_breadths
+			WHERE trade_date <= ? AND sector_type = 'industry'
+		),
+		BreadthTrend AS (
+			SELECT sector_name,
+				MAX(CASE WHEN day_idx = 1 THEN rank_pos END) AS rank_t0,
+				MAX(CASE WHEN day_idx = 2 THEN rank_pos END) AS rank_t1,
+				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2
+			FROM BreadthDailyRank
+			WHERE day_idx <= 3
+			GROUP BY sector_name
+		),
+		BreadthResult AS (
+			SELECT sector_name, rank_t2, rank_t1, rank_t0,
+				(rank_t2 - rank_t0) AS rank_jump, 0 AS money_t0,
+				'sector_breadth' AS source
+			FROM BreadthTrend
+			WHERE rank_t0 BETWEEN 11 AND 25
+			  AND rank_t1 < rank_t2
+			  AND rank_t0 < rank_t1
 		)
-		SELECT sector_name, rank_t2, rank_t1, rank_t0,
-			(rank_t2 - rank_t0) AS rank_jump, money_t0
-		FROM TrendAnalysis
-		WHERE rank_t0 BETWEEN 11 AND 25
-		  AND rank_t1 < rank_t2
-		  AND rank_t0 < rank_t1
+		SELECT * FROM ScoreResult
+		UNION ALL
+		SELECT * FROM BreadthResult
 		ORDER BY rank_jump DESC
 	`
 	var rows []ClimbingSectorRow
-	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil

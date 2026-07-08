@@ -118,6 +118,7 @@ type ClimbingSectorItem struct {
 	RankT0     int     `json:"rank_t0"`
 	RankJump   int     `json:"rank_jump"`
 	MoneyT0    float64 `json:"money_t0"`
+	Source     string  `json:"source"` // "sector_score" or "sector_breadth"
 }
 
 // SectorListResponse is a simple list of sector names.

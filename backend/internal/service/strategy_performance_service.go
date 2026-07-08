@@ -171,6 +171,22 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 		})
 	}
 
+	// Enrich market data from market_breadths table (authoritative source).
+	// strategy_performance_history.market_up_count may be 0 when ETL misses a date.
+	if s.marketBreadthRepo != nil && len(dates) > 0 {
+		snapshots, err := s.marketBreadthRepo.GetBreadthSnapshots(dates)
+		if err != nil {
+			log.Printf("[strategy-perf] GetBreadthSnapshots error: %v", err)
+		} else {
+			for i := range trendData {
+				if snap, ok := snapshots[trendData[i].TradeDate]; ok && snap.Advancers > 0 {
+					trendData[i].MarketUpCount = snap.Advancers
+					trendData[i].MarketPctChg = snap.UpRatio
+				}
+			}
+		}
+	}
+
 	// Build strategies with trend detection and ranking
 	var strategies []strategyScore
 	for _, name := range strategyNames {

@@ -26,17 +26,37 @@ func (s *SectorSentimentService) GetLatestTradeDate() (string, error) {
 // ============================================================
 
 func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.ConsistentStrengthItem, error) {
+	// Normalize tradeDate to YYYY-MM-DD. The MySQL driver may return
+	// full timestamps (e.g. "2026-07-07T00:00:00+08:00") which break
+	// date comparisons in SQL WHERE clauses.
+	if len(tradeDate) > 10 {
+		tradeDate = tradeDate[:10]
+	}
 	rows, err := s.repo.GetConsistentStrength(tradeDate)
 	if err != nil {
 		return nil, fmt.Errorf("连强信号查询失败: %w", err)
 	}
 
-	// Detect new entries (not in yesterday's list)
+	// Detect new entries (not in yesterday's list).
+	// Compares against yesterday's consistent strength results (uses is_leader flag,
+	// which correctly identifies leaders even when their current-day rank is > 15).
+	// If yesterday's data cannot be fetched, default IsNew to false
+	// rather than incorrectly marking everything as new.
 	yesterdaySet := make(map[string]bool)
-	if prev, _ := s.repo.GetPreviousTradeDate(tradeDate); prev != "" {
-		prevRows, _ := s.repo.GetConsistentStrength(prev)
-		for _, r := range prevRows {
-			yesterdaySet[r.SectorName] = true
+	if prev, prevErr := s.repo.GetPreviousTradeDate(tradeDate); prevErr != nil {
+		log.Printf("[sector-sentiment] GetPreviousTradeDate error for %q: %v — IsNew will be false for all sectors", tradeDate, prevErr)
+	} else if prev == "" {
+		log.Printf("[sector-sentiment] no previous trade date found before %q — IsNew will be false for all sectors", tradeDate)
+	} else {
+		prevRows, prevErr := s.repo.GetConsistentStrength(prev)
+		if prevErr != nil {
+			log.Printf("[sector-sentiment] GetConsistentStrength error for prev date %q: %v — IsNew will be false for all sectors", prev, prevErr)
+		} else {
+			log.Printf("[sector-sentiment] comparing today (%s, %d sectors) vs yesterday (%s, %d sectors)",
+				tradeDate, len(rows), prev, len(prevRows))
+			for _, r := range prevRows {
+				yesterdaySet[r.SectorName] = true
+			}
 		}
 	}
 
@@ -60,6 +80,9 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			Source:      row.Source,
 			IsNew:       !yesterdaySet[row.SectorName],
 		}
+		// Diagnostic: log each sector's IsNew value to trace issues
+		log.Printf("[sector-sentiment] sector=%q source=%s strong_days=%d is_new=%v in_yesterday_set=%v",
+			row.SectorName, row.Source, row.StrongDays, items[i].IsNew, yesterdaySet[row.SectorName])
 	}
 	return items, nil
 }
@@ -212,6 +235,10 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 			return nil, fmt.Errorf("获取最新交易日期失败: %w", err)
 		}
 	}
+	// Normalize to YYYY-MM-DD (MySQL driver may return full timestamp)
+	if len(tradeDate) > 10 {
+		tradeDate = tradeDate[:10]
+	}
 
 	consistent, err := s.GetConsistentStrength(tradeDate)
 	if err != nil {
@@ -275,6 +302,7 @@ func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.Cli
 			RankT0:     row.RankT0,
 			RankJump:   row.RankJump,
 			MoneyT0:    row.MoneyT0,
+			Source:     row.Source,
 		}
 	}
 	return items, nil

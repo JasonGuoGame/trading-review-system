@@ -20,12 +20,18 @@ func NewSectorSentimentHandler(service *service.SectorSentimentService) *SectorS
 }
 
 // getTradeDate extracts trade_date from query string; falls back to latest.
+// Normalizes to YYYY-MM-DD since MySQL driver may return full timestamps.
 func (h *SectorSentimentHandler) getTradeDate(c *gin.Context) string {
-	if d := c.Query("trade_date"); d != "" {
-		return d
+	d := c.Query("trade_date")
+	if d == "" {
+		latest, _ := h.service.GetLatestTradeDate()
+		d = latest
 	}
-	latest, _ := h.service.GetLatestTradeDate()
-	return latest
+	// Normalize to YYYY-MM-DD
+	if len(d) > 10 {
+		d = d[:10]
+	}
+	return d
 }
 
 // GetLatestDate returns the most recent trade_date.
