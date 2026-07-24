@@ -221,7 +221,7 @@ const MarketAttackPage = () => {
                 <Card
                   title={<span style={{ color: '#1677ff' }}>📊 成交量前50{selectedConcept ? <span style={{ fontSize: 12, color: '#b37feb' }}> · {selectedConcept} ({filteredVolumeStocks.length})</span> : ''}</span>}
                   style={{ background: '#141414', border: '1px solid #30363d', borderRadius: 12, height: '100%' }}
-                  bodyStyle={{ padding: '8px 12px', maxHeight: 520, overflowY: 'auto' }}
+                  bodyStyle={{ padding: '8px 12px' }}
                 >
                   {topVolumeStocks.length === 0 ? (
                     <Spin />
@@ -234,9 +234,10 @@ const MarketAttackPage = () => {
                         fontSize: 11, color: '#8b949e', fontWeight: 600,
                       }}>
                         <span style={{ width: 22, textAlign: 'right', flexShrink: 0 }}>#</span>
-                        <span onClick={() => handleVolSort('stock_name')} style={{ width: 52, flexShrink: 0, cursor: 'pointer', color: volSortKey === 'stock_name' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>股票{volSortArrow('stock_name')}</span>
+                        <span onClick={() => handleVolSort('stock_name')} style={{ width: 72, flexShrink: 0, cursor: 'pointer', color: volSortKey === 'stock_name' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>股票{volSortArrow('stock_name')}</span>
                         <span onClick={() => handleVolSort('symbol')} style={{ width: 74, flexShrink: 0, cursor: 'pointer', color: volSortKey === 'symbol' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>代码{volSortArrow('symbol')}</span>
                         <span onClick={() => handleVolSort('sector_name')} style={{ minWidth: 50, flex: 1, cursor: 'pointer', color: volSortKey === 'sector_name' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>板块{volSortArrow('sector_name')}</span>
+                        <span onClick={() => handleVolSort('count_30d')} style={{ width: 40, textAlign: 'center', flexShrink: 0, cursor: 'pointer', color: volSortKey === 'count_30d' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>次数{volSortArrow('count_30d')}</span>
                         <span onClick={() => handleVolSort('pct_change')} style={{ width: 50, textAlign: 'right', flexShrink: 0, cursor: 'pointer', color: volSortKey === 'pct_change' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>涨跌{volSortArrow('pct_change')}</span>
                         <span onClick={() => handleVolSort('amount')} style={{ width: 56, textAlign: 'right', flexShrink: 0, cursor: 'pointer', color: volSortKey === 'amount' ? '#58a6ff' : '#8b949e', userSelect: 'none' }}>成交额{volSortArrow('amount')}</span>
                       </div>
@@ -253,7 +254,7 @@ const MarketAttackPage = () => {
                           <span style={{ color: '#8b949e', width: 22, textAlign: 'right', flexShrink: 0 }}>
                             {i + 1}
                           </span>
-                          <span style={{ color: '#c9d1d9', fontWeight: 500, width: 52, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <span style={{ color: '#c9d1d9', fontWeight: 500, width: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {s.stock_name || '--'}
                           </span>
                           <span style={{ color: '#58a6ff', width: 74, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, flexShrink: 0 }}>
@@ -261,6 +262,9 @@ const MarketAttackPage = () => {
                           </span>
                           <span style={{ color: '#8b949e', fontSize: 10, minWidth: 50, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {s.sector_name || '--'}
+                          </span>
+                          <span style={{ color: s.count_30d >= 20 ? '#faad14' : s.count_30d >= 10 ? '#8b949e' : '#484f58', width: 40, textAlign: 'center', fontWeight: s.count_30d >= 20 ? 600 : 400, fontSize: 11, flexShrink: 0 }}>
+                            {s.count_30d || 0}
                           </span>
                           <span style={{ color: s.pct_change >= 0 ? '#e84749' : '#3f8600', width: 50, textAlign: 'right', fontWeight: 500, flexShrink: 0 }}>
                             {s.pct_change >= 0 ? '+' : ''}{s.pct_change?.toFixed(1)}%

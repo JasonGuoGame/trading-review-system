@@ -74,11 +74,14 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			ranks = make([]*int, 5)
 		}
 		items[i] = dto.ConsistentStrengthItem{
-			SectorName:  row.SectorName,
-			StrongDays:  row.StrongDays,
-			RecentRanks: ranks,
-			Source:      row.Source,
-			IsNew:       !yesterdaySet[row.SectorName],
+			SectorName:    row.SectorName,
+			StrongDays:    row.StrongDays,
+			RecentRanks:   ranks,
+			Source:        row.Source,
+			IsNew:         !yesterdaySet[row.SectorName],
+			High20dCount:  row.High20dCount,
+			High60dCount:  row.High60dCount,
+			High250dCount: row.High250dCount,
 		}
 		// Diagnostic: log each sector's IsNew value to trace issues
 		log.Printf("[sector-sentiment] sector=%q source=%s strong_days=%d is_new=%v in_yesterday_set=%v",
@@ -296,13 +299,16 @@ func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.Cli
 	items := make([]dto.ClimbingSectorItem, len(rows))
 	for i, row := range rows {
 		items[i] = dto.ClimbingSectorItem{
-			SectorName: row.SectorName,
-			RankT2:     row.RankT2,
-			RankT1:     row.RankT1,
-			RankT0:     row.RankT0,
-			RankJump:   row.RankJump,
-			MoneyT0:    row.MoneyT0,
-			Source:     row.Source,
+			SectorName:    row.SectorName,
+			RankT2:        row.RankT2,
+			RankT1:        row.RankT1,
+			RankT0:        row.RankT0,
+			RankJump:      row.RankJump,
+			MoneyT0:       row.MoneyT0,
+			Source:        row.Source,
+			High20dCount:  row.High20dCount,
+			High60dCount:  row.High60dCount,
+			High250dCount: row.High250dCount,
 		}
 	}
 	return items, nil
@@ -325,9 +331,10 @@ func (s *SectorSentimentService) GetSectorDrift(sectorName string, days int) (*d
 	// rows come in DESC order; reverse to ASC for chart
 	for i, row := range rows {
 		points[len(rows)-1-i] = dto.SectorDriftPoint{
-			TradeDate: row.TradeDate,
-			RankPos:   row.RankPos,
-			RedRate:   row.RedRate,
+			TradeDate:    row.TradeDate,
+			RankPos:      row.RankPos,
+			RedRate:      row.RedRate,
+			ScoreRankPos: row.ScoreRankPos,
 		}
 	}
 
@@ -345,4 +352,28 @@ func (s *SectorSentimentService) GetSectorNames() (*dto.SectorListResponse, erro
 		return nil, fmt.Errorf("板块列表查询失败: %w", err)
 	}
 	return &dto.SectorListResponse{Sectors: names}, nil
+}
+
+// GetNewHighStocks returns the new-high stocks for a sector on a given date.
+func (s *SectorSentimentService) GetNewHighStocks(sectorName, tradeDate string) (*dto.NewHighStocksResponse, error) {
+	rows, err := s.repo.GetNewHighStocks(sectorName, tradeDate)
+	if err != nil {
+		return nil, fmt.Errorf("新高股票查询失败: %w", err)
+	}
+	stocks := make([]dto.NewHighStock, len(rows))
+	for i, row := range rows {
+		stocks[i] = dto.NewHighStock{
+			Symbol:    row.Symbol,
+			StockName: row.StockName,
+			High20d:   row.High20d,
+			High60d:   row.High60d,
+			High250d:  row.High250d,
+			Close:     row.Close,
+		}
+	}
+	return &dto.NewHighStocksResponse{
+		SectorName: sectorName,
+		TradeDate:  tradeDate,
+		Stocks:     stocks,
+	}, nil
 }

@@ -565,6 +565,10 @@ export const apiSlice = createApi({
       query: ({ sector_name, days = 30 }) => `/sector-sentiment/sector-drift?sector_name=${encodeURIComponent(sector_name)}&days=${days}`,
       transformResponse: (res) => res.data,
     }),
+    getNewHighStocks: builder.query({
+      query: ({ sector_name, trade_date }) => `/sector-sentiment/new-high-stocks?sector_name=${encodeURIComponent(sector_name)}&trade_date=${trade_date || ''}`,
+      transformResponse: (res) => res.data,
+    }),
 
     // === RAG AI Analysis ===
     analyzeRag: builder.mutation({
@@ -697,6 +701,7 @@ export const {
   useGetSectorNamesQuery,
   useGetSectorDriftQuery,
   useLazyGetSectorDriftQuery,
+  useLazyGetNewHighStocksQuery,
   useGetClimbingSectorsQuery,
   useGetSavedSqlsQuery,
   useCreateSavedSqlMutation,

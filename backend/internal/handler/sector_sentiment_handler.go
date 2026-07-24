@@ -158,3 +158,20 @@ func (h *SectorSentimentHandler) GetClimbingSectors(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
+
+// GetNewHighStocks returns new-high stocks for a sector.
+func (h *SectorSentimentHandler) GetNewHighStocks(c *gin.Context) {
+	sectorName := c.Query("sector_name")
+	if sectorName == "" {
+		c.JSON(http.StatusBadRequest, dto.APIResponse{Code: 400, Message: "sector_name is required"})
+		return
+	}
+	tradeDate := h.getTradeDate(c)
+	data, err := h.service.GetNewHighStocks(sectorName, tradeDate)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetNewHighStocks error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}

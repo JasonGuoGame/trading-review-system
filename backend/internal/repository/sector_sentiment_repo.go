@@ -71,21 +71,26 @@ func (r *SectorSentimentRepository) GetPreviousTradeDate(tradeDate string) (stri
 // ============================================================
 
 type ConsistentStrengthRow struct {
-	SectorName string `gorm:"column:sector_name"`
-	StrongDays int    `gorm:"column:strong_days"`
-	Source     string `gorm:"column:source"`
+	SectorName    string `gorm:"column:sector_name"`
+	StrongDays    int    `gorm:"column:strong_days"`
+	Source        string `gorm:"column:source"`
+	High20dCount  int    `gorm:"column:high_20d_count"`
+	High60dCount  int    `gorm:"column:high_60d_count"`
+	High250dCount int    `gorm:"column:high_250d_count"`
 }
 
 func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]ConsistentStrengthRow, error) {
 	// Uses pre-computed persistence_7d and is_leader columns (populated by ETL)
 	sql := `
 		SELECT sector_name, persistence_7d AS strong_days,
-			'sector_score' AS source
+			'sector_score' AS source,
+			high_20d_count, high_60d_count, high_250d_count
 		FROM stk_sector_scores
 		WHERE trade_date = ? AND is_leader = 1
 		UNION ALL
 		SELECT sector_name, persistence_7d AS strong_days,
-			'sector_breadth' AS source
+			'sector_breadth' AS source,
+			0 AS high_20d_count, 0 AS high_60d_count, 0 AS high_250d_count
 		FROM stk_sector_breadths
 		WHERE trade_date = ? AND is_leader = 1 AND sector_type = 'industry'
 		ORDER BY strong_days DESC
@@ -389,25 +394,49 @@ func (r *SectorSentimentRepository) GetConcentration(tradeDate string) ([]Concen
 // ============================================================
 
 type SectorDriftRow struct {
-	TradeDate string  `gorm:"column:trade_date"`
-	RankPos   *int    `gorm:"column:rank_pos"`
-	RedRate   float64 `gorm:"column:red_rate"`
+	TradeDate    string  `gorm:"column:trade_date"`
+	RankPos      *int    `gorm:"column:rank_pos"`
+	RedRate      float64 `gorm:"column:red_rate"`
+	ScoreRankPos *int    `gorm:"column:score_rank_pos"`
 }
 
 func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) ([]SectorDriftRow, error) {
+	// Collect all dates from both tables, then LEFT JOIN each table's data
+	// so we get breadth rank + red_rate + scores rank on every date.
 	sql := `
-		SELECT trade_date, rank_pos, red_rate
-		FROM stk_sector_breadths
-		WHERE sector_name = ? AND sector_type = 'industry'
-		ORDER BY trade_date DESC
+		WITH dates AS (
+			SELECT DISTINCT trade_date FROM stk_sector_breadths
+			WHERE sector_name = ? AND sector_type = 'industry'
+			UNION
+			SELECT DISTINCT trade_date FROM stk_sector_scores
+			WHERE sector_name = ?
+		),
+		breadth_data AS (
+			SELECT trade_date, rank_pos, red_rate
+			FROM stk_sector_breadths
+			WHERE sector_name = ? AND sector_type = 'industry'
+		),
+		score_data AS (
+			SELECT trade_date, rank_pos
+			FROM stk_sector_scores
+			WHERE sector_name = ?
+		)
+		SELECT d.trade_date,
+			b.rank_pos AS rank_pos,
+			COALESCE(b.red_rate, 0) AS red_rate,
+			s.rank_pos AS score_rank_pos
+		FROM dates d
+		LEFT JOIN breadth_data b ON d.trade_date = b.trade_date
+		LEFT JOIN score_data s ON d.trade_date = s.trade_date
+		ORDER BY d.trade_date DESC
 		LIMIT ?
 	`
 	var rows []SectorDriftRow
-	if err := r.db.Raw(sql, sectorName, days).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, sectorName, sectorName, sectorName, sectorName, days).Scan(&rows).Error; err != nil {
 		log.Printf("[sector-sentiment] GetSectorDrift error: %v", err)
 		return nil, err
 	}
-	log.Printf("[sector-sentiment] sector drift for %q: %d days", sectorName, len(rows))
+	log.Printf("[sector-sentiment] sector drift for %q: %d days (breadth + scores)", sectorName, len(rows))
 	return rows, nil
 }
 
@@ -416,19 +445,26 @@ func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) 
 // ============================================================
 
 type ClimbingSectorRow struct {
-	SectorName string  `gorm:"column:sector_name"`
-	RankT2     int     `gorm:"column:rank_t2"`
-	RankT1     int     `gorm:"column:rank_t1"`
-	RankT0     int     `gorm:"column:rank_t0"`
-	RankJump   int     `gorm:"column:rank_jump"`
-	MoneyT0    float64 `gorm:"column:money_t0"`
-	Source     string  `gorm:"column:source"`
+	SectorName    string  `gorm:"column:sector_name"`
+	RankT2        int     `gorm:"column:rank_t2"`
+	RankT1        int     `gorm:"column:rank_t1"`
+	RankT0        int     `gorm:"column:rank_t0"`
+	RankJump      int     `gorm:"column:rank_jump"`
+	MoneyT0       float64 `gorm:"column:money_t0"`
+	Source        string  `gorm:"column:source"`
+	High20dCount  int     `gorm:"column:high_20d_count"`
+	High60dCount  int     `gorm:"column:high_60d_count"`
+	High250dCount int     `gorm:"column:high_250d_count"`
 }
 
 func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]ClimbingSectorRow, error) {
 	sql := `
-		WITH ScoreDailyRank AS (
+		WITH ScoreMaxDate AS (
+			SELECT MAX(trade_date) AS max_dt FROM stk_sector_scores WHERE trade_date <= ?
+		),
+		ScoreDailyRank AS (
 			SELECT sector_name, trade_date, rank_pos, money_score,
+				high_20d_count, high_60d_count, high_250d_count,
 				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
 			FROM stk_sector_scores
 			WHERE trade_date <= ?
@@ -438,19 +474,28 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 				MAX(CASE WHEN day_idx = 1 THEN rank_pos END) AS rank_t0,
 				MAX(CASE WHEN day_idx = 2 THEN rank_pos END) AS rank_t1,
 				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2,
-				MAX(CASE WHEN day_idx = 1 THEN money_score END) AS money_t0
+				MAX(CASE WHEN day_idx = 1 THEN money_score END) AS money_t0,
+				MAX(CASE WHEN day_idx = 1 THEN trade_date END) AS latest_date,
+				MAX(CASE WHEN day_idx = 1 THEN high_20d_count END) AS high_20d_count,
+				MAX(CASE WHEN day_idx = 1 THEN high_60d_count END) AS high_60d_count,
+				MAX(CASE WHEN day_idx = 1 THEN high_250d_count END) AS high_250d_count
 			FROM ScoreDailyRank
 			WHERE day_idx <= 3
 			GROUP BY sector_name
 		),
 		ScoreResult AS (
-			SELECT sector_name, rank_t2, rank_t1, rank_t0,
-				(rank_t2 - rank_t0) AS rank_jump, money_t0,
-				'sector_score' AS source
-			FROM ScoreTrend
-			WHERE rank_t0 BETWEEN 11 AND 25
-			  AND rank_t1 < rank_t2
-			  AND rank_t0 < rank_t1
+			SELECT s.sector_name, s.rank_t2, s.rank_t1, s.rank_t0,
+				(s.rank_t2 - s.rank_t0) AS rank_jump, s.money_t0,
+				'sector_score' AS source,
+				s.high_20d_count, s.high_60d_count, s.high_250d_count
+			FROM ScoreTrend s, ScoreMaxDate m
+			WHERE s.rank_t0 BETWEEN 11 AND 25
+			  AND s.rank_t1 < s.rank_t2
+			  AND s.rank_t0 < s.rank_t1
+			  AND s.latest_date = m.max_dt
+		),
+		BreadthMaxDate AS (
+			SELECT MAX(trade_date) AS max_dt FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry'
 		),
 		BreadthDailyRank AS (
 			SELECT sector_name, trade_date, rank_pos,
@@ -462,19 +507,22 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 			SELECT sector_name,
 				MAX(CASE WHEN day_idx = 1 THEN rank_pos END) AS rank_t0,
 				MAX(CASE WHEN day_idx = 2 THEN rank_pos END) AS rank_t1,
-				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2
+				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2,
+				MAX(CASE WHEN day_idx = 1 THEN trade_date END) AS latest_date
 			FROM BreadthDailyRank
 			WHERE day_idx <= 3
 			GROUP BY sector_name
 		),
 		BreadthResult AS (
-			SELECT sector_name, rank_t2, rank_t1, rank_t0,
-				(rank_t2 - rank_t0) AS rank_jump, 0 AS money_t0,
-				'sector_breadth' AS source
-			FROM BreadthTrend
-			WHERE rank_t0 BETWEEN 11 AND 25
-			  AND rank_t1 < rank_t2
-			  AND rank_t0 < rank_t1
+			SELECT b.sector_name, b.rank_t2, b.rank_t1, b.rank_t0,
+				(b.rank_t2 - b.rank_t0) AS rank_jump, 0 AS money_t0,
+				'sector_breadth' AS source,
+				0 AS high_20d_count, 0 AS high_60d_count, 0 AS high_250d_count
+			FROM BreadthTrend b, BreadthMaxDate m
+			WHERE b.rank_t0 BETWEEN 11 AND 25
+			  AND b.rank_t1 < b.rank_t2
+			  AND b.rank_t0 < b.rank_t1
+			  AND b.latest_date = m.max_dt
 		)
 		SELECT * FROM ScoreResult
 		UNION ALL
@@ -482,7 +530,7 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 		ORDER BY rank_jump DESC
 	`
 	var rows []ClimbingSectorRow
-	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil
@@ -499,4 +547,30 @@ func (r *SectorSentimentRepository) GetSectorNames() ([]string, error) {
 		return nil, err
 	}
 	return names, nil
+}
+
+// NewHighStockRow is a raw row from stk_new_high_detail.
+type NewHighStockRow struct {
+	Symbol    string  `gorm:"column:symbol"`
+	StockName string  `gorm:"column:stock_name"`
+	High20d   bool    `gorm:"column:high_20d"`
+	High60d   bool    `gorm:"column:high_60d"`
+	High250d  bool    `gorm:"column:high_250d"`
+	Close     float64 `gorm:"column:close"`
+}
+
+// GetNewHighStocks returns new-high stocks for a sector on a given date.
+func (r *SectorSentimentRepository) GetNewHighStocks(sectorName, tradeDate string) ([]NewHighStockRow, error) {
+	sql := `
+		SELECT symbol, COALESCE(stock_name, symbol) AS stock_name,
+			high_20d, high_60d, high_250d, COALESCE(close, 0) AS close
+		FROM stk_new_high_detail
+		WHERE sector_name = ? AND trade_date = ?
+		ORDER BY high_250d DESC, high_60d DESC, high_20d DESC, symbol
+	`
+	var rows []NewHighStockRow
+	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
 }

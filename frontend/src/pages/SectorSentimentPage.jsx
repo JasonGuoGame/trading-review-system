@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input,
+  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input, Modal,
 } from 'antd'
 import {
   FireOutlined,
@@ -19,7 +19,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, BarChart, Bar, Cell, ReferenceLine,
 } from 'recharts'
-import { useGetFullReportQuery, useGetSectorSentimentLatestDateQuery, useGetSectorNamesQuery, useLazyGetSectorDriftQuery } from '../app/api'
+import { useGetFullReportQuery, useGetSectorSentimentLatestDateQuery, useGetSectorNamesQuery, useLazyGetSectorDriftQuery, useLazyGetNewHighStocksQuery } from '../app/api'
 import dayjs from 'dayjs'
 
 // ============================================================
@@ -222,9 +222,17 @@ function DivergencePanel({ divergence }) {
 
 // ------ 连强信号 (Left) ------
 
-function ConsistentStrengthPanel({ data }) {
+function ConsistentStrengthPanel({ data, tradeDate }) {
+  const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
+  const [newHighModal, setNewHighModal] = useState(null)
+
   if (!data || data.length === 0) {
     return <Empty description="暂无连续走强板块" />
+  }
+
+  const handleHighClick = (sectorName, title) => {
+    setNewHighModal({ sector_name: sectorName, title })
+    triggerNewHigh({ sector_name: sectorName, trade_date: tradeDate })
   }
 
   // Build table columns
@@ -233,6 +241,7 @@ function ConsistentStrengthPanel({ data }) {
       title: '板块',
       dataIndex: 'sector_name',
       key: 'sector_name',
+      sorter: (a, b) => a.sector_name.localeCompare(b.sector_name, 'zh'),
       render: (name, record) => (
         <span>
           {record.is_new && (
@@ -248,6 +257,7 @@ function ConsistentStrengthPanel({ data }) {
       key: 'strong_days',
       width: 80,
       align: 'center',
+      sorter: (a, b) => a.strong_days - b.strong_days,
       render: (d) => <b style={{ color: d >= 5 ? '#faad14' : '#fa8c16' }}>{d}天</b>,
     },
     {
@@ -256,6 +266,7 @@ function ConsistentStrengthPanel({ data }) {
       key: 'source',
       width: 70,
       align: 'center',
+      sorter: (a, b) => a.source.localeCompare(b.source),
       render: (s) => <Tag color={s === 'sector_score' ? 'purple' : 'blue'}>{s === 'sector_score' ? '评分' : '宽度'}</Tag>,
     },
     {
@@ -263,6 +274,11 @@ function ConsistentStrengthPanel({ data }) {
       dataIndex: 'recent_ranks',
       key: 'recent_ranks',
       width: 200,
+      sorter: (a, b) => {
+        const lastA = a.recent_ranks?.[a.recent_ranks.length - 1] ?? 999
+        const lastB = b.recent_ranks?.[b.recent_ranks.length - 1] ?? 999
+        return lastA - lastB
+      },
       render: (ranks) => (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {[...Array(5)].map((_, i) => {
@@ -290,29 +306,63 @@ function ConsistentStrengthPanel({ data }) {
       ),
     },
     {
-      title: '热度阶梯',
-      dataIndex: 'recent_ranks',
-      key: 'heat_ladder',
-      width: 140,
-      render: (ranks) => {
-        const days = ranks ? ranks.filter(r => r !== null && r <= 10).length : 0
+      title: '20日新高',
+      dataIndex: 'high_20d_count',
+      key: 'high_20d_count',
+      width: 72,
+      align: 'center',
+      sorter: (a, b) => a.high_20d_count - b.high_20d_count,
+      render: (v, record) => {
+        const canClick = record.source === 'sector_score' && v > 0
         return (
-          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            {[...Array(5)].map((_, i) => (
-              <div key={i} style={{
-                width: 20, height: 10, borderRadius: 2,
-                background: i < days ? `hsl(${30 - i * 6}, 100%, ${50 - i * 5}%)` : '#1f1f1f',
-                border: i < days ? 'none' : '1px solid #333',
-              }} />
-            ))}
-            <span style={{ fontSize: 11, color: '#8c8c8c', marginLeft: 4 }}>{days}/5</span>
-          </div>
+          <span
+            onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
+            style={{ color: canClick ? '#c9d1d9' : '#30363d', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {record.source === 'sector_score' ? (v || 0) : '-'}
+          </span>
+        )
+      },
+    },
+    {
+      title: '60日新高',
+      dataIndex: 'high_60d_count',
+      key: 'high_60d_count',
+      width: 72,
+      align: 'center',
+      sorter: (a, b) => a.high_60d_count - b.high_60d_count,
+      render: (v, record) => {
+        const canClick = record.source === 'sector_score' && v > 0
+        return (
+          <span
+            onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
+            style={{ color: canClick ? '#c9d1d9' : '#30363d', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {record.source === 'sector_score' ? (v || 0) : '-'}
+          </span>
+        )
+      },
+    },
+    {
+      title: '250日新高',
+      dataIndex: 'high_250d_count',
+      key: 'high_250d_count',
+      width: 78,
+      align: 'center',
+      sorter: (a, b) => a.high_250d_count - b.high_250d_count,
+      render: (v, record) => {
+        const canClick = record.source === 'sector_score' && v > 0
+        return (
+          <span
+            onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
+            style={{ color: canClick ? '#c9d1d9' : '#30363d', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {record.source === 'sector_score' ? (v || 0) : '-'}
+          </span>
         )
       },
     },
   ]
 
   return (
+    <>
     <Table
       dataSource={data}
       columns={columns}
@@ -321,6 +371,35 @@ function ConsistentStrengthPanel({ data }) {
       pagination={false}
       locale={{ emptyText: '暂无连续走强板块' }}
     />
+    <Modal
+      title={newHighModal?.title || '新高股票'}
+      open={!!newHighModal}
+      onCancel={() => setNewHighModal(null)}
+      footer={null}
+      width={560}
+    >
+      {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+      {newHighData?.stocks && newHighData.stocks.length > 0 && (
+        <Table
+          dataSource={newHighData.stocks}
+          rowKey="symbol"
+          size="small"
+          pagination={false}
+          columns={[
+            { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+            { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+            { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
+            { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
+            { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
+          ]}
+        />
+      )}
+      {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
+        <Empty description="该板块暂无新高股票数据" />
+      )}
+    </Modal>
+    </>
   )
 }
 
@@ -433,6 +512,7 @@ function ClimbingSectorsPanel({ data }) {
       title: '板块',
       dataIndex: 'sector_name',
       key: 'sector_name',
+      sorter: (a, b) => a.sector_name.localeCompare(b.sector_name, 'zh'),
     },
     {
       title: '数据源',
@@ -440,6 +520,7 @@ function ClimbingSectorsPanel({ data }) {
       key: 'source',
       width: 70,
       align: 'center',
+      sorter: (a, b) => a.source.localeCompare(b.source),
       render: (s) => <Tag color={s === 'sector_score' ? 'purple' : 'blue'}>{s === 'sector_score' ? '评分' : '宽度'}</Tag>,
     },
     {
@@ -448,6 +529,7 @@ function ClimbingSectorsPanel({ data }) {
       key: 'rank_t2',
       width: 60,
       align: 'center',
+      sorter: (a, b) => a.rank_t2 - b.rank_t2,
       render: (r) => <span style={{ color: '#8c8c8c' }}>{r}</span>,
     },
     {
@@ -456,6 +538,7 @@ function ClimbingSectorsPanel({ data }) {
       key: 'rank_t1',
       width: 60,
       align: 'center',
+      sorter: (a, b) => a.rank_t1 - b.rank_t1,
       render: (r) => <span style={{ color: '#faad14' }}>{r}</span>,
     },
     {
@@ -464,6 +547,7 @@ function ClimbingSectorsPanel({ data }) {
       key: 'rank_t0',
       width: 60,
       align: 'center',
+      sorter: (a, b) => a.rank_t0 - b.rank_t0,
       render: (r) => <Tag color="cyan">{r}</Tag>,
     },
     {
@@ -485,7 +569,47 @@ function ClimbingSectorsPanel({ data }) {
       key: 'money_t0',
       width: 70,
       align: 'right',
+      sorter: (a, b) => a.money_t0 - b.money_t0,
       render: (v) => <span style={{ color: '#c9d1d9' }}>{v?.toFixed(1)}</span>,
+    },
+    {
+      title: '20日新高',
+      dataIndex: 'high_20d_count',
+      key: 'high_20d_count',
+      width: 72,
+      align: 'center',
+      sorter: (a, b) => a.high_20d_count - b.high_20d_count,
+      render: (v, record) => (
+        <span style={{ color: record.source === 'sector_score' ? '#c9d1d9' : '#30363d', fontWeight: record.source === 'sector_score' && v > 0 ? 600 : 400 }}>
+          {record.source === 'sector_score' ? (v || 0) : '-'}
+        </span>
+      ),
+    },
+    {
+      title: '60日新高',
+      dataIndex: 'high_60d_count',
+      key: 'high_60d_count',
+      width: 72,
+      align: 'center',
+      sorter: (a, b) => a.high_60d_count - b.high_60d_count,
+      render: (v, record) => (
+        <span style={{ color: record.source === 'sector_score' ? '#c9d1d9' : '#30363d', fontWeight: record.source === 'sector_score' && v > 0 ? 600 : 400 }}>
+          {record.source === 'sector_score' ? (v || 0) : '-'}
+        </span>
+      ),
+    },
+    {
+      title: '250日新高',
+      dataIndex: 'high_250d_count',
+      key: 'high_250d_count',
+      width: 78,
+      align: 'center',
+      sorter: (a, b) => a.high_250d_count - b.high_250d_count,
+      render: (v, record) => (
+        <span style={{ color: record.source === 'sector_score' ? '#c9d1d9' : '#30363d', fontWeight: record.source === 'sector_score' && v > 0 ? 600 : 400 }}>
+          {record.source === 'sector_score' ? (v || 0) : '-'}
+        </span>
+      ),
     },
   ]
 
@@ -735,17 +859,26 @@ function SectorDriftPanel() {
     triggerDrift({ sector_name: value, days: 30 })
   }
 
-  // Prepare chart data: rank is inverted so that rank 1 appears at the top
-  const chartData = useMemo(() => {
-    if (!driftData?.points) return []
-    const maxRank = Math.max(...driftData.points.map((p) => p.rank_pos || 999), 50)
-    return driftData.points.map((p) => ({
-      trade_date: p.trade_date,
-      rank: p.rank_pos,
-      // Invert rank: higher = better (maxRank - rank)
-      rank_score: p.rank_pos ? Math.max(0, maxRank - p.rank_pos) : null,
-      red_rate: p.red_rate,
-    }))
+  // Prepare chart data: rank is inverted so that rank 1 appears at the top.
+  // Merges breadth rank, breadth red_rate, and scores rank into one dataset.
+  const { chartData, rankTicks } = useMemo(() => {
+    if (!driftData?.points) return { chartData: [], rankTicks: [] }
+    const allRanks = driftData.points.flatMap((p) => [p.rank_pos, p.score_rank_pos].filter(Boolean))
+    const maxRank = Math.max(...allRanks, 50)
+    // Generate ticks every 50
+    const ticks = []
+    for (let t = 0; t <= maxRank + 49; t += 50) {
+      ticks.push(t)
+    }
+    return {
+      chartData: driftData.points.map((p) => ({
+        trade_date: p.trade_date,
+        rank: p.rank_pos,
+        red_rate: p.red_rate,
+        score_rank: p.score_rank_pos,
+      })),
+      rankTicks: ticks,
+    }
   }, [driftData])
 
   return (
@@ -770,9 +903,9 @@ function SectorDriftPanel() {
       {driftData && chartData.length > 0 && (
         <div>
           <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
-            📉 排名漂移图（柱=排名 · 线=红盘率%）
+            📉 排名漂移图（蓝=宽度排名 · 绿=评分排名 · 橙=红盘率%）
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={440}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
               <XAxis
@@ -787,6 +920,7 @@ function SectorDriftPanel() {
                 tick={{ fill: '#1677ff', fontSize: 11 }}
                 reversed
                 domain={[1, 'auto']}
+                ticks={rankTicks}
                 label={{ value: '排名 (↓越小越强)', angle: -90, position: 'insideLeft', style: { fill: '#1677ff', fontSize: 10 } }}
               />
               <YAxis
@@ -800,7 +934,8 @@ function SectorDriftPanel() {
                 contentStyle={{ background: '#141414', border: '1px solid #333', borderRadius: 8 }}
                 labelFormatter={(v) => dayjs(v).format('YYYY-MM-DD')}
                 formatter={(value, name) => {
-                  if (name === 'rank') return [`第 ${value} 名`, '排名']
+                  if (name === 'rank') return [`第 ${value} 名`, '宽度排名']
+                  if (name === 'score_rank') return [`第 ${value} 名`, '评分排名']
                   if (name === 'red_rate') return [`${value}%`, '红盘率']
                   return [value, name]
                 }}
@@ -814,7 +949,18 @@ function SectorDriftPanel() {
                 stroke="#1677ff"
                 strokeWidth={2}
                 dot={{ r: 3, fill: '#1677ff' }}
-                name="排名"
+                name="宽度排名"
+                connectNulls={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="score_rank"
+                yAxisId="rank"
+                stroke="#52c41a"
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#52c41a' }}
+                name="评分排名"
+                connectNulls={false}
               />
               <Line
                 type="monotone"
@@ -830,28 +976,36 @@ function SectorDriftPanel() {
           </ResponsiveContainer>
           {/* Summary stats */}
           <Row gutter={12} style={{ marginTop: 12 }}>
-            <Col span={8}>
+            <Col span={6}>
               <Statistic
-                title="当前排名"
+                title="宽度排名"
                 value={chartData[chartData.length - 1]?.rank ?? '--'}
                 suffix="名"
-                valueStyle={{ fontSize: 18, color: '#1677ff' }}
+                valueStyle={{ fontSize: 16, color: '#1677ff' }}
               />
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Statistic
-                title="30日最佳"
-                value={Math.min(...chartData.filter(d => d.rank).map(d => d.rank))}
+                title="评分排名"
+                value={chartData[chartData.length - 1]?.score_rank ?? '--'}
                 suffix="名"
-                valueStyle={{ fontSize: 18, color: '#52c41a' }}
+                valueStyle={{ fontSize: 16, color: '#52c41a' }}
               />
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Statistic
+                title="30日最佳(评分)"
+                value={chartData.filter(d => d.score_rank).length > 0 ? Math.min(...chartData.filter(d => d.score_rank).map(d => d.score_rank)) : '--'}
+                suffix="名"
+                valueStyle={{ fontSize: 16, color: '#52c41a' }}
+              />
+            </Col>
+            <Col span={6}>
               <Statistic
                 title="当前红盘率"
                 value={chartData[chartData.length - 1]?.red_rate ?? '--'}
                 suffix="%"
-                valueStyle={{ fontSize: 18, color: '#fa8c16' }}
+                valueStyle={{ fontSize: 16, color: '#fa8c16' }}
               />
             </Col>
           </Row>
@@ -968,7 +1122,7 @@ export default function SectorSentimentPage() {
       {/* =========================================== */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         {/* LEFT: 连强信号 (火苗) */}
-        <Col xs={24} lg={12}>
+        <Col xs={24} lg={14}>
           <Card
             title={
               <span>
@@ -982,12 +1136,12 @@ export default function SectorSentimentPage() {
             style={{ height: '100%' }}
             styles={{ header: { borderBottom: '1px solid #21262d' } }}
           >
-            <ConsistentStrengthPanel data={consistent} />
+            <ConsistentStrengthPanel data={consistent} tradeDate={queryDate} />
           </Card>
         </Col>
 
         {/* RIGHT: 新面孔信号 (火箭) */}
-        <Col xs={24} lg={12}>
+        <Col xs={24} lg={10}>
           <Card
             title={
               <span>

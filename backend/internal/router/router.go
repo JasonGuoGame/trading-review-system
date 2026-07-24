@@ -165,6 +165,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		sectorSentiment.GET("/sectors", handlers.SectorSentiment.GetSectors)
 		sectorSentiment.GET("/climbing-sectors", handlers.SectorSentiment.GetClimbingSectors)
 		sectorSentiment.GET("/sector-drift", handlers.SectorSentiment.GetSectorDrift)
+			sectorSentiment.GET("/new-high-stocks", handlers.SectorSentiment.GetNewHighStocks)
 	}
 
 	// Research Lab

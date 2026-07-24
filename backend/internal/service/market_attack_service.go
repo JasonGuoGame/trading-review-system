@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strings"
@@ -280,6 +281,13 @@ func (s *MarketAttackService) GetTopVolume(tradeDate string) (*dto.TopVolumeResp
 		return nil, fmt.Errorf("成交量排名查询失败: %w", err)
 	}
 
+	// Count top-50 appearances over the last 30 trading days
+	appearanceMap, err := s.repo.GetTopVolumeAppearances(tradeDate)
+	if err != nil {
+		log.Printf("[market-attack] GetTopVolumeAppearances error: %v", err)
+		appearanceMap = make(map[string]int)
+	}
+
 	// Collect symbols for batch sector lookup
 	symbols := make([]string, len(rows))
 	for i, row := range rows {
@@ -394,6 +402,7 @@ func (s *MarketAttackService) GetTopVolume(tradeDate string) (*dto.TopVolumeResp
 			Amount:       row.Amount,
 			TurnoverRate: row.TurnoverRate,
 			PctChange:    row.PctChange,
+			Count30d:     appearanceMap[row.Symbol],
 		}
 	}
 

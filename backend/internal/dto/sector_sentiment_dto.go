@@ -7,11 +7,14 @@ package dto
 // ConsistentStrengthItem represents a sector that appeared in top-N ranks
 // for 3+ days over the past 7 trading days.
 type ConsistentStrengthItem struct {
-	SectorName  string `json:"sector_name"`
-	StrongDays  int    `json:"strong_days"` // count of days in top 15 (max from both sources)
-	RecentRanks []*int `json:"recent_ranks"` // rank_pos for last 5 trading days (index 0 = oldest, 4 = newest)
-	Source      string `json:"source"` // "sector_score" or "sector_breadth"
-	IsNew       bool   `json:"is_new"` // not in yesterday's list
+	SectorName    string `json:"sector_name"`
+	StrongDays    int    `json:"strong_days"` // count of days in top 15 (max from both sources)
+	RecentRanks   []*int `json:"recent_ranks"` // rank_pos for last 5 trading days (index 0 = oldest, 4 = newest)
+	Source        string `json:"source"` // "sector_score" or "sector_breadth"
+	IsNew         bool   `json:"is_new"` // not in yesterday's list
+	High20dCount  int    `json:"high_20d_count"`  // 20日新高数量 (scores only)
+	High60dCount  int    `json:"high_60d_count"`  // 60日新高数量 (scores only)
+	High250dCount int    `json:"high_250d_count"` // 250日新高数量 (scores only)
 }
 
 // ============================================================
@@ -94,9 +97,10 @@ type SectorSentimentFullResponse struct {
 
 // SectorDriftPoint is one day's rank/rate for a sector.
 type SectorDriftPoint struct {
-	TradeDate string  `json:"trade_date"`
-	RankPos   *int    `json:"rank_pos"`
-	RedRate   float64 `json:"red_rate"`
+	TradeDate     string  `json:"trade_date"`
+	RankPos       *int    `json:"rank_pos"`        // rank from stk_sector_breadths
+	RedRate       float64 `json:"red_rate"`         // red_rate from stk_sector_breadths
+	ScoreRankPos  *int    `json:"score_rank_pos"`   // rank from stk_sector_scores
 }
 
 // SectorDriftResponse is the rank drift data for a sector.
@@ -112,17 +116,37 @@ type SectorDriftResponse struct {
 
 // ClimbingSectorItem represents a sector steadily climbing the ranks.
 type ClimbingSectorItem struct {
-	SectorName string  `json:"sector_name"`
-	RankT2     int     `json:"rank_t2"`
-	RankT1     int     `json:"rank_t1"`
-	RankT0     int     `json:"rank_t0"`
-	RankJump   int     `json:"rank_jump"`
-	MoneyT0    float64 `json:"money_t0"`
-	Source     string  `json:"source"` // "sector_score" or "sector_breadth"
+	SectorName   string  `json:"sector_name"`
+	RankT2       int     `json:"rank_t2"`
+	RankT1       int     `json:"rank_t1"`
+	RankT0       int     `json:"rank_t0"`
+	RankJump     int     `json:"rank_jump"`
+	MoneyT0      float64 `json:"money_t0"`
+	Source       string  `json:"source"`        // "sector_score" or "sector_breadth"
+	High20dCount int     `json:"high_20d_count"` // 20日新高数量 (scores only)
+	High60dCount int     `json:"high_60d_count"` // 60日新高数量 (scores only)
+	High250dCount int    `json:"high_250d_count"` // 250日新高数量 (scores only)
 }
 
 // SectorListResponse is a simple list of sector names.
 type SectorListResponse struct {
 	Sectors []string `json:"sectors"`
+}
+
+// NewHighStock represents a single stock in the new-high detail.
+type NewHighStock struct {
+	Symbol    string  `json:"symbol"`
+	StockName string  `json:"stock_name"`
+	High20d   bool    `json:"high_20d"`
+	High60d   bool    `json:"high_60d"`
+	High250d  bool    `json:"high_250d"`
+	Close     float64 `json:"close"`
+}
+
+// NewHighStocksResponse is the API response for new-high stocks of a sector.
+type NewHighStocksResponse struct {
+	SectorName string         `json:"sector_name"`
+	TradeDate  string         `json:"trade_date"`
+	Stocks     []NewHighStock `json:"stocks"`
 }
 

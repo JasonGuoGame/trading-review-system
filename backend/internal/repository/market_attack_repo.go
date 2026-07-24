@@ -83,6 +83,43 @@ func (r *MarketAttackRepository) GetTopVolumeStocks(tradeDate string, limit int)
 	return rows, nil
 }
 
+// GetTopVolumeAppearances returns how many times each symbol appeared in the
+// top 50 by amount over the last 30 trading days (including the given date).
+func (r *MarketAttackRepository) GetTopVolumeAppearances(tradeDate string) (map[string]int, error) {
+	sql := `
+		WITH last30 AS (
+			SELECT DISTINCT trade_date FROM quant_db.stk_daily_kline
+			WHERE trade_date <= ?
+			ORDER BY trade_date DESC
+			LIMIT 30
+		),
+		daily_ranked AS (
+			SELECT symbol, trade_date,
+				ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY amount DESC) AS rn
+			FROM quant_db.stk_daily_kline
+			WHERE trade_date IN (SELECT trade_date FROM last30)
+			  AND symbol NOT IN ('000001.SH','399001.SZ','399006.SZ','000300.SH','000852.SH')
+		)
+		SELECT symbol, COUNT(*) AS cnt
+		FROM daily_ranked
+		WHERE rn <= 50
+		GROUP BY symbol
+	`
+	type countRow struct {
+		Symbol string `gorm:"column:symbol"`
+		Cnt    int    `gorm:"column:cnt"`
+	}
+	var rows []countRow
+	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(rows))
+	for _, row := range rows {
+		result[row.Symbol] = row.Cnt
+	}
+	return result, nil
+}
+
 // GetSectorRelations returns all sector relations for the given symbols from quant_db.stock_sector_relation.
 func (r *MarketAttackRepository) GetSectorRelations(symbols []string) ([]SectorRelationRow, error) {
 	if len(symbols) == 0 {

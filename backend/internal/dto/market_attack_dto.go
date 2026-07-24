@@ -77,6 +77,7 @@ type TopVolumeStock struct {
 	Amount       float64  `json:"amount"`
 	TurnoverRate float64  `json:"turnover_rate"`
 	PctChange    float64  `json:"pct_change"`
+	Count30d     int      `json:"count_30d"` // appearances in top 50 over last 30 trading days
 }
 
 // TopConceptItem holds a concept name and its occurrence count.
