@@ -309,16 +309,20 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       title: '20日新高',
       dataIndex: 'high_20d_count',
       key: 'high_20d_count',
-      width: 72,
+      width: 80,
       align: 'center',
       sorter: (a, b) => a.high_20d_count - b.high_20d_count,
       render: (v, record) => {
         const canClick = v > 0
+        const prev = record.high_20d_prev ?? 0
+        const arrow = v > prev ? " ↑" : v < prev ? " ↓" : ""
+        const arrowColor = v > prev ? "#e84749" : v < prev ? "#3f8600" : "#8c8c8c"
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
+            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
           </span>
         )
       },
@@ -327,16 +331,20 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       title: '60日新高',
       dataIndex: 'high_60d_count',
       key: 'high_60d_count',
-      width: 72,
+      width: 80,
       align: 'center',
       sorter: (a, b) => a.high_60d_count - b.high_60d_count,
       render: (v, record) => {
         const canClick = v > 0
+        const prev = record.high_60d_prev ?? 0
+        const arrow = v > prev ? " ↑" : v < prev ? " ↓" : ""
+        const arrowColor = v > prev ? "#e84749" : v < prev ? "#3f8600" : "#8c8c8c"
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
+            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
           </span>
         )
       },
@@ -345,16 +353,20 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       title: '250日新高',
       dataIndex: 'high_250d_count',
       key: 'high_250d_count',
-      width: 78,
+      width: 86,
       align: 'center',
       sorter: (a, b) => a.high_250d_count - b.high_250d_count,
       render: (v, record) => {
         const canClick = v > 0
+        const prev = record.high_250d_prev ?? 0
+        const arrow = v > prev ? " ↑" : v < prev ? " ↓" : ""
+        const arrowColor = v > prev ? "#e84749" : v < prev ? "#3f8600" : "#8c8c8c"
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
+            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
           </span>
         )
       },
@@ -589,11 +601,15 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
       sorter: (a, b) => a.high_20d_count - b.high_20d_count,
       render: (v, record) => {
         const canClick = v > 0
+        const prev = record.high_20d_prev ?? 0
+        const arrow = v > prev ? ' ↑' : v < prev ? ' ↓' : ''
+        const arrowColor = v > prev ? '#e84749' : v < prev ? '#3f8600' : '#8c8c8c'
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
+            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
           </span>
         )
       },
@@ -607,11 +623,15 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
       sorter: (a, b) => a.high_60d_count - b.high_60d_count,
       render: (v, record) => {
         const canClick = v > 0
+        const prev = record.high_60d_prev ?? 0
+        const arrow = v > prev ? ' ↑' : v < prev ? ' ↓' : ''
+        const arrowColor = v > prev ? '#e84749' : v < prev ? '#3f8600' : '#8c8c8c'
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
+            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
           </span>
         )
       },
@@ -625,11 +645,15 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
       sorter: (a, b) => a.high_250d_count - b.high_250d_count,
       render: (v, record) => {
         const canClick = v > 0
+        const prev = record.high_250d_prev ?? 0
+        const arrow = v > prev ? ' ↑' : v < prev ? ' ↓' : ''
+        const arrowColor = v > prev ? '#e84749' : v < prev ? '#3f8600' : '#8c8c8c'
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
+            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
           </span>
         )
       },

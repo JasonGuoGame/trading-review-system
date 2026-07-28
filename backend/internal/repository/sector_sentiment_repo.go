@@ -104,6 +104,38 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 	return rows, nil
 }
 
+// PrevHighCount holds a sector's high counts on a specific date.
+type PrevHighCount struct {
+	SectorName    string `gorm:"column:sector_name"`
+	Source        string `gorm:"column:source"`
+	High20dCount  int    `gorm:"column:high_20d_count"`
+	High60dCount  int    `gorm:"column:high_60d_count"`
+	High250dCount int    `gorm:"column:high_250d_count"`
+}
+
+// GetPrevHighCounts returns high counts for the given sectors on the given date.
+func (r *SectorSentimentRepository) GetPrevHighCounts(tradeDate string, sectors []string) ([]PrevHighCount, error) {
+	if len(sectors) == 0 {
+		return nil, nil
+	}
+	sql := `
+		SELECT sector_name, high_20d_count, high_60d_count, high_250d_count,
+			'sector_score' AS source
+		FROM stk_sector_scores
+		WHERE trade_date = ? AND sector_name IN ?
+		UNION ALL
+		SELECT sector_name, high_20d_count, high_60d_count, high_250d_count,
+			'sector_breadth' AS source
+		FROM stk_sector_breadths
+		WHERE trade_date = ? AND sector_name IN ? AND sector_type = 'industry'
+	`
+	var rows []PrevHighCount
+	if err := r.db.Raw(sql, tradeDate, sectors, tradeDate, sectors).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (r *SectorSentimentRepository) GetSectorRecentRanksFromScores(sectorName, tradeDate string) ([]*int, error) {
 	type rankRow struct {
 		RankPos *int `gorm:"column:rank_pos"`

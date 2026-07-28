@@ -60,6 +60,21 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 		}
 	}
 
+	// Collect sector names for previous-day high-count lookup
+	sectorNames := make([]string, len(rows))
+	for i, row := range rows {
+		sectorNames[i] = row.SectorName
+	}
+
+	// Fetch previous day's high counts for trend arrows
+	prevHighMap := make(map[string]repository.PrevHighCount) // key: "sectorName|source"
+	if prev, _ := s.repo.GetPreviousTradeDate(tradeDate); prev != "" {
+		prevRows, _ := s.repo.GetPrevHighCounts(prev, sectorNames)
+		for _, p := range prevRows {
+			prevHighMap[p.SectorName+"|"+p.Source] = p
+		}
+	}
+
 	items := make([]dto.ConsistentStrengthItem, len(rows))
 	for i, row := range rows {
 		var ranks []*int
@@ -73,6 +88,8 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			log.Printf("[sector-sentiment] GetSectorRecentRanks for %q (source=%s): %v", row.SectorName, row.Source, rankErr)
 			ranks = make([]*int, 5)
 		}
+		prevKey := row.SectorName + "|" + row.Source
+		prev := prevHighMap[prevKey]
 		items[i] = dto.ConsistentStrengthItem{
 			SectorName:    row.SectorName,
 			StrongDays:    row.StrongDays,
@@ -82,6 +99,9 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			High20dCount:  row.High20dCount,
 			High60dCount:  row.High60dCount,
 			High250dCount: row.High250dCount,
+			High20dPrev:   prev.High20dCount,
+			High60dPrev:   prev.High60dCount,
+			High250dPrev:  prev.High250dCount,
 		}
 		// Diagnostic: log each sector's IsNew value to trace issues
 		log.Printf("[sector-sentiment] sector=%q source=%s strong_days=%d is_new=%v in_yesterday_set=%v",
@@ -296,8 +316,25 @@ func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.Cli
 	if err != nil {
 		return nil, fmt.Errorf("暗线挖掘查询失败: %w", err)
 	}
+
+	// Collect sector names for previous-day high-count lookup
+	sectorNames := make([]string, len(rows))
+	for i, row := range rows {
+		sectorNames[i] = row.SectorName
+	}
+
+	prevHighMap := make(map[string]repository.PrevHighCount)
+	if prev, _ := s.repo.GetPreviousTradeDate(tradeDate); prev != "" {
+		prevRows, _ := s.repo.GetPrevHighCounts(prev, sectorNames)
+		for _, p := range prevRows {
+			prevHighMap[p.SectorName+"|"+p.Source] = p
+		}
+	}
+
 	items := make([]dto.ClimbingSectorItem, len(rows))
 	for i, row := range rows {
+		prevKey := row.SectorName + "|" + row.Source
+		prev := prevHighMap[prevKey]
 		items[i] = dto.ClimbingSectorItem{
 			SectorName:    row.SectorName,
 			RankT2:        row.RankT2,
@@ -309,6 +346,9 @@ func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.Cli
 			High20dCount:  row.High20dCount,
 			High60dCount:  row.High60dCount,
 			High250dCount: row.High250dCount,
+			High20dPrev:   prev.High20dCount,
+			High60dPrev:   prev.High60dCount,
+			High250dPrev:  prev.High250dCount,
 		}
 	}
 	return items, nil

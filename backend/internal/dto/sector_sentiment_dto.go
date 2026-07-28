@@ -12,9 +12,12 @@ type ConsistentStrengthItem struct {
 	RecentRanks   []*int `json:"recent_ranks"` // rank_pos for last 5 trading days (index 0 = oldest, 4 = newest)
 	Source        string `json:"source"` // "sector_score" or "sector_breadth"
 	IsNew         bool   `json:"is_new"` // not in yesterday's list
-	High20dCount  int    `json:"high_20d_count"`  // 20日新高数量 (scores only)
-	High60dCount  int    `json:"high_60d_count"`  // 60日新高数量 (scores only)
-	High250dCount int    `json:"high_250d_count"` // 250日新高数量 (scores only)
+	High20dCount  int    `json:"high_20d_count"`   // 20日新高数量
+	High60dCount  int    `json:"high_60d_count"`   // 60日新高数量
+	High250dCount int    `json:"high_250d_count"`  // 250日新高数量
+	High20dPrev   int    `json:"high_20d_prev"`    // 上一交易日20日新高数量
+	High60dPrev   int    `json:"high_60d_prev"`    // 上一交易日60日新高数量
+	High250dPrev  int    `json:"high_250d_prev"`   // 上一交易日250日新高数量
 }
 
 // ============================================================
@@ -123,9 +126,12 @@ type ClimbingSectorItem struct {
 	RankJump     int     `json:"rank_jump"`
 	MoneyT0      float64 `json:"money_t0"`
 	Source       string  `json:"source"`        // "sector_score" or "sector_breadth"
-	High20dCount int     `json:"high_20d_count"` // 20日新高数量 (scores only)
-	High60dCount int     `json:"high_60d_count"` // 60日新高数量 (scores only)
-	High250dCount int    `json:"high_250d_count"` // 250日新高数量 (scores only)
+	High20dCount  int    `json:"high_20d_count"`  // 20日新高数量
+	High60dCount  int    `json:"high_60d_count"`  // 60日新高数量
+	High250dCount int    `json:"high_250d_count"` // 250日新高数量
+	High20dPrev   int    `json:"high_20d_prev"`   // 上一交易日20日新高数量
+	High60dPrev   int    `json:"high_60d_prev"`   // 上一交易日60日新高数量
+	High250dPrev  int    `json:"high_250d_prev"`  // 上一交易日250日新高数量
 }
 
 // SectorListResponse is a simple list of sector names.
