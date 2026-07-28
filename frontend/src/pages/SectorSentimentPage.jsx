@@ -313,12 +313,12 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       align: 'center',
       sorter: (a, b) => a.high_20d_count - b.high_20d_count,
       render: (v, record) => {
-        const canClick = record.source === 'sector_score' && v > 0
+        const canClick = v > 0
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
-            style={{ color: canClick ? '#c9d1d9' : '#30363d', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
-            {record.source === 'sector_score' ? (v || 0) : '-'}
+            style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {v || 0}
           </span>
         )
       },
@@ -331,12 +331,12 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       align: 'center',
       sorter: (a, b) => a.high_60d_count - b.high_60d_count,
       render: (v, record) => {
-        const canClick = record.source === 'sector_score' && v > 0
+        const canClick = v > 0
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
-            style={{ color: canClick ? '#c9d1d9' : '#30363d', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
-            {record.source === 'sector_score' ? (v || 0) : '-'}
+            style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {v || 0}
           </span>
         )
       },
@@ -349,12 +349,12 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       align: 'center',
       sorter: (a, b) => a.high_250d_count - b.high_250d_count,
       render: (v, record) => {
-        const canClick = record.source === 'sector_score' && v > 0
+        const canClick = v > 0
         return (
           <span
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
-            style={{ color: canClick ? '#c9d1d9' : '#30363d', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
-            {record.source === 'sector_score' ? (v || 0) : '-'}
+            style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {v || 0}
           </span>
         )
       },
@@ -502,9 +502,17 @@ function NewFacesPanel({ data }) {
 
 // ------ 暗线挖掘 (Climbing Sectors) ------
 
-function ClimbingSectorsPanel({ data }) {
+function ClimbingSectorsPanel({ data, tradeDate }) {
+  const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
+  const [newHighModal, setNewHighModal] = useState(null)
+
   if (!data || data.length === 0) {
     return <Empty description="暂无爬坡板块" />
+  }
+
+  const handleHighClick = (sectorName, title) => {
+    setNewHighModal({ sector_name: sectorName, title })
+    triggerNewHigh({ sector_name: sectorName, trade_date: tradeDate })
   }
 
   const columns = [
@@ -579,11 +587,16 @@ function ClimbingSectorsPanel({ data }) {
       width: 72,
       align: 'center',
       sorter: (a, b) => a.high_20d_count - b.high_20d_count,
-      render: (v, record) => (
-        <span style={{ color: record.source === 'sector_score' ? '#c9d1d9' : '#30363d', fontWeight: record.source === 'sector_score' && v > 0 ? 600 : 400 }}>
-          {record.source === 'sector_score' ? (v || 0) : '-'}
-        </span>
-      ),
+      render: (v, record) => {
+        const canClick = v > 0
+        return (
+          <span
+            onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
+            style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {v || 0}
+          </span>
+        )
+      },
     },
     {
       title: '60日新高',
@@ -592,11 +605,16 @@ function ClimbingSectorsPanel({ data }) {
       width: 72,
       align: 'center',
       sorter: (a, b) => a.high_60d_count - b.high_60d_count,
-      render: (v, record) => (
-        <span style={{ color: record.source === 'sector_score' ? '#c9d1d9' : '#30363d', fontWeight: record.source === 'sector_score' && v > 0 ? 600 : 400 }}>
-          {record.source === 'sector_score' ? (v || 0) : '-'}
-        </span>
-      ),
+      render: (v, record) => {
+        const canClick = v > 0
+        return (
+          <span
+            onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
+            style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {v || 0}
+          </span>
+        )
+      },
     },
     {
       title: '250日新高',
@@ -605,15 +623,21 @@ function ClimbingSectorsPanel({ data }) {
       width: 78,
       align: 'center',
       sorter: (a, b) => a.high_250d_count - b.high_250d_count,
-      render: (v, record) => (
-        <span style={{ color: record.source === 'sector_score' ? '#c9d1d9' : '#30363d', fontWeight: record.source === 'sector_score' && v > 0 ? 600 : 400 }}>
-          {record.source === 'sector_score' ? (v || 0) : '-'}
-        </span>
-      ),
+      render: (v, record) => {
+        const canClick = v > 0
+        return (
+          <span
+            onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
+            style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+            {v || 0}
+          </span>
+        )
+      },
     },
   ]
 
   return (
+    <>
     <Table
       dataSource={data}
       columns={columns}
@@ -621,6 +645,35 @@ function ClimbingSectorsPanel({ data }) {
       size="small"
       pagination={false}
     />
+    <Modal
+      title={newHighModal?.title || '新高股票'}
+      open={!!newHighModal}
+      onCancel={() => setNewHighModal(null)}
+      footer={null}
+      width={560}
+    >
+      {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+      {newHighData?.stocks && newHighData.stocks.length > 0 && (
+        <Table
+          dataSource={newHighData.stocks}
+          rowKey="symbol"
+          size="small"
+          pagination={false}
+          columns={[
+            { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+            { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+            { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
+            { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
+            { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
+          ]}
+        />
+      )}
+      {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
+        <Empty description="该板块暂无新高股票数据" />
+      )}
+    </Modal>
+    </>
   )
 }
 
@@ -1181,7 +1234,7 @@ export default function SectorSentimentPage() {
           },
         }}
       >
-        <ClimbingSectorsPanel data={climbingSectors} />
+        <ClimbingSectorsPanel data={climbingSectors} tradeDate={queryDate} />
       </Card>
 
       {/* =========================================== */}

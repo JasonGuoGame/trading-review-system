@@ -499,6 +499,7 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 		),
 		BreadthDailyRank AS (
 			SELECT sector_name, trade_date, rank_pos,
+				high_20d_count, high_60d_count, high_250d_count,
 				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
 			FROM stk_sector_breadths
 			WHERE trade_date <= ? AND sector_type = 'industry'
@@ -508,7 +509,10 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 				MAX(CASE WHEN day_idx = 1 THEN rank_pos END) AS rank_t0,
 				MAX(CASE WHEN day_idx = 2 THEN rank_pos END) AS rank_t1,
 				MAX(CASE WHEN day_idx = 3 THEN rank_pos END) AS rank_t2,
-				MAX(CASE WHEN day_idx = 1 THEN trade_date END) AS latest_date
+				MAX(CASE WHEN day_idx = 1 THEN trade_date END) AS latest_date,
+				MAX(CASE WHEN day_idx = 1 THEN high_20d_count END) AS high_20d_count,
+				MAX(CASE WHEN day_idx = 1 THEN high_60d_count END) AS high_60d_count,
+				MAX(CASE WHEN day_idx = 1 THEN high_250d_count END) AS high_250d_count
 			FROM BreadthDailyRank
 			WHERE day_idx <= 3
 			GROUP BY sector_name
@@ -517,7 +521,7 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 			SELECT b.sector_name, b.rank_t2, b.rank_t1, b.rank_t0,
 				(b.rank_t2 - b.rank_t0) AS rank_jump, 0 AS money_t0,
 				'sector_breadth' AS source,
-				0 AS high_20d_count, 0 AS high_60d_count, 0 AS high_250d_count
+				b.high_20d_count, b.high_60d_count, b.high_250d_count
 			FROM BreadthTrend b, BreadthMaxDate m
 			WHERE b.rank_t0 BETWEEN 11 AND 25
 			  AND b.rank_t1 < b.rank_t2
@@ -536,12 +540,21 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 	return rows, nil
 }
 
-// GetSectorNames returns distinct industry sector names (excludes broad indices).
+// GetSectorNames returns distinct sector names from both stk_sector_breadths
+// and stk_sector_scores (excludes broad indices).
 func (r *SectorSentimentRepository) GetSectorNames() ([]string, error) {
 	var names []string
-	err := r.db.Raw(
-		"SELECT DISTINCT sector_name FROM stk_sector_breadths WHERE sector_type = 'industry' AND sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000') ORDER BY sector_name",
-	).Scan(&names).Error
+	err := r.db.Raw(`
+		SELECT sector_name FROM (
+			SELECT DISTINCT sector_name FROM stk_sector_breadths
+			WHERE sector_type = 'industry'
+			  AND sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000')
+			UNION
+			SELECT DISTINCT sector_name FROM stk_sector_scores
+			WHERE sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000')
+		) AS t
+		ORDER BY sector_name
+	`).Scan(&names).Error
 	if err != nil {
 		log.Printf("[sector-sentiment] GetSectorNames error: %v", err)
 		return nil, err
