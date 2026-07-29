@@ -74,9 +74,15 @@ type DivergenceResponse struct {
 
 // ConcentrationItem is a large sector (>=20 stocks) with red_rate >= 85.
 type ConcentrationItem struct {
-	SectorName  string  `json:"sector_name"`
-	RedRate     float64 `json:"red_rate"`
-	TotalStocks int     `json:"total_stocks"`
+	SectorName    string  `json:"sector_name"`
+	RedRate       float64 `json:"red_rate"`
+	TotalStocks   int     `json:"total_stocks"`
+	High20dCount  int     `json:"high_20d_count"`
+	High60dCount  int     `json:"high_60d_count"`
+	High250dCount int     `json:"high_250d_count"`
+	High20dPrev   int     `json:"high_20d_prev"`
+	High60dPrev   int     `json:"high_60d_prev"`
+	High250dPrev  int     `json:"high_250d_prev"`
 }
 
 // ============================================================

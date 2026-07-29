@@ -235,12 +235,34 @@ func (s *SectorSentimentService) GetConcentration(tradeDate string) ([]dto.Conce
 		return nil, fmt.Errorf("资金抱团度查询失败: %w", err)
 	}
 
+	// Previous-day high count lookup for trend arrows
+	sectorNames := make([]string, len(rows))
+	for i, row := range rows {
+		sectorNames[i] = row.SectorName
+	}
+	prevHighMap := make(map[string]repository.PrevHighCount)
+	if prev, _ := s.repo.GetPreviousTradeDate(tradeDate); prev != "" {
+		prevRows, _ := s.repo.GetPrevHighCounts(prev, sectorNames)
+		for _, p := range prevRows {
+			if p.Source == "sector_breadth" {
+				prevHighMap[p.SectorName] = p
+			}
+		}
+	}
+
 	items := make([]dto.ConcentrationItem, len(rows))
 	for i, row := range rows {
+		prev := prevHighMap[row.SectorName]
 		items[i] = dto.ConcentrationItem{
-			SectorName:  row.SectorName,
-			RedRate:     row.RedRate,
-			TotalStocks: row.TotalStocks,
+			SectorName:    row.SectorName,
+			RedRate:       row.RedRate,
+			TotalStocks:   row.TotalStocks,
+			High20dCount:  row.High20dCount,
+			High60dCount:  row.High60dCount,
+			High250dCount: row.High250dCount,
+			High20dPrev:   prev.High20dCount,
+			High60dPrev:   prev.High60dCount,
+			High250dPrev:  prev.High250dCount,
 		}
 	}
 	return items, nil

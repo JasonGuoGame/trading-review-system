@@ -397,14 +397,18 @@ func (r *SectorSentimentRepository) GetIndustryMedianRate(tradeDate string) (flo
 // ============================================================
 
 type ConcentrationRow struct {
-	SectorName  string  `gorm:"column:sector_name"`
-	RedRate     float64 `gorm:"column:red_rate"`
-	TotalStocks int     `gorm:"column:total_stocks"`
+	SectorName    string  `gorm:"column:sector_name"`
+	RedRate       float64 `gorm:"column:red_rate"`
+	TotalStocks   int     `gorm:"column:total_stocks"`
+	High20dCount  int     `gorm:"column:high_20d_count"`
+	High60dCount  int     `gorm:"column:high_60d_count"`
+	High250dCount int     `gorm:"column:high_250d_count"`
 }
 
 func (r *SectorSentimentRepository) GetConcentration(tradeDate string) ([]ConcentrationRow, error) {
 	sql := `
-		SELECT sector_name, red_rate, total_stocks
+		SELECT sector_name, red_rate, total_stocks,
+			high_20d_count, high_60d_count, high_250d_count
 		FROM stk_sector_breadths
 		WHERE trade_date = ?
 		  AND sector_type = 'industry'

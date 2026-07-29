@@ -322,7 +322,7 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
-            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
+            <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
           </span>
         )
       },
@@ -344,7 +344,7 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
-            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
+            <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
           </span>
         )
       },
@@ -366,7 +366,7 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
-            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
+            <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
           </span>
         )
       },
@@ -609,7 +609,7 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 20日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
-            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
+            <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
           </span>
         )
       },
@@ -631,7 +631,7 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 60日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
-            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
+            <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
           </span>
         )
       },
@@ -653,7 +653,7 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
             onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · 250日新高`) : undefined}
             style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
             {v || 0}
-            <span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span>
+            <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
           </span>
         )
       },
@@ -837,10 +837,41 @@ function IceRecoveryPanel({ data }) {
 
 // ------ 资金抱团度 ------
 
-function ConcentrationPanel({ data }) {
+function ConcentrationPanel({ data, tradeDate }) {
+  const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
+  const [newHighModal, setNewHighModal] = useState(null)
+
   if (!data || data.length === 0) {
     return <Empty description="暂无大兵团共振板块" />
   }
+
+  const handleHighClick = (sectorName, title) => {
+    setNewHighModal({ sector_name: sectorName, title })
+    triggerNewHigh({ sector_name: sectorName, trade_date: tradeDate })
+  }
+
+  const highCol = (title, field, prevField) => ({
+    title,
+    dataIndex: field,
+    key: field,
+    width: 80,
+    align: 'center',
+    sorter: (a, b) => (a[field] || 0) - (b[field] || 0),
+    render: (v, record) => {
+      const canClick = v > 0
+      const prev = record[prevField] ?? 0
+      const arrow = v > prev ? ' ↑' : v < prev ? ' ↓' : ''
+      const arrowColor = v > prev ? '#e84749' : v < prev ? '#3f8600' : '#8c8c8c'
+      return (
+        <span
+          onClick={canClick ? () => handleHighClick(record.sector_name, `${record.sector_name} · ${title}`) : undefined}
+          style={{ color: '#c9d1d9', fontWeight: canClick ? 600 : 400, cursor: canClick ? 'pointer' : 'default', textDecoration: canClick ? 'underline' : 'none' }}>
+          {v || 0}
+          <Tooltip title={arrow ? `上一交易日: ${prev}` : null}><span style={{ color: arrowColor, fontSize: 10 }}>{arrow}</span></Tooltip>
+        </span>
+      )
+    },
+  })
 
   const columns = [
     {
@@ -897,9 +928,13 @@ function ConcentrationPanel({ data }) {
         )
       },
     },
+    highCol('20日新高', 'high_20d_count', 'high_20d_prev'),
+    highCol('60日新高', 'high_60d_count', 'high_60d_prev'),
+    highCol('250日新高', 'high_250d_count', 'high_250d_prev'),
   ]
 
   return (
+    <>
     <Table
       dataSource={data}
       columns={columns}
@@ -908,6 +943,35 @@ function ConcentrationPanel({ data }) {
       pagination={false}
       locale={{ emptyText: '暂无' }}
     />
+    <Modal
+      title={newHighModal?.title || '新高股票'}
+      open={!!newHighModal}
+      onCancel={() => setNewHighModal(null)}
+      footer={null}
+      width={560}
+    >
+      {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+      {newHighData?.stocks && newHighData.stocks.length > 0 && (
+        <Table
+          dataSource={newHighData.stocks}
+          rowKey="symbol"
+          size="small"
+          pagination={false}
+          columns={[
+            { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+            { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+            { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
+            { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
+            { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
+          ]}
+        />
+      )}
+      {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
+        <Empty description="该板块暂无新高股票数据" />
+      )}
+    </Modal>
+    </>
   )
 }
 
@@ -1300,7 +1364,7 @@ export default function SectorSentimentPage() {
         }
         styles={{ header: { borderBottom: '1px solid #21262d' } }}
       >
-        <ConcentrationPanel data={concentration} />
+        <ConcentrationPanel data={concentration} tradeDate={queryDate} />
       </Card>
 
       {/* =========================================== */}
