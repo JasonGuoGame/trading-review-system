@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input, Modal,
+  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input, Modal, Switch,
 } from 'antd'
 import {
   FireOutlined,
@@ -982,6 +982,7 @@ function SectorDriftPanel() {
   const [triggerDrift, { data: driftData, isFetching: driftLoading }] = useLazyGetSectorDriftQuery()
   const [selectedSector, setSelectedSector] = useState(null)
   const [options, setOptions] = useState([])
+  const [useMA, setUseMA] = useState(false)
 
   const sectors = sectorList?.sectors || []
 
@@ -1000,27 +1001,52 @@ function SectorDriftPanel() {
     triggerDrift({ sector_name: value, days: 30 })
   }
 
-  // Prepare chart data: rank is inverted so that rank 1 appears at the top.
-  // Merges breadth rank, breadth red_rate, and scores rank into one dataset.
+  // Compute 5-day moving average for a nullable value array
+  const ma5 = (arr) => {
+    const result = []
+    for (let i = 0; i < arr.length; i++) {
+      let sum = 0, count = 0
+      for (let j = Math.max(0, i - 4); j <= i; j++) {
+        if (arr[j] != null) { sum += arr[j]; count++ }
+      }
+      result.push(count > 0 ? Math.round(sum / count) : null)
+    }
+    return result
+  }
+
+  // Prepare chart data
   const { chartData, rankTicks } = useMemo(() => {
     if (!driftData?.points) return { chartData: [], rankTicks: [] }
-    const allRanks = driftData.points.flatMap((p) => [p.rank_pos, p.score_rank_pos].filter(Boolean))
+    const pts = driftData.points
+    const raw = pts.map((p) => ({
+      trade_date: p.trade_date,
+      rank: p.rank_pos,
+      red_rate: p.red_rate,
+      score_rank: p.score_rank_pos,
+    }))
+    if (!useMA) {
+      const allRanks = pts.flatMap((p) => [p.rank_pos, p.score_rank_pos].filter(Boolean))
+      const maxRank = Math.max(...allRanks, 50)
+      const ticks = []
+      for (let t = 0; t <= maxRank + 49; t += 50) ticks.push(t)
+      return { chartData: raw, rankTicks: ticks }
+    }
+    // 5-day MA
+    const rankMA = ma5(raw.map((d) => d.rank))
+    const scoreMA = ma5(raw.map((d) => d.score_rank))
+    const rateMA = ma5(raw.map((d) => d.red_rate))
+    const maData = raw.map((d, i) => ({
+      trade_date: d.trade_date,
+      rank: rankMA[i],
+      red_rate: rateMA[i],
+      score_rank: scoreMA[i],
+    }))
+    const allRanks = maData.flatMap((p) => [p.rank, p.score_rank].filter(Boolean))
     const maxRank = Math.max(...allRanks, 50)
-    // Generate ticks every 50
     const ticks = []
-    for (let t = 0; t <= maxRank + 49; t += 50) {
-      ticks.push(t)
-    }
-    return {
-      chartData: driftData.points.map((p) => ({
-        trade_date: p.trade_date,
-        rank: p.rank_pos,
-        red_rate: p.red_rate,
-        score_rank: p.score_rank_pos,
-      })),
-      rankTicks: ticks,
-    }
-  }, [driftData])
+    for (let t = 0; t <= maxRank + 49; t += 50) ticks.push(t)
+    return { chartData: maData, rankTicks: ticks }
+  }, [driftData, useMA])
 
   return (
     <div>
@@ -1037,6 +1063,12 @@ function SectorDriftPanel() {
         >
           <Input allowClear />
         </AutoComplete>
+        {driftData && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8c8c8c' }}>
+            <Switch size="small" checked={useMA} onChange={setUseMA} />
+            5日均线
+          </span>
+        )}
       </div>
 
       {driftLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
@@ -1044,7 +1076,7 @@ function SectorDriftPanel() {
       {driftData && chartData.length > 0 && (
         <div>
           <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
-            📉 排名漂移图（蓝=宽度排名 · 绿=评分排名 · 橙=红盘率%）
+            📉 排名漂移图（蓝=宽度排名 · 绿=评分排名 · 橙=红盘率%）{useMA ? ' · 5日均线' : ''}
           </div>
           <ResponsiveContainer width="100%" height={440}>
             <LineChart data={chartData}>
@@ -1075,9 +1107,10 @@ function SectorDriftPanel() {
                 contentStyle={{ background: '#141414', border: '1px solid #333', borderRadius: 8 }}
                 labelFormatter={(v) => dayjs(v).format('YYYY-MM-DD')}
                 formatter={(value, name) => {
-                  if (name === 'rank') return [`第 ${value} 名`, '宽度排名']
-                  if (name === 'score_rank') return [`第 ${value} 名`, '评分排名']
-                  if (name === 'red_rate') return [`${value}%`, '红盘率']
+                  const maSuffix = useMA ? '(5日均)' : ''
+                  if (name === 'rank') return [`第 ${value} 名`, `宽度排名${maSuffix}`]
+                  if (name === 'score_rank') return [`第 ${value} 名`, `评分排名${maSuffix}`]
+                  if (name === 'red_rate') return [`${value}%`, `红盘率${maSuffix}`]
                   return [value, name]
                 }}
               />
@@ -1089,7 +1122,7 @@ function SectorDriftPanel() {
                 yAxisId="rank"
                 stroke="#1677ff"
                 strokeWidth={2}
-                dot={{ r: 3, fill: '#1677ff' }}
+                dot={{ r: useMA ? 0 : 3, fill: '#1677ff' }}
                 name="宽度排名"
                 connectNulls={false}
               />
@@ -1099,7 +1132,7 @@ function SectorDriftPanel() {
                 yAxisId="rank"
                 stroke="#52c41a"
                 strokeWidth={2}
-                dot={{ r: 3, fill: '#52c41a' }}
+                dot={{ r: useMA ? 0 : 3, fill: '#52c41a' }}
                 name="评分排名"
                 connectNulls={false}
               />
