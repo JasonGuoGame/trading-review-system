@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input, Modal, Switch,
+  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input, Modal, Switch, Radio,
 } from 'antd'
 import {
   FireOutlined,
@@ -373,6 +373,13 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
     },
   ]
 
+  // Top-3 20日新高 values (descending, unique) for row highlighting
+  const top3Vals20d = useMemo(() => {
+    return [...new Set(data.map((d) => d.high_20d_count || 0))].sort((a, b) => b - a).slice(0, 3)
+  }, [data])
+
+  const top3Colors = ['#5c3d00', '#1a3a5c', '#4a1a2e'] // gold, blue, rose — distinct on dark bg
+
   return (
     <>
     <Table
@@ -382,6 +389,14 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       size="small"
       pagination={false}
       locale={{ emptyText: '暂无连续走强板块' }}
+      onRow={(record) => {
+        const v = record.high_20d_count || 0
+        const rank = top3Vals20d.indexOf(v)
+        if (v > 0 && rank >= 0) {
+          return { style: { backgroundColor: top3Colors[rank] } }
+        }
+        return {}
+      }}
     />
     <Modal
       title={newHighModal?.title || '新高股票'}
@@ -660,6 +675,12 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
     },
   ]
 
+  // Top-3 20日新高 highlighting
+  const top3Vals20d = useMemo(() => {
+    return [...new Set(data.map((d) => d.high_20d_count || 0))].sort((a, b) => b - a).slice(0, 3)
+  }, [data])
+  const top3Colors = ['#5c3d00', '#1a3a5c', '#4a1a2e']
+
   return (
     <>
     <Table
@@ -668,6 +689,14 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
       rowKey={(record) => `${record.sector_name}-${record.source}`}
       size="small"
       pagination={false}
+      onRow={(record) => {
+        const v = record.high_20d_count || 0
+        const rank = top3Vals20d.indexOf(v)
+        if (v > 0 && rank >= 0) {
+          return { style: { backgroundColor: top3Colors[rank] } }
+        }
+        return {}
+      }}
     />
     <Modal
       title={newHighModal?.title || '新高股票'}
@@ -983,6 +1012,7 @@ function SectorDriftPanel() {
   const [selectedSector, setSelectedSector] = useState(null)
   const [options, setOptions] = useState([])
   const [useMA, setUseMA] = useState(false)
+  const [driftDays, setDriftDays] = useState(30)
 
   const sectors = sectorList?.sectors || []
 
@@ -996,9 +1026,21 @@ function SectorDriftPanel() {
     )
   }
 
+  const fetchDrift = (sector, days) => {
+    setSelectedSector(sector)
+    triggerDrift({ sector_name: sector, days })
+  }
+
   const onSelect = (value) => {
-    setSelectedSector(value)
-    triggerDrift({ sector_name: value, days: 30 })
+    fetchDrift(value, driftDays)
+  }
+
+  const onDaysChange = (e) => {
+    const days = e.target.value
+    setDriftDays(days)
+    if (selectedSector) {
+      triggerDrift({ sector_name: selectedSector, days })
+    }
   }
 
   // Compute 5-day moving average for a nullable value array
@@ -1069,6 +1111,13 @@ function SectorDriftPanel() {
             5日均线
           </span>
         )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+          <Radio.Group value={driftDays} onChange={onDaysChange} size="small" optionType="button" buttonStyle="solid">
+            <Radio.Button value={30}>30日</Radio.Button>
+            <Radio.Button value={60}>60日</Radio.Button>
+            <Radio.Button value={365}>全部</Radio.Button>
+          </Radio.Group>
+        </span>
       </div>
 
       {driftLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
@@ -1201,7 +1250,7 @@ export default function SectorSentimentPage() {
   const { data: latestDate } = useGetSectorSentimentLatestDateQuery()
   const [selectedDate, setSelectedDate] = useState(null)
   const queryDate = selectedDate || latestDate || undefined
-  const { data, isLoading, isError, error } = useGetFullReportQuery(queryDate, { skip: !queryDate })
+  const { data, isLoading, isError, error } = useGetFullReportQuery(queryDate, { skip: !queryDate, refetchOnMountOrArgChange: true })
 
   if (isLoading) {
     return (
