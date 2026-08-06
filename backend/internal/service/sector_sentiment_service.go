@@ -75,6 +75,9 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 		}
 	}
 
+	// Fetch 30-day leader appearance counts
+	leaderCountMap, _ := s.repo.GetLeaderCountMap(tradeDate)
+
 	items := make([]dto.ConsistentStrengthItem, len(rows))
 	for i, row := range rows {
 		var ranks []*int
@@ -95,13 +98,14 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			StrongDays:    row.StrongDays,
 			RecentRanks:   ranks,
 			Source:        row.Source,
-			IsNew:         !yesterdaySet[row.SectorName],
-			High20dCount:  row.High20dCount,
-			High60dCount:  row.High60dCount,
-			High250dCount: row.High250dCount,
-			High20dPrev:   prev.High20dCount,
-			High60dPrev:   prev.High60dCount,
-			High250dPrev:  prev.High250dCount,
+			IsNew:          !yesterdaySet[row.SectorName],
+			High20dCount:   row.High20dCount,
+			High60dCount:   row.High60dCount,
+			High250dCount:  row.High250dCount,
+			High20dPrev:    prev.High20dCount,
+			High60dPrev:    prev.High60dCount,
+			High250dPrev:   prev.High250dCount,
+			LeaderCount30d: leaderCountMap[row.SectorName+"|"+row.Source],
 		}
 		// Diagnostic: log each sector's IsNew value to trace issues
 		log.Printf("[sector-sentiment] sector=%q source=%s strong_days=%d is_new=%v in_yesterday_set=%v",
@@ -321,6 +325,33 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		climbing = []dto.ClimbingSectorItem{}
 	}
 
+	// Top-10 leaderboards
+	topScores, _ := s.repo.GetTopSectorScores(tradeDate)
+	topBreadths, _ := s.repo.GetTopSectorBreadths(tradeDate)
+
+	// Collect sector names for top-stock lookup
+	allTopSectors := make([]string, 0, len(topScores)+len(topBreadths))
+	for _, r := range topScores {
+		allTopSectors = append(allTopSectors, r.SectorName)
+	}
+	for _, r := range topBreadths {
+		allTopSectors = append(allTopSectors, r.SectorName)
+	}
+	topStockMap, err := s.repo.GetTopStocksBySectors(tradeDate, allTopSectors)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetTopStocksBySectors failed: %v", err)
+		topStockMap = make(map[string]string)
+	}
+
+	topScoresDTO := make([]dto.TopSectorItem, len(topScores))
+	for i, r := range topScores {
+		topScoresDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName]}
+	}
+	topBreadthsDTO := make([]dto.TopSectorItem, len(topBreadths))
+	for i, r := range topBreadths {
+		topBreadthsDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName]}
+	}
+
 	return &dto.SectorSentimentFullResponse{
 		TradeDate:          tradeDate,
 		ConsistentStrength: consistent,
@@ -329,6 +360,8 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		Divergence:         divergence,
 		Concentration:      concentration,
 		ClimbingSectors:    climbing,
+		TopScores:          topScoresDTO,
+		TopBreadths:        topBreadthsDTO,
 	}, nil
 }
 

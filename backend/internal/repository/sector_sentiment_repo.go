@@ -12,11 +12,12 @@ var broadIndexBlacklist = []string{
 }
 
 type SectorSentimentRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	quantDb *gorm.DB
 }
 
-func NewSectorSentimentRepository(db *gorm.DB) *SectorSentimentRepository {
-	return &SectorSentimentRepository{db: db}
+func NewSectorSentimentRepository(db *gorm.DB, quantDb *gorm.DB) *SectorSentimentRepository {
+	return &SectorSentimentRepository{db: db, quantDb: quantDb}
 }
 
 // GetLatestTradeDate returns the most recent trade_date across both
@@ -102,6 +103,41 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 	}
 	log.Printf("[sector-sentiment] consistent strength (%s): %d sectors", tradeDate, len(rows))
 	return rows, nil
+}
+
+// GetLeaderCountMap returns how many of the last 30 trading days each sector
+// had is_leader=1, keyed by "sectorName|source".
+func (r *SectorSentimentRepository) GetLeaderCountMap(tradeDate string) (map[string]int, error) {
+	sql := `
+		SELECT sector_name, 'sector_score' AS source, COUNT(*) AS cnt
+		FROM stk_sector_scores
+		WHERE trade_date <= ? AND is_leader = 1
+		  AND trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
+			FROM stk_sector_scores WHERE trade_date <= ? ORDER BY td DESC LIMIT 30) AS d)
+		GROUP BY sector_name
+		UNION ALL
+		SELECT sector_name, 'sector_breadth' AS source, COUNT(*) AS cnt
+		FROM stk_sector_breadths
+		WHERE trade_date <= ? AND is_leader = 1 AND sector_type = 'industry'
+		  AND trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
+			FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry'
+			ORDER BY td DESC LIMIT 30) AS d)
+		GROUP BY sector_name
+	`
+	type row struct {
+		SectorName string `gorm:"column:sector_name"`
+		Source     string `gorm:"column:source"`
+		Cnt        int    `gorm:"column:cnt"`
+	}
+	var rows []row
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(rows))
+	for _, r := range rows {
+		result[r.SectorName+"|"+r.Source] = r.Cnt
+	}
+	return result, nil
 }
 
 // PrevHighCount holds a sector's high counts on a specific date.
@@ -574,6 +610,71 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 		return nil, err
 	}
 	return rows, nil
+}
+
+// GetTopSectorScores returns top 10 sectors by rank from stk_sector_scores.
+func (r *SectorSentimentRepository) GetTopSectorScores(tradeDate string) ([]TopSectorItem, error) {
+	sql := `SELECT sector_name, rank_pos, total_score AS score
+		FROM stk_sector_scores WHERE trade_date = ?
+		ORDER BY rank_pos ASC LIMIT 10`
+	var rows []TopSectorItem
+	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// GetTopSectorBreadths returns top 10 sectors by rank from stk_sector_breadths.
+func (r *SectorSentimentRepository) GetTopSectorBreadths(tradeDate string) ([]TopSectorItem, error) {
+	sql := `SELECT sector_name, rank_pos, red_rate AS score
+		FROM stk_sector_breadths WHERE trade_date = ? AND sector_type = 'industry'
+		ORDER BY rank_pos ASC LIMIT 10`
+	var rows []TopSectorItem
+	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// TopSectorItem is a simple sector-rank row.
+type TopSectorItem struct {
+	SectorName string  `gorm:"column:sector_name"`
+	RankPos    int     `gorm:"column:rank_pos"`
+	Score      float64 `gorm:"column:score"`
+}
+
+// GetTopStocksBySectors returns the highest-volume stock per sector for the given date.
+func (r *SectorSentimentRepository) GetTopStocksBySectors(tradeDate string, sectorNames []string) (map[string]string, error) {
+	if len(sectorNames) == 0 {
+		return map[string]string{}, nil
+	}
+	sql := `
+		WITH ranked AS (
+			SELECT r.sector_name AS raw_name, COALESCE(f.stock_name, k.symbol) AS stock_name,
+				ROW_NUMBER() OVER (PARTITION BY r.sector_name ORDER BY k.volume DESC) AS rn
+			FROM quant_db.stk_daily_kline k
+			JOIN quant_db.stock_sector_relation r ON k.symbol COLLATE utf8mb4_unicode_ci = r.symbol COLLATE utf8mb4_unicode_ci
+			LEFT JOIN quant_db.stk_stock_fund_flow f ON k.symbol COLLATE utf8mb4_unicode_ci = f.symbol COLLATE utf8mb4_unicode_ci AND k.trade_date = f.trade_date
+			WHERE k.trade_date = ?
+			  AND (r.sector_name IN ? OR REPLACE(REPLACE(r.sector_name, '概念-', ''), '行业-', '') IN ?)
+		)
+		SELECT REPLACE(REPLACE(raw_name, '概念-', ''), '行业-', '') AS sector_name, stock_name FROM ranked WHERE rn = 1
+	`
+	type row struct {
+		SectorName string `gorm:"column:sector_name"`
+		StockName  string `gorm:"column:stock_name"`
+	}
+	var rows []row
+	if err := r.quantDb.Raw(sql, tradeDate, sectorNames, sectorNames).Scan(&rows).Error; err != nil {
+		log.Printf("[sector-sentiment] GetTopStocksBySectors error: %v", err)
+		return nil, err
+	}
+	log.Printf("[sector-sentiment] GetTopStocksBySectors: date=%s sectors=%d results=%d", tradeDate, len(sectorNames), len(rows))
+	result := make(map[string]string, len(rows))
+	for _, r := range rows {
+		result[r.SectorName] = r.StockName
+	}
+	return result, nil
 }
 
 // GetSectorNames returns distinct sector names from both stk_sector_breadths

@@ -1,26 +1,49 @@
-import { useMemo, useState } from 'react'
 import {
-  Row, Col, Card, Statistic, Tag, Progress, Alert, Spin, Empty, Table, Tooltip, DatePicker, AutoComplete, Input, Modal, Switch, Radio,
-} from 'antd'
-import {
-  FireOutlined,
-  RocketOutlined,
-  RiseOutlined,
-  DashboardOutlined,
-  ThunderboltOutlined,
-  TrophyOutlined,
-  QuestionCircleOutlined,
-  WarningOutlined,
   CheckCircleOutlined,
+  DashboardOutlined,
   ExperimentOutlined,
   EyeOutlined,
+  FireOutlined,
+  QuestionCircleOutlined,
+  RiseOutlined,
+  RocketOutlined,
+  ThunderboltOutlined,
+  TrophyOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, BarChart, Bar, Cell, ReferenceLine,
-} from 'recharts'
-import { useGetFullReportQuery, useGetSectorSentimentLatestDateQuery, useGetSectorNamesQuery, useLazyGetSectorDriftQuery, useLazyGetNewHighStocksQuery } from '../app/api'
+  Alert,
+  AutoComplete,
+  Card,
+  Col,
+  DatePicker,
+  Empty,
+  Input, Modal,
+  Progress,
+  Radio,
+  Row,
+  Spin,
+  Statistic,
+  Switch,
+  Table,
+  Tag,
+  Tooltip,
+} from 'antd'
 import dayjs from 'dayjs'
+import { useMemo, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Tooltip as ReTooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+  XAxis, YAxis,
+} from 'recharts'
+import { useGetFullReportQuery, useGetSectorNamesQuery, useGetSectorSentimentLatestDateQuery, useLazyGetNewHighStocksQuery, useLazyGetSectorDriftQuery } from '../app/api'
 
 // ============================================================
 // Constants
@@ -255,10 +278,22 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
       title: '强天数',
       dataIndex: 'strong_days',
       key: 'strong_days',
-      width: 80,
+      width: 72,
       align: 'center',
       sorter: (a, b) => a.strong_days - b.strong_days,
       render: (d) => <b style={{ color: d >= 5 ? '#faad14' : '#fa8c16' }}>{d}天</b>,
+    },
+    {
+      title: '30日出现',
+      dataIndex: 'leader_count_30d',
+      key: 'leader_count_30d',
+      width: 74,
+      align: 'center',
+      sorter: (a, b) => (a.leader_count_30d || 0) - (b.leader_count_30d || 0),
+      render: (v) => {
+        const c = v || 0
+        return <span style={{ color: c >= 20 ? '#faad14' : c >= 10 ? '#c9d1d9' : '#8c8c8c', fontWeight: c >= 15 ? 600 : 400 }}>{c}次</span>
+      },
     },
     {
       title: '数据源',
@@ -382,50 +417,50 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
 
   return (
     <>
-    <Table
-      dataSource={data}
-      columns={columns}
-      rowKey={(record) => `${record.sector_name}-${record.source}`}
-      size="small"
-      pagination={false}
-      locale={{ emptyText: '暂无连续走强板块' }}
-      onRow={(record) => {
-        const v = record.high_20d_count || 0
-        const rank = top3Vals20d.indexOf(v)
-        if (v > 0 && rank >= 0) {
-          return { style: { backgroundColor: top3Colors[rank] } }
-        }
-        return {}
-      }}
-    />
-    <Modal
-      title={newHighModal?.title || '新高股票'}
-      open={!!newHighModal}
-      onCancel={() => setNewHighModal(null)}
-      footer={null}
-      width={560}
-    >
-      {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
-      {newHighData?.stocks && newHighData.stocks.length > 0 && (
-        <Table
-          dataSource={newHighData.stocks}
-          rowKey="symbol"
-          size="small"
-          pagination={false}
-          columns={[
-            { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
-            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
-            { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
-            { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
-            { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
-            { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
-          ]}
-        />
-      )}
-      {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
-        <Empty description="该板块暂无新高股票数据" />
-      )}
-    </Modal>
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey={(record) => `${record.sector_name}-${record.source}`}
+        size="small"
+        pagination={false}
+        locale={{ emptyText: '暂无连续走强板块' }}
+        onRow={(record) => {
+          const v = record.high_20d_count || 0
+          const rank = top3Vals20d.indexOf(v)
+          if (v > 0 && rank >= 0) {
+            return { style: { backgroundColor: top3Colors[rank] } }
+          }
+          return {}
+        }}
+      />
+      <Modal
+        title={newHighModal?.title || '新高股票'}
+        open={!!newHighModal}
+        onCancel={() => setNewHighModal(null)}
+        footer={null}
+        width={560}
+      >
+        {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+        {newHighData?.stocks && newHighData.stocks.length > 0 && (
+          <Table
+            dataSource={newHighData.stocks}
+            rowKey="symbol"
+            size="small"
+            pagination={false}
+            columns={[
+              { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+              { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+              { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+              { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
+              { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
+              { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
+            ]}
+          />
+        )}
+        {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
+          <Empty description="该板块暂无新高股票数据" />
+        )}
+      </Modal>
     </>
   )
 }
@@ -683,49 +718,49 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
 
   return (
     <>
-    <Table
-      dataSource={data}
-      columns={columns}
-      rowKey={(record) => `${record.sector_name}-${record.source}`}
-      size="small"
-      pagination={false}
-      onRow={(record) => {
-        const v = record.high_20d_count || 0
-        const rank = top3Vals20d.indexOf(v)
-        if (v > 0 && rank >= 0) {
-          return { style: { backgroundColor: top3Colors[rank] } }
-        }
-        return {}
-      }}
-    />
-    <Modal
-      title={newHighModal?.title || '新高股票'}
-      open={!!newHighModal}
-      onCancel={() => setNewHighModal(null)}
-      footer={null}
-      width={560}
-    >
-      {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
-      {newHighData?.stocks && newHighData.stocks.length > 0 && (
-        <Table
-          dataSource={newHighData.stocks}
-          rowKey="symbol"
-          size="small"
-          pagination={false}
-          columns={[
-            { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
-            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
-            { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
-            { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
-            { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
-            { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
-          ]}
-        />
-      )}
-      {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
-        <Empty description="该板块暂无新高股票数据" />
-      )}
-    </Modal>
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey={(record) => `${record.sector_name}-${record.source}`}
+        size="small"
+        pagination={false}
+        onRow={(record) => {
+          const v = record.high_20d_count || 0
+          const rank = top3Vals20d.indexOf(v)
+          if (v > 0 && rank >= 0) {
+            return { style: { backgroundColor: top3Colors[rank] } }
+          }
+          return {}
+        }}
+      />
+      <Modal
+        title={newHighModal?.title || '新高股票'}
+        open={!!newHighModal}
+        onCancel={() => setNewHighModal(null)}
+        footer={null}
+        width={560}
+      >
+        {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+        {newHighData?.stocks && newHighData.stocks.length > 0 && (
+          <Table
+            dataSource={newHighData.stocks}
+            rowKey="symbol"
+            size="small"
+            pagination={false}
+            columns={[
+              { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+              { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+              { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+              { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
+              { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
+              { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
+            ]}
+          />
+        )}
+        {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
+          <Empty description="该板块暂无新高股票数据" />
+        )}
+      </Modal>
     </>
   )
 }
@@ -939,7 +974,7 @@ function ConcentrationPanel({ data, tradeDate }) {
       render: (r, record) => {
         const power = r >= 95 ? '🔥🔥🔥 超强共振'
           : r >= 90 ? '🔥🔥 强共振'
-          : '🔥 共振'
+            : '🔥 共振'
         const desc = record.total_stocks >= 50 ? '大兵团' : '中等集群'
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -964,42 +999,42 @@ function ConcentrationPanel({ data, tradeDate }) {
 
   return (
     <>
-    <Table
-      dataSource={data}
-      columns={columns}
-      rowKey="sector_name"
-      size="small"
-      pagination={false}
-      locale={{ emptyText: '暂无' }}
-    />
-    <Modal
-      title={newHighModal?.title || '新高股票'}
-      open={!!newHighModal}
-      onCancel={() => setNewHighModal(null)}
-      footer={null}
-      width={560}
-    >
-      {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
-      {newHighData?.stocks && newHighData.stocks.length > 0 && (
-        <Table
-          dataSource={newHighData.stocks}
-          rowKey="symbol"
-          size="small"
-          pagination={false}
-          columns={[
-            { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
-            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
-            { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
-            { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
-            { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
-            { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
-          ]}
-        />
-      )}
-      {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
-        <Empty description="该板块暂无新高股票数据" />
-      )}
-    </Modal>
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey="sector_name"
+        size="small"
+        pagination={false}
+        locale={{ emptyText: '暂无' }}
+      />
+      <Modal
+        title={newHighModal?.title || '新高股票'}
+        open={!!newHighModal}
+        onCancel={() => setNewHighModal(null)}
+        footer={null}
+        width={560}
+      >
+        {newHighLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+        {newHighData?.stocks && newHighData.stocks.length > 0 && (
+          <Table
+            dataSource={newHighData.stocks}
+            rowKey="symbol"
+            size="small"
+            pagination={false}
+            columns={[
+              { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+              { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+              { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+              { title: '20日', dataIndex: 'high_20d', key: 'high_20d', width: 50, align: 'center', render: (v) => v ? <Tag color="orange" style={{ margin: 0 }}>20</Tag> : '-' },
+              { title: '60日', dataIndex: 'high_60d', key: 'high_60d', width: 50, align: 'center', render: (v) => v ? <Tag color="purple" style={{ margin: 0 }}>60</Tag> : '-' },
+              { title: '250日', dataIndex: 'high_250d', key: 'high_250d', width: 50, align: 'center', render: (v) => v ? <Tag color="red" style={{ margin: 0 }}>250</Tag> : '-' },
+            ]}
+          />
+        )}
+        {newHighData?.stocks && newHighData.stocks.length === 0 && !newHighLoading && (
+          <Empty description="该板块暂无新高股票数据" />
+        )}
+      </Modal>
     </>
   )
 }
@@ -1283,6 +1318,8 @@ export default function SectorSentimentPage() {
     divergence,
     concentration = [],
     climbing_sectors: climbingSectors = [],
+    top_scores: topScores = [],
+    top_breadths: topBreadths = [],
   } = data
 
   return (
@@ -1341,50 +1378,26 @@ export default function SectorSentimentPage() {
       </Card>
 
       {/* =========================================== */}
-      {/* MIDDLE ROW: 连强信号 (Left) + 新面孔信号 (Right) */}
+      {/* 连强信号 (火苗) */}
       {/* =========================================== */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        {/* LEFT: 连强信号 (火苗) */}
-        <Col xs={24} lg={14}>
-          <Card
-            title={
-              <span>
-                <FireOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
-                连强信号 · 寻找领头羊
-                <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-                  过去7天≥3天排名前15
-                </span>
-              </span>
-            }
-            style={{ height: '100%' }}
-            styles={{ header: { borderBottom: '1px solid #21262d' } }}
-          >
-            <ConsistentStrengthPanel data={consistent} tradeDate={queryDate} />
-          </Card>
-        </Col>
-
-        {/* RIGHT: 新面孔信号 (火箭) */}
-        <Col xs={24} lg={10}>
-          <Card
-            title={
-              <span>
-                <RocketOutlined style={{ marginRight: 8, color: '#b37feb' }} />
-                新面孔信号 · 捕捉黑马
-                <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-                  近5天均30名外→今日冲进前10
-                </span>
-              </span>
-            }
-            style={{ height: '100%' }}
-            styles={{ header: { borderBottom: '1px solid #21262d' } }}
-          >
-            <NewFacesPanel data={newFaces} />
-          </Card>
-        </Col>
-      </Row>
+      <Card
+        title={
+          <span>
+            <FireOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
+            连强信号 · 寻找领头羊
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              过去7天≥3天排名前15
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{ header: { borderBottom: '1px solid #21262d' } }}
+      >
+        <ConsistentStrengthPanel data={consistent} tradeDate={queryDate} />
+      </Card>
 
       {/* =========================================== */}
-      {/* MIDDLE ROW 2: 暗线挖掘 */}
+      {/* 暗线挖掘 */}
       {/* =========================================== */}
       <Card
         title={
@@ -1405,6 +1418,25 @@ export default function SectorSentimentPage() {
         }}
       >
         <ClimbingSectorsPanel data={climbingSectors} tradeDate={queryDate} />
+      </Card>
+
+      {/* =========================================== */}
+      {/* 新面孔信号 (火箭) */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <RocketOutlined style={{ marginRight: 8, color: '#b37feb' }} />
+            新面孔信号 · 捕捉黑马
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              近5天均30名外→今日冲进前10
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{ header: { borderBottom: '1px solid #21262d' } }}
+      >
+        <NewFacesPanel data={newFaces} />
       </Card>
 
       {/* =========================================== */}
@@ -1448,6 +1480,56 @@ export default function SectorSentimentPage() {
       >
         <ConcentrationPanel data={concentration} tradeDate={queryDate} />
       </Card>
+
+      {/* Top-10 Leaderboards: Scores (Left) + Breadths (Right) */}
+      {(topScores.length > 0 || topBreadths.length > 0) && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} lg={12}>
+            <Card
+              title={<span style={{ color: '#b37feb' }}>📊 评分排名 Top 10</span>}
+              size="small"
+              styles={{ header: { borderBottom: '1px solid #21262d', background: 'rgba(179,127,235,0.04)' } }}
+            >
+              {topScores.length > 0 ? (
+                <Table
+                  dataSource={topScores}
+                  rowKey="sector_name"
+                  size="small"
+                  pagination={false}
+                  columns={[
+                    { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="purple">{r}</Tag> },
+                    { title: '板块', dataIndex: 'sector_name', key: 'sector_name' },
+                    { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 88, render: (v) => <span style={{ color: '#b37feb' }}>{v || '--'}</span> },
+                    { title: '总分', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => v?.toFixed(1) },
+                  ]}
+                />
+              ) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card
+              title={<span style={{ color: '#1677ff' }}>📈 宽度排名 Top 10</span>}
+              size="small"
+              styles={{ header: { borderBottom: '1px solid #21262d', background: 'rgba(22,119,255,0.04)' } }}
+            >
+              {topBreadths.length > 0 ? (
+                <Table
+                  dataSource={topBreadths}
+                  rowKey="sector_name"
+                  size="small"
+                  pagination={false}
+                  columns={[
+                    { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="blue">{r}</Tag> },
+                    { title: '板块', dataIndex: 'sector_name', key: 'sector_name' },
+                    { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 72, render: (v) => <span style={{ color: '#91caff' }}>{v || '--'}</span> },
+                    { title: '红盘率', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => `${v?.toFixed(1)}%` },
+                  ]}
+                />
+              ) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {/* =========================================== */}
       {/* Sector Rank Drift */}

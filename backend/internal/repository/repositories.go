@@ -46,6 +46,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		TradeChecklist: NewTradeChecklistRepository(db),
 		ChipMonitor:     NewChipMonitorRepository(quantDb),
 		ResearchSql:     NewResearchSqlRepository(db, quantDb),
-		SectorSentiment: NewSectorSentimentRepository(db),
+		SectorSentiment: NewSectorSentimentRepository(db, quantDb),
 	}
 }

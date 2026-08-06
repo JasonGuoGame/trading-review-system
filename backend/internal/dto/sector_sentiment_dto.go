@@ -17,7 +17,8 @@ type ConsistentStrengthItem struct {
 	High250dCount int    `json:"high_250d_count"`  // 250日新高数量
 	High20dPrev   int    `json:"high_20d_prev"`    // 上一交易日20日新高数量
 	High60dPrev   int    `json:"high_60d_prev"`    // 上一交易日60日新高数量
-	High250dPrev  int    `json:"high_250d_prev"`   // 上一交易日250日新高数量
+	High250dPrev   int    `json:"high_250d_prev"`    // 上一交易日250日新高数量
+	LeaderCount30d int    `json:"leader_count_30d"`   // 最近30个交易日is_leader=1的次数
 }
 
 // ============================================================
@@ -89,6 +90,14 @@ type ConcentrationItem struct {
 // Aggregated response for the full page
 // ============================================================
 
+// TopSectorItem is a simple sector-rank row for the leaderboard.
+type TopSectorItem struct {
+	SectorName string  `json:"sector_name"`
+	RankPos    int     `json:"rank_pos"`
+	Score      float64 `json:"score"`     // total_score (scores) or red_rate (breadth)
+	TopStock   string  `json:"top_stock"`  // highest-volume stock in this sector
+}
+
 // SectorSentimentFullResponse combines all signals.
 type SectorSentimentFullResponse struct {
 	TradeDate          string                    `json:"trade_date"`
@@ -98,6 +107,8 @@ type SectorSentimentFullResponse struct {
 	Divergence         *DivergenceResponse      `json:"divergence"`
 	Concentration      []ConcentrationItem      `json:"concentration"`
 	ClimbingSectors    []ClimbingSectorItem     `json:"climbing_sectors"`
+	TopScores          []TopSectorItem          `json:"top_scores"`
+	TopBreadths        []TopSectorItem          `json:"top_breadths"`
 }
 
 // ============================================================
