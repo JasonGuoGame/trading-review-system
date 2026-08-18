@@ -101,3 +101,31 @@ func (h *MarketAttackHandler) GetTopVolume(c *gin.Context) {
 		Data:    data,
 	})
 }
+
+// GetLimitSummary returns top sectors by limit-up/broken/limit-down counts.
+func (h *MarketAttackHandler) GetLimitSummary(c *gin.Context) {
+	tradeDate := c.Query("trade_date")
+	data, err := h.service.GetLimitSummary(tradeDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}
+
+// GetLimitStocks returns individual stocks for a sector's limit event.
+func (h *MarketAttackHandler) GetLimitStocks(c *gin.Context) {
+	tradeDate := c.Query("trade_date")
+	sectorName := c.Query("sector_name")
+	if sectorName == "" {
+		c.JSON(http.StatusBadRequest, dto.APIResponse{Code: 400, Message: "sector_name is required"})
+		return
+	}
+	eventType := c.Query("event_type")
+	data, err := h.service.GetLimitStocks(tradeDate, sectorName, eventType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}

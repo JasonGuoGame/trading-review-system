@@ -1405,7 +1405,7 @@ export default function SectorSentimentPage() {
             <EyeOutlined style={{ marginRight: 8, color: '#13c2c2' }} />
             暗线挖掘 · 二梯队爬坡
             <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-              11-25名区间连续3天排名攀升
+              11-30名区间连续3天排名攀升
             </span>
           </span>
         }
@@ -1499,7 +1499,7 @@ export default function SectorSentimentPage() {
                   columns={[
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="purple">{r}</Tag> },
                     { title: '板块', dataIndex: 'sector_name', key: 'sector_name' },
-                    { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 88, render: (v) => <span style={{ color: '#b37feb' }}>{v || '--'}</span> },
+                    { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 100, render: (v) => <span style={{ color: '#b37feb' }}>{v || '--'}</span> },
                     { title: '总分', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => v?.toFixed(1) },
                   ]}
                 />
@@ -1521,7 +1521,7 @@ export default function SectorSentimentPage() {
                   columns={[
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="blue">{r}</Tag> },
                     { title: '板块', dataIndex: 'sector_name', key: 'sector_name' },
-                    { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 72, render: (v) => <span style={{ color: '#91caff' }}>{v || '--'}</span> },
+                    { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 100, render: (v) => <span style={{ color: '#91caff' }}>{v || '--'}</span> },
                     { title: '红盘率', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => `${v?.toFixed(1)}%` },
                   ]}
                 />

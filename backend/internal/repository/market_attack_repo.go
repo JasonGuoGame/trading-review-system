@@ -148,3 +148,132 @@ func (r *MarketAttackRepository) GetHistoricalSectorStats(sectorName string, lim
 		Scan(&logs).Error
 	return logs, err
 }
+
+// GetLimitSummary returns top sectors by limit-up, broken-limit, and limit-down counts.
+func (r *MarketAttackRepository) GetLimitSummary(tradeDate string) (limitUp, broken, limitDown []SectorCount, err error) {
+	sql := `
+		WITH prev AS (
+			SELECT k.symbol, k.close,
+				prev.close AS prev_close,
+				CASE WHEN k.symbol LIKE '30%' OR k.symbol LIKE '688%' THEN 0.20 ELSE 0.10 END AS limit_pct
+			FROM quant_db.stk_daily_kline k
+			JOIN quant_db.stk_daily_kline prev ON k.symbol COLLATE utf8mb4_unicode_ci = prev.symbol COLLATE utf8mb4_unicode_ci
+				AND prev.trade_date = (SELECT MAX(trade_date) FROM quant_db.stk_daily_kline WHERE trade_date < ?)
+			WHERE k.trade_date = ?
+			  AND k.symbol NOT IN ('000001.SH','399001.SZ','399006.SZ','000300.SH','000852.SH')
+		),
+		events AS (
+			SELECT symbol, close, prev_close, limit_pct,
+				((close - prev_close) / NULLIF(prev_close, 0)) * 100 AS pct_chg
+			FROM prev
+		),
+		-- Broken limit: stock hit limit-up intraday (minute close at limit) but didn't close at limit
+		hit_limit AS (
+			SELECT DISTINCT m.symbol
+			FROM quant_db.stk_min_kline m
+			JOIN events e ON m.symbol COLLATE utf8mb4_unicode_ci = e.symbol COLLATE utf8mb4_unicode_ci
+			WHERE m.trade_time >= ? AND m.trade_time < DATE_ADD(?, INTERVAL 1 DAY)
+			  AND m.close >= e.prev_close * (1 + e.limit_pct - 0.005)
+		),
+		labeled AS (
+			SELECT e.symbol,
+				CASE WHEN e.pct_chg >= (e.limit_pct * 100 - 1.5) THEN 'limit_up'
+				     WHEN e.pct_chg <= -(e.limit_pct * 100 - 1.5) THEN 'limit_down'
+				     WHEN h.symbol IS NOT NULL AND e.pct_chg < (e.limit_pct * 100 - 1.5) THEN 'broken'
+				END AS event_type
+			FROM events e
+			LEFT JOIN hit_limit h ON e.symbol = h.symbol
+		)
+		SELECT REPLACE(REPLACE(r.sector_name, '概念-', ''), '行业-', '') AS sector_name,
+			l.event_type, COUNT(*) AS cnt
+		FROM labeled l
+		JOIN quant_db.stock_sector_relation r ON l.symbol COLLATE utf8mb4_unicode_ci = r.symbol COLLATE utf8mb4_unicode_ci
+		WHERE l.event_type IS NOT NULL
+		GROUP BY REPLACE(REPLACE(r.sector_name, '概念-', ''), '行业-', ''), l.event_type
+	`
+	type row struct {
+		SectorName string `gorm:"column:sector_name"`
+		EventType  string `gorm:"column:event_type"`
+		Cnt        int    `gorm:"column:cnt"`
+	}
+	var rows []row
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, nil, nil, err
+	}
+	for _, r := range rows {
+		sc := SectorCount{SectorName: r.SectorName, Count: r.Cnt}
+		switch r.EventType {
+		case "limit_up":
+			limitUp = append(limitUp, sc)
+		case "broken":
+			broken = append(broken, sc)
+		case "limit_down":
+			limitDown = append(limitDown, sc)
+		}
+	}
+	return limitUp, broken, limitDown, nil
+}
+
+// LimitStockRow holds a single stock with its limit event info.
+type LimitStockRow struct {
+	Symbol    string  `gorm:"column:symbol"`
+	StockName string  `gorm:"column:stock_name"`
+	Close     float64 `gorm:"column:close"`
+	PctChg    float64 `gorm:"column:pct_chg"`
+	EventType string  `gorm:"column:event_type"`
+}
+
+// GetLimitStocksBySector returns individual stocks for a sector and event type.
+func (r *MarketAttackRepository) GetLimitStocksBySector(tradeDate, sectorName, eventType string) ([]LimitStockRow, error) {
+	sql := `
+		WITH prev AS (
+			SELECT k.symbol, COALESCE(f.stock_name, k.symbol) AS stock_name, k.close,
+				prev.close AS prev_close,
+				CASE WHEN k.symbol LIKE '30%' OR k.symbol LIKE '688%' THEN 0.20 ELSE 0.10 END AS limit_pct
+			FROM quant_db.stk_daily_kline k
+			JOIN quant_db.stk_daily_kline prev ON k.symbol COLLATE utf8mb4_unicode_ci = prev.symbol COLLATE utf8mb4_unicode_ci
+				AND prev.trade_date = (SELECT MAX(trade_date) FROM quant_db.stk_daily_kline WHERE trade_date < ?)
+			LEFT JOIN quant_db.stk_stock_fund_flow f ON k.symbol COLLATE utf8mb4_unicode_ci = f.symbol COLLATE utf8mb4_unicode_ci AND k.trade_date = f.trade_date
+			WHERE k.trade_date = ?
+			  AND k.symbol NOT IN ('000001.SH','399001.SZ','399006.SZ','000300.SH','000852.SH')
+		),
+		events AS (
+			SELECT symbol, stock_name, close, prev_close, limit_pct,
+				((close - prev_close) / NULLIF(prev_close, 0)) * 100 AS pct_chg
+			FROM prev
+		),
+		hit_limit AS (
+			SELECT DISTINCT m.symbol
+			FROM quant_db.stk_min_kline m
+			JOIN events e ON m.symbol COLLATE utf8mb4_unicode_ci = e.symbol COLLATE utf8mb4_unicode_ci
+			WHERE m.trade_time >= ? AND m.trade_time < DATE_ADD(?, INTERVAL 1 DAY)
+			  AND m.close >= e.prev_close * (1 + e.limit_pct - 0.005)
+		),
+		labeled AS (
+			SELECT e.*,
+				CASE WHEN e.pct_chg >= (e.limit_pct * 100 - 1.5) THEN 'limit_up'
+				     WHEN e.pct_chg <= -(e.limit_pct * 100 - 1.5) THEN 'limit_down'
+				     WHEN h.symbol IS NOT NULL AND e.pct_chg < (e.limit_pct * 100 - 1.5) THEN 'broken'
+				END AS event_type
+			FROM events e
+			LEFT JOIN hit_limit h ON e.symbol = h.symbol
+		)
+		SELECT l.symbol, l.stock_name, l.close, l.pct_chg, l.event_type
+		FROM labeled l
+		JOIN quant_db.stock_sector_relation r ON l.symbol COLLATE utf8mb4_unicode_ci = r.symbol COLLATE utf8mb4_unicode_ci
+		WHERE l.event_type = ?
+		  AND (r.sector_name = ? OR REPLACE(REPLACE(r.sector_name, '概念-', ''), '行业-', '') = ?)
+		ORDER BY ABS(l.pct_chg) DESC
+	`
+	var rows []LimitStockRow
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate, eventType, sectorName, sectorName).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// SectorCount holds a sector name and count.
+type SectorCount struct {
+	SectorName string `gorm:"column:sector_name"`
+	Count      int    `gorm:"column:cnt"`
+}

@@ -493,6 +493,14 @@ export const apiSlice = createApi({
       query: (tradeDate) => `/market-attack/top-volume?trade_date=${tradeDate}`,
       transformResponse: (res) => res.data,
     }),
+    getLimitSummary: builder.query({
+      query: (tradeDate) => `/market-attack/limit-summary?trade_date=${tradeDate || ''}`,
+      transformResponse: (res) => res.data,
+    }),
+    getLimitStocks: builder.query({
+      query: ({ trade_date, sector_name, event_type }) => `/market-attack/limit-stocks?trade_date=${trade_date || ''}&sector_name=${encodeURIComponent(sector_name)}&event_type=${event_type || ''}`,
+      transformResponse: (res) => res.data,
+    }),
 
     // === Chip Monitor ===
     getChipLatestDate: builder.query({
@@ -683,6 +691,8 @@ export const {
   useGetSectorAttackDetailQuery,
   useGetSectorAttackTrendQuery,
   useGetTopVolumeStocksQuery,
+  useGetLimitSummaryQuery,
+  useLazyGetLimitStocksQuery,
   useGetChipLatestDateQuery,
   useGetChipRadarQuery,
   useGetChipAccumulationQuery,

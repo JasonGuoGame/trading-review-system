@@ -155,3 +155,5 @@ python backend/scripts/ingest_from_mysql.py --all
 SELECT ... FROM forum_post WHERE embedding_done IS NULL OR embedding_done = 0 → 只拿新帖
 bge-m3 embedding → 写入 ChromaDB
 UPDATE forum_post SET embedding_done = 1 WHERE id IN (...) → 标记已完成
+
+Icestone 

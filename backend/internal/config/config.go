@@ -19,9 +19,9 @@ type Config struct {
 	GinMode    string
 
 	// RAG / AI Analysis
-	ChromaDBURL      string // ChromaDB Python HTTP sidecar URL
-	OllamaURL        string
-	OllamaModel      string
+	ChromaDBURL string // ChromaDB Python HTTP sidecar URL
+	OllamaURL   string
+	OllamaModel string
 
 	SectorBlacklist []string
 }
@@ -63,6 +63,7 @@ func Load() *Config {
 			"湖北自贸", "银行Ⅱ", "国有大型银行Ⅲ", "证券Ⅱ", "ST股", "东北振兴", "参股期货", "其他化学制品", "IT服务Ⅱ",
 			"参股期货", "综合Ⅱ", "综合", "综合Ⅲ", "贸易Ⅱ", "证券Ⅲ", "保险Ⅲ", "保险Ⅱ", "其他家电Ⅱ",
 			"2025年报预增", "AB股", "AH股", "上证380", "2025年报扭亏", "其他家电Ⅱ", "其他家电Ⅱ", "其他家电Ⅱ",
+			"创投", "反内卷概念",
 		},
 	}
 }

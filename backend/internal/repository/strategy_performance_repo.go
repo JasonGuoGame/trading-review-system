@@ -18,11 +18,14 @@ func NewStrategyPerformanceRepository(db *gorm.DB, quantDb *gorm.DB) *StrategyPe
 
 func (r *StrategyPerformanceRepository) GetHistory(strategyNames []string, days int) ([]models.StrategyPerformanceHistory, error) {
 	var records []models.StrategyPerformanceHistory
-	query := r.db.Where("strategy_name IN ?", strategyNames).Order("trade_date ASC")
+	query := r.db.Where("strategy_name IN ?", strategyNames)
 	if days > 0 {
-		query = query.Limit(days * len(strategyNames))
+		// Restrict to the most recent `days` distinct trading dates.
+		// Wrapped in a derived table because MySQL doesn't allow LIMIT inside IN-subquery.
+		sub := r.db.Raw("SELECT trade_date FROM (SELECT DISTINCT trade_date FROM strategy_performance_history ORDER BY trade_date DESC LIMIT ?) AS recent_dates", days)
+		query = query.Where("trade_date IN (?)", sub)
 	}
-	err := query.Find(&records).Error
+	err := query.Order("trade_date ASC").Find(&records).Error
 	return records, err
 }
 

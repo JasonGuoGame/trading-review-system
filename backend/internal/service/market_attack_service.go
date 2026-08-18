@@ -436,3 +436,58 @@ func (s *MarketAttackService) GetTopVolume(tradeDate string) (*dto.TopVolumeResp
 		TopIndustries: topIndustries,
 	}, nil
 }
+
+// GetLimitSummary returns top sectors by limit-up, broken-limit, and limit-down.
+func (s *MarketAttackService) GetLimitSummary(tradeDate string) (*dto.LimitSummaryResponse, error) {
+	if tradeDate == "" {
+		latest, _ := s.repo.GetLatestTradeDate()
+		tradeDate = latest
+	}
+	limitUp, broken, limitDown, err := s.repo.GetLimitSummary(tradeDate)
+	if err != nil {
+		return nil, fmt.Errorf("涨跌停汇总查询失败: %w", err)
+	}
+
+	toDTO := func(rows []repository.SectorCount) []dto.LimitSectorItem {
+		var items []dto.LimitSectorItem
+		for _, r := range rows {
+			if s.shouldFilter(r.SectorName) {
+				continue
+			}
+			items = append(items, dto.LimitSectorItem{SectorName: r.SectorName, Count: r.Count})
+		}
+		return items
+	}
+	return &dto.LimitSummaryResponse{
+		TradeDate:   tradeDate,
+		LimitUp:     toDTO(limitUp),
+		BrokenLimit: toDTO(broken),
+		LimitDown:   toDTO(limitDown),
+	}, nil
+}
+
+// GetLimitStocks returns individual stocks for a sector's limit event type.
+func (s *MarketAttackService) GetLimitStocks(tradeDate, sectorName, eventType string) (*dto.LimitStocksResponse, error) {
+	rows, err := s.repo.GetLimitStocksBySector(tradeDate, sectorName, eventType)
+	if err != nil {
+		return nil, fmt.Errorf("涨跌停股票明细查询失败: %w", err)
+	}
+	stocks := make([]dto.LimitStockItem, 0, len(rows))
+	for _, r := range rows {
+		if s.shouldFilter(r.StockName) {
+			continue
+		}
+		stocks = append(stocks, dto.LimitStockItem{
+			Symbol:    r.Symbol,
+			StockName: r.StockName,
+			Close:     r.Close,
+			PctChg:    r.PctChg,
+			EventType: r.EventType,
+		})
+	}
+	return &dto.LimitStocksResponse{
+		TradeDate:  tradeDate,
+		SectorName: sectorName,
+		Stocks:     stocks,
+	}, nil
+}

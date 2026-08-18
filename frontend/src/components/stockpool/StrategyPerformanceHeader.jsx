@@ -10,7 +10,7 @@ import {
   TrophyOutlined,
   UpOutlined
 } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Spin, Tag, Typography, Modal, Table } from 'antd';
+import { Button, Card, Col, Row, Space, Spin, Tag, Typography, Modal, Table, Radio } from 'antd';
 import React, { useState } from 'react';
 import { useGetAdvancerBucketStocksQuery } from '../../app/api';
 import {
@@ -286,7 +286,8 @@ const STRATEGY_TO_TAB = {
 };
 
 const StrategyPerformanceHeader = ({ onOrderChange }) => {
-  const { data, isFetching } = useGetStrategyPerformanceQuery(10, { refetchOnMountOrArgChange: true });
+  const [days, setDays] = useState(30);
+  const { data, isFetching } = useGetStrategyPerformanceQuery(days, { refetchOnMountOrArgChange: true });
   const [analysisStrategy, setAnalysisStrategy] = useState(null);
   const [selectedStrategy, setSelectedStrategy] = useState(null);
 
@@ -462,9 +463,16 @@ const StrategyPerformanceHeader = ({ onOrderChange }) => {
         }}
         bodyStyle={{ padding: '16px 20px' }}
         title={
-          <Text strong style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15 }}>
-            胜率漂移 + 大盘情绪
-          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <Text strong style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15 }}>
+              胜率漂移 + 大盘情绪
+            </Text>
+            <Radio.Group value={days} onChange={(e) => setDays(e.target.value)} size="small" optionType="button" buttonStyle="solid">
+              <Radio.Button value={30}>30天</Radio.Button>
+              <Radio.Button value={60}>60天</Radio.Button>
+              <Radio.Button value={0}>全部</Radio.Button>
+            </Radio.Group>
+          </div>
         }
       >
         <ResponsiveContainer width="100%" height={320}>

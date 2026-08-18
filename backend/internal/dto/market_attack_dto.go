@@ -93,3 +93,34 @@ type TopVolumeResponse struct {
 	TopConcepts  []TopConceptItem `json:"top_concepts"`
 	TopIndustries []TopConceptItem `json:"top_industries"`
 }
+
+// LimitSectorItem holds the count of a limit event type per sector.
+type LimitSectorItem struct {
+	SectorName string `json:"sector_name"`
+	Count      int    `json:"count"`
+}
+
+// LimitSummaryResponse is the API response for limit-up/down/broken summary.
+type LimitSummaryResponse struct {
+	TradeDate   string            `json:"trade_date"`
+	LimitUp     []LimitSectorItem `json:"limit_up"`
+	BrokenLimit []LimitSectorItem `json:"broken_limit"`
+	LimitDown   []LimitSectorItem `json:"limit_down"`
+}
+
+// LimitStockItem holds a single stock with its limit event info.
+type LimitStockItem struct {
+	Symbol    string  `json:"symbol"`
+	StockName string  `json:"stock_name"`
+	Close     float64 `json:"close"`
+	PctChg    float64 `json:"pct_chg"`
+	EventType string  `json:"event_type"`
+}
+
+// LimitStocksResponse is the API response for stocks in a sector+event_type.
+type LimitStocksResponse struct {
+	TradeDate  string           `json:"trade_date"`
+	SectorName string           `json:"sector_name"`
+	EventType  string           `json:"event_type"`
+	Stocks     []LimitStockItem `json:"stocks"`
+}

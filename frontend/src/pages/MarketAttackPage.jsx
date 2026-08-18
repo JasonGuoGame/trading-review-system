@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Typography, Row, Col, DatePicker, Space, Button, Spin, Card, Divider, Tag, Statistic, Progress } from 'antd'
+import { Typography, Row, Col, DatePicker, Space, Button, Spin, Card, Divider, Tag, Statistic, Progress, Modal, Table, Empty } from 'antd'
 import dayjs from 'dayjs'
 import { ReloadOutlined, FireOutlined, SwapOutlined } from '@ant-design/icons'
 import BattlefieldOverview from '../components/attack/BattlefieldOverview'
@@ -7,7 +7,7 @@ import ThermalBattlefield from '../components/attack/ThermalBattlefield'
 import LeaderHierarchy from '../components/attack/LeaderHierarchy'
 import AttackTrendChart from '../components/attack/AttackTrendChart'
 import SectorDetailDrawer from '../components/attack/SectorDetailDrawer'
-import { useGetTopMarketAttacksQuery, useGetSectorAttackTrendQuery, useGetTopVolumeStocksQuery } from '../app/api'
+import { useGetTopMarketAttacksQuery, useGetSectorAttackTrendQuery, useGetTopVolumeStocksQuery, useGetLimitSummaryQuery, useLazyGetLimitStocksQuery } from '../app/api'
 
 const { Title, Text } = Typography
 
@@ -23,6 +23,15 @@ const MarketAttackPage = () => {
   const attackList = data?.attack_list || data?.attackList || []
   const retreatList = data?.retreat_list || data?.retreatList || []
   const summary = data?.summary || {}
+
+  const { data: limitSummary } = useGetLimitSummaryQuery(tradeDate)
+  const [triggerLimitStocks, { data: limitStocksData, isFetching: limitStocksLoading }] = useLazyGetLimitStocksQuery()
+  const [limitStocksModal, setLimitStocksModal] = useState(null)
+
+  const handleLimitSectorClick = (sectorName, title, eventType) => {
+    setLimitStocksModal({ sector_name: sectorName, title })
+    triggerLimitStocks({ trade_date: tradeDate, sector_name: sectorName, event_type: eventType })
+  }
 
   const { data: volumeData } = useGetTopVolumeStocksQuery(tradeDate, { skip: !tradeDate })
   const rawVolumeStocks = volumeData?.stocks || []
@@ -159,6 +168,55 @@ const MarketAttackPage = () => {
               </Col>
             </Row>
           </Card>
+
+          {/* Top sectors by limit-up / broken / limit-down */}
+          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Col xs={24} md={8}>
+              <Card size="small" title={<span style={{ color: '#e84749' }}>🔥 涨停最多板块</span>}
+                styles={{ header: { borderBottom: '1px solid #21262d', background: 'rgba(232,71,73,0.04)' } }}>
+                {[...(limitSummary?.limit_up || [])]
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 2)
+                  .map((s, i) => (
+                    <div key={s.sector_name} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: i === 0 ? '1px solid #21262d' : 'none' }}>
+                      <span style={{ cursor: 'pointer' }} onClick={() => handleLimitSectorClick(s.sector_name, `${s.sector_name} · 涨停`, 'limit_up')}><Tag color={i === 0 ? 'red' : 'default'} style={{ marginRight: 8 }}>#{i + 1}</Tag><span style={{ textDecoration: 'underline' }}>{s.sector_name}</span></span>
+                      <b style={{ color: '#e84749' }}>{s.count} 只</b>
+                    </div>
+                  ))}
+                {(!limitSummary?.limit_up || limitSummary.limit_up.length === 0) && <span style={{ color: '#8c8c8c' }}>--</span>}
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card size="small" title={<span style={{ color: '#fa8c16' }}>💥 炸板最多板块</span>}
+                styles={{ header: { borderBottom: '1px solid #21262d', background: 'rgba(250,140,22,0.04)' } }}>
+                {[...(limitSummary?.broken_limit || [])]
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 2)
+                  .map((s, i) => (
+                    <div key={s.sector_name} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: i === 0 ? '1px solid #21262d' : 'none' }}>
+                      <span style={{ cursor: 'pointer' }} onClick={() => handleLimitSectorClick(s.sector_name, `${s.sector_name} · 炸板`, 'broken')}><Tag color={i === 0 ? 'orange' : 'default'} style={{ marginRight: 8 }}>#{i + 1}</Tag><span style={{ textDecoration: 'underline' }}>{s.sector_name}</span></span>
+                      <b style={{ color: '#fa8c16' }}>{s.count} 只</b>
+                    </div>
+                  ))}
+                {(!limitSummary?.broken_limit || limitSummary.broken_limit.length === 0) && <span style={{ color: '#8c8c8c' }}>--</span>}
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card size="small" title={<span style={{ color: '#3f8600' }}>❄️ 跌停最多板块</span>}
+                styles={{ header: { borderBottom: '1px solid #21262d', background: 'rgba(63,134,0,0.04)' } }}>
+                {[...(limitSummary?.limit_down || [])]
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 2)
+                  .map((s, i) => (
+                    <div key={s.sector_name} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: i === 0 ? '1px solid #21262d' : 'none' }}>
+                      <span style={{ cursor: 'pointer' }} onClick={() => handleLimitSectorClick(s.sector_name, `${s.sector_name} · 跌停`, 'limit_down')}><Tag color={i === 0 ? 'green' : 'default'} style={{ marginRight: 8 }}>#{i + 1}</Tag><span style={{ textDecoration: 'underline' }}>{s.sector_name}</span></span>
+                      <b style={{ color: '#3f8600' }}>{s.count} 只</b>
+                    </div>
+                  ))}
+                {(!limitSummary?.limit_down || limitSummary.limit_down.length === 0) && <span style={{ color: '#8c8c8c' }}>--</span>}
+              </Card>
+            </Col>
+          </Row>
 
           <div style={{ marginBottom: 32 }}>
             <Title level={3} style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -407,8 +465,34 @@ const MarketAttackPage = () => {
         sectorName={selectedSector?.name} 
         isRetreat={selectedSector?.isRetreat}
         tradeDate={tradeDate}
-        onClose={() => setSelectedSector(null)} 
+        onClose={() => setSelectedSector(null)}
       />
+      <Modal
+        title={limitStocksModal?.title || '涨跌停股票'}
+        open={!!limitStocksModal}
+        onCancel={() => setLimitStocksModal(null)}
+        footer={null}
+        width={500}
+      >
+        {limitStocksLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+        {limitStocksData?.stocks && limitStocksData.stocks.length > 0 && (
+          <Table
+            dataSource={limitStocksData.stocks}
+            rowKey="symbol"
+            size="small"
+            pagination={false}
+            columns={[
+              { title: '股票', dataIndex: 'stock_name', key: 'stock_name', width: 100 },
+              { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+              { title: '收盘', dataIndex: 'close', key: 'close', width: 70, align: 'right', render: (v) => v?.toFixed(2) },
+              { title: '涨跌幅', dataIndex: 'pct_chg', key: 'pct_chg', width: 80, align: 'right', render: (v) => <span style={{ color: v >= 0 ? '#e84749' : '#3f8600', fontWeight: 600 }}>{v >= 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
+            ]}
+          />
+        )}
+        {limitStocksData?.stocks && limitStocksData.stocks.length === 0 && !limitStocksLoading && (
+          <Empty description="暂无数据" />
+        )}
+      </Modal>
     </div>
   )
 }

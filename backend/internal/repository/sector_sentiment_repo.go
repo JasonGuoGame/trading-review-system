@@ -561,7 +561,7 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 				'sector_score' AS source,
 				s.high_20d_count, s.high_60d_count, s.high_250d_count
 			FROM ScoreTrend s, ScoreMaxDate m
-			WHERE s.rank_t0 BETWEEN 11 AND 25
+			WHERE s.rank_t0 BETWEEN 11 AND 30
 			  AND s.rank_t1 < s.rank_t2
 			  AND s.rank_t0 < s.rank_t1
 			  AND s.latest_date = m.max_dt
@@ -595,7 +595,7 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 				'sector_breadth' AS source,
 				b.high_20d_count, b.high_60d_count, b.high_250d_count
 			FROM BreadthTrend b, BreadthMaxDate m
-			WHERE b.rank_t0 BETWEEN 11 AND 25
+			WHERE b.rank_t0 BETWEEN 11 AND 30
 			  AND b.rank_t1 < b.rank_t2
 			  AND b.rank_t0 < b.rank_t1
 			  AND b.latest_date = m.max_dt

@@ -129,6 +129,8 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 			marketAttack.GET("/sector/:name", handlers.MarketAttack.GetSectorDetail)
 			marketAttack.GET("/trend", handlers.MarketAttack.GetSectorTrend)
 		marketAttack.GET("/top-volume", handlers.MarketAttack.GetTopVolume)
+		marketAttack.GET("/limit-summary", handlers.MarketAttack.GetLimitSummary)
+		marketAttack.GET("/limit-stocks", handlers.MarketAttack.GetLimitStocks)
 	}
 
 	// RAG AI Analysis

@@ -19,7 +19,7 @@ func NewStrategyPerformanceHandler(service *service.StrategyPerformanceService) 
 
 func (h *StrategyPerformanceHandler) GetDashboard(c *gin.Context) {
 	days := 10
-	if d, err := strconv.Atoi(c.Query("days")); err == nil && d > 0 {
+	if d, err := strconv.Atoi(c.Query("days")); err == nil {
 		days = d
 	}
 

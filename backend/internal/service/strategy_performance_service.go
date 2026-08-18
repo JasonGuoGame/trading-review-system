@@ -52,7 +52,7 @@ func NewStrategyPerformanceService(repo *repository.StrategyPerformanceRepositor
 }
 
 func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerformanceResponse, error) {
-	if days <= 0 {
+	if days < 0 {
 		days = 10
 	}
 
@@ -131,6 +131,30 @@ func (s *StrategyPerformanceService) GetDashboard(days int) (*dto.StrategyPerfor
 					SignalCount30d: count30d,
 				}
 			}
+		}
+	}
+
+	// Re-apply days limit to the merged history (the score-analysis fallback may
+	// have appended unlimited historical data for strategies with no prior history).
+	if days > 0 {
+		dateSet := make(map[string]bool)
+		for _, h := range history {
+			dateSet[h.TradeDate.Format("2006-01-02")] = true
+		}
+		var dates []string
+		for d := range dateSet {
+			dates = append(dates, d)
+		}
+		sort.Strings(dates)
+		if len(dates) > days {
+			cutoff := dates[len(dates)-days]
+			var filtered []models.StrategyPerformanceHistory
+			for _, h := range history {
+				if h.TradeDate.Format("2006-01-02") >= cutoff {
+					filtered = append(filtered, h)
+				}
+			}
+			history = filtered
 		}
 	}
 
