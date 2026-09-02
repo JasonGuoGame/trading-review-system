@@ -1,4 +1,4 @@
-import { Card, Table, Typography, Button } from 'antd'
+import { Card, Table, Typography, Button, Tooltip } from 'antd'
 import { EyeOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -35,6 +35,20 @@ export default function WeakSectorPanel({ data, loading, mode, onRowClick }) {
       dataIndex: 'today_inflow_rate',
       key: 'today_inflow_rate',
       render: (val) => <Text style={{ color: '#3f8600' }}>{val.toFixed(2)}%</Text>,
+    },
+    {
+      title: '30日流入天数占比',
+      dataIndex: 'inflow_ratio_30d',
+      key: 'inflow_ratio_30d',
+      width: 130,
+      sorter: (a, b) => a.inflow_ratio_30d - b.inflow_ratio_30d,
+      render: (val, record) => (
+        <Tooltip title={`近30日流入 ${record.inflow_days_30d}/${record.total_days_30d} 天`}>
+          <Text style={{ color: val >= 50 ? '#cf1322' : '#3f8600', fontWeight: 500 }}>
+            {val != null ? `${val.toFixed(0)}%` : '--'}
+          </Text>
+        </Tooltip>
+      ),
     },
     // Only show 3d trend in 3d/5d modes
     ...(mode !== '1d' ? [{

@@ -43,6 +43,12 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		}
 	}
 
+	// 30日流入天数占比（用于表格列）
+	inflowStats, err := s.repo.GetInflowDayStats(endDateStr, 30)
+	if err != nil {
+		inflowStats = map[string]repository.InflowDayStat{}
+	}
+
 	daysToLookBack := 1
 	if query.Mode == "3d" {
 		daysToLookBack = 3
@@ -59,6 +65,23 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 	records, err := s.repo.GetFlowsByLastNDates(endDateStr, fetchDays)
 	if err != nil {
 		return nil, err
+	}
+
+	// 今日全市场净流入：所选日期当日所有板块净流入之和（红盘板块流入 + 绿盘板块流出）
+	var marketNetInflow, marketInflow, marketOutflow float64
+	for _, r := range records {
+		if r.TradeDate.Format("2006-01-02") != endDateStr {
+			continue
+		}
+		if s.shouldFilter(r.SectorName) {
+			continue
+		}
+		marketNetInflow += r.NetInflowAmount
+		if r.NetInflowAmount > 0 {
+			marketInflow += r.NetInflowAmount
+		} else {
+			marketOutflow += r.NetInflowAmount
+		}
 	}
 
 	// Group by sector
@@ -122,6 +145,16 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		trend3d := calculateTrend(flows3d)
 		trend5d := calculateTrend(flows) // flows has up to fetchDays (5 or more)
 
+		var ratio30d float64
+		var inflowDays30d, totalDays30d int
+		if st, ok := inflowStats[name]; ok {
+			inflowDays30d = st.InflowDays
+			totalDays30d = st.TotalDays
+			if totalDays30d > 0 {
+				ratio30d = float64(inflowDays30d) / float64(totalDays30d) * 100
+			}
+		}
+
 		item := dto.SectorFlowItem{
 			SectorName:      name,
 			TotalNetInflow:  totalInflow,
@@ -130,6 +163,9 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			Trend:           trend3d, // Default trend shows 3d
 			Trend3d:         trend3d,
 			Trend5d:         trend5d,
+			InflowRatio30d:  ratio30d,
+			InflowDays30d:   inflowDays30d,
+			TotalDays30d:    totalDays30d,
 		}
 		allSectors = append(allSectors, item)
 
@@ -197,6 +233,10 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		summary.StrongestMainSector = allSectors[0].SectorName
 	}
 
+	summary.MarketNetInflow = marketNetInflow
+	summary.MarketInflow = marketInflow
+	summary.MarketOutflow = marketOutflow
+
 	return &dto.SectorFundFlowResponse{
 		Summary:       summary,
 		StrongSectors: strongSectors,
@@ -205,45 +245,70 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 	}, nil
 }
 
-// GetSectorTrendDetail gets 5 days of history for a specific sector
-func (s *FundFlowService) GetSectorTrendDetail(sectorName, endDate string) (*dto.SectorTrendResponse, error) {
-	records, err := s.repo.GetSectorTrend(sectorName, endDate, 5)
+// GetSectorTrendDetail gets up to `days` days of history for a specific sector,
+// returning the raw daily series (oldest first) plus a drift summary.
+func (s *FundFlowService) GetSectorTrendDetail(sectorName, endDate string, days int) (*dto.SectorTrendResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+
+	records, err := s.repo.GetSectorTrend(sectorName, endDate, days)
 	if err != nil {
 		return nil, err
 	}
 
 	var details []dto.SectorTrendDetail
+	var cumulative float64
+	inflowDays := 0
 	for _, r := range records {
 		details = append(details, dto.SectorTrendDetail{
 			TradeDate:     r.TradeDate.Format("2006-01-02"),
 			NetInflow:     r.NetInflowAmount,
 			NetInflowRate: r.InflowRate,
+			CapitalScore:  r.AvgCapitalScore,
+			AttackScore:   r.AvgAttackScore,
 		})
+		if r.NetInflowAmount > 0 {
+			inflowDays++
+		}
+		cumulative += r.NetInflowAmount
 	}
-	// records is DESC. Let's reverse for UI (oldest first)
+	// records is DESC (newest first). Reverse for UI so the series is oldest-first.
 	for i, j := 0, len(details)-1; i < j; i, j = i+1, j-1 {
 		details[i], details[j] = details[j], details[i]
 	}
 
 	trendSymbol := calculateTrend(records)
-	suggestion := "观望为主"
-	if strings.Contains(trendSymbol, "📈") {
-		suggestion = "🔥 主线关注"
-	} else if strings.Contains(trendSymbol, "📉") {
-		suggestion = "❌ 规避，资金撤退"
-	}
-
 	leader := ""
+	latestRate := 0.0
 	if len(records) > 0 {
 		leader = records[0].TopStock
+		latestRate = records[0].InflowRate
+	}
+
+	// Suggestion: weight the accumulated drift over the recent trend symbol.
+	suggestion := "👀 资金震荡，观望为主"
+	switch {
+	case cumulative > 0 && strings.Contains(trendSymbol, "📈"):
+		suggestion = "🔥 资金持续净流入，主线关注"
+	case cumulative > 0:
+		suggestion = "📈 累计净流入为正，保持跟踪"
+	case cumulative < 0 && strings.Contains(trendSymbol, "📉"):
+		suggestion = "❌ 资金持续撤退，规避"
+	case cumulative < 0:
+		suggestion = "📉 累计净流出，谨慎"
 	}
 
 	return &dto.SectorTrendResponse{
-		SectorName:  sectorName,
-		TrendDays:   details,
-		TrendSymbol: trendSymbol,
-		LeaderStock: leader,
-		Suggestion:  suggestion,
+		SectorName:       sectorName,
+		TrendDays:        details,
+		TrendSymbol:      trendSymbol,
+		LeaderStock:      leader,
+		Suggestion:       suggestion,
+		CumulativeInflow: cumulative,
+		InflowDays:       inflowDays,
+		TotalDays:        len(details),
+		LatestInflowRate: latestRate,
 	}, nil
 }
 

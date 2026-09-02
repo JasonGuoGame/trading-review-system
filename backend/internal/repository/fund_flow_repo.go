@@ -59,3 +59,47 @@ func (r *FundFlowRepository) GetLatestTradeDate() (string, error) {
 	err := r.quantDb.Model(&models.SectorFundFlow{}).Select("MAX(trade_date)").Scan(&latestDate).Error
 	return latestDate, err
 }
+
+// InflowDayStat counts inflow vs total trading days for a sector over a lookback window.
+type InflowDayStat struct {
+	SectorName string
+	InflowDays int
+	TotalDays  int
+}
+
+// GetInflowDayStats returns, for every sector, how many of the last `days` trading
+// dates (up to endDate) had net inflow, plus how many of those dates the sector actually had data.
+func (r *FundFlowRepository) GetInflowDayStats(endDate string, days int) (map[string]InflowDayStat, error) {
+	type row struct {
+		SectorName string
+		InflowDays int
+		TotalDays  int
+	}
+	var rows []row
+	err := r.quantDb.Raw(`
+		SELECT sector_name,
+		       SUM(CASE WHEN net_inflow_amount > 0 THEN 1 ELSE 0 END) AS inflow_days,
+		       COUNT(*) AS total_days
+		FROM stk_sector_fund_flow
+		WHERE trade_date IN (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM stk_sector_fund_flow
+				WHERE trade_date <= ?
+				ORDER BY trade_date DESC LIMIT ?
+			) AS recent_dates
+		)
+		GROUP BY sector_name`, endDate, days).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	stats := make(map[string]InflowDayStat, len(rows))
+	for _, r := range rows {
+		stats[r.SectorName] = InflowDayStat{
+			SectorName: r.SectorName,
+			InflowDays: r.InflowDays,
+			TotalDays:  r.TotalDays,
+		}
+	}
+	return stats, nil
+}

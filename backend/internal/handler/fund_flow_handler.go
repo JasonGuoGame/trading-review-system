@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/service"
@@ -46,6 +47,10 @@ func (h *FundFlowHandler) GetFundFlow(c *gin.Context) {
 func (h *FundFlowHandler) GetFundFlowTrend(c *gin.Context) {
 	sector := c.Query("sector")
 	endDate := c.Query("end_date")
+	days := 30
+	if d, err := strconv.Atoi(c.Query("days")); err == nil {
+		days = d
+	}
 
 	if sector == "" {
 		c.JSON(http.StatusBadRequest, dto.APIResponse{
@@ -55,7 +60,7 @@ func (h *FundFlowHandler) GetFundFlowTrend(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.GetSectorTrendDetail(sector, endDate)
+	res, err := h.service.GetSectorTrendDetail(sector, endDate, days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{
 			Code:    http.StatusInternalServerError,

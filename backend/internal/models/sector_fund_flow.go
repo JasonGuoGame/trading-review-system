@@ -10,6 +10,9 @@ type SectorFundFlow struct {
 	NetInflowAmount float64   `gorm:"type:decimal(20,2);column:net_inflow_amount" json:"net_inflow_amount"`
 	InflowRate      float64   `gorm:"type:decimal(10,2);column:net_inflow_rate" json:"inflow_rate"`
 	TopStock        string    `gorm:"size:100;column:top_stock_name" json:"top_stock"`
+	AvgCapitalScore float64   `gorm:"type:decimal(5,2);column:avg_capital_score" json:"avg_capital_score"`
+	AvgAttackScore  float64   `gorm:"type:decimal(5,2);column:avg_attack_score" json:"avg_attack_score"`
+	SectorCode      string    `gorm:"size:20;column:sector_code" json:"sector_code"`
 }
 
 func (SectorFundFlow) TableName() string {

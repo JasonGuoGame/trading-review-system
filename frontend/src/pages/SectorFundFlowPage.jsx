@@ -6,7 +6,7 @@ import MarketFlowSummary from '../components/fundflow/MarketFlowSummary'
 import StrongSectorPanel from '../components/fundflow/StrongSectorPanel'
 import WeakSectorPanel from '../components/fundflow/WeakSectorPanel'
 import FlowHeatMap from '../components/fundflow/FlowHeatMap'
-import SectorTrendDrawer from '../components/fundflow/SectorTrendDrawer'
+import SectorDriftModal from '../components/fundflow/SectorDriftModal'
 import { useGetSectorFundFlowQuery } from '../app/api'
 
 const { Title } = Typography
@@ -64,17 +64,17 @@ export default function SectorFundFlowPage() {
               />
             </Col>
             <Col span={8}>
-              <FlowHeatMap data={data.all_sectors || []} />
+              <FlowHeatMap data={data.all_sectors || []} summary={data.summary} />
             </Col>
           </Row>
         </>
       ) : null}
 
-      <SectorTrendDrawer 
-        visible={drawerVisible} 
-        sectorName={selectedSector} 
+      <SectorDriftModal
+        visible={drawerVisible}
+        sectorName={selectedSector}
         endDate={filters.date}
-        onClose={() => setDrawerVisible(false)} 
+        onClose={() => setDrawerVisible(false)}
       />
     </div>
   )
