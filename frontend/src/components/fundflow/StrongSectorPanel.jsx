@@ -1,5 +1,5 @@
-import { Card, Table, Typography, Button, Tooltip } from 'antd'
-import { EyeOutlined } from '@ant-design/icons'
+import { Card, Table, Typography, Button, Tooltip, Space } from 'antd'
+import { EyeOutlined, RiseOutlined, FallOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -80,10 +80,23 @@ export default function StrongSectorPanel({ data, loading, mode, onRowClick }) {
     {
       title: '操作',
       key: 'action',
+      width: 130,
       render: (_, record) => (
-        <Button type="link" icon={<EyeOutlined />} onClick={() => onRowClick(record)}>
-          趋势
-        </Button>
+        <Space size={8}>
+          {record.inflow_trend_30d === 'up' && (
+            <Tooltip title={`突破55%阈值 · 上一交易日 ${record.inflow_ratio_prev != null ? record.inflow_ratio_prev.toFixed(0) : '--'}%`}>
+              <RiseOutlined style={{ color: '#cf1322', fontSize: 20 }} />
+            </Tooltip>
+          )}
+          {record.inflow_trend_30d === 'down' && (
+            <Tooltip title={`跌破55%阈值 · 上一交易日 ${record.inflow_ratio_prev != null ? record.inflow_ratio_prev.toFixed(0) : '--'}%`}>
+              <FallOutlined style={{ color: '#3f8600', fontSize: 20 }} />
+            </Tooltip>
+          )}
+          <Button type="link" icon={<EyeOutlined />} onClick={() => onRowClick(record)}>
+            趋势
+          </Button>
+        </Space>
       ),
     },
   ]

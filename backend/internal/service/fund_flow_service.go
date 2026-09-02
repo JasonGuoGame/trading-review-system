@@ -49,6 +49,15 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		inflowStats = map[string]repository.InflowDayStat{}
 	}
 
+	// 上一交易日的30日流入占比，用于判断是否跨过55%阈值
+	prevDate, _ := s.repo.GetPreviousTradeDate(endDateStr)
+	prevInflowStats := map[string]repository.InflowDayStat{}
+	if prevDate != "" {
+		if st, err := s.repo.GetInflowDayStats(prevDate, 30); err == nil {
+			prevInflowStats = st
+		}
+	}
+
 	daysToLookBack := 1
 	if query.Mode == "3d" {
 		daysToLookBack = 3
@@ -155,6 +164,21 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			}
 		}
 
+		// 判断是否跨过55%阈值（上一交易日 → 今日）
+		var ratioPrev float64
+		hasPrev := false
+		if st, ok := prevInflowStats[name]; ok && st.TotalDays > 0 {
+			ratioPrev = float64(st.InflowDays) / float64(st.TotalDays) * 100
+			hasPrev = true
+		}
+		inflowTrend := ""
+		const threshold = 55.0
+		if hasPrev && ratioPrev < threshold && ratio30d >= threshold {
+			inflowTrend = "up"
+		} else if hasPrev && ratioPrev > threshold && ratio30d <= threshold {
+			inflowTrend = "down"
+		}
+
 		item := dto.SectorFlowItem{
 			SectorName:      name,
 			TotalNetInflow:  totalInflow,
@@ -166,6 +190,8 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			InflowRatio30d:  ratio30d,
 			InflowDays30d:   inflowDays30d,
 			TotalDays30d:    totalDays30d,
+			InflowTrend30d:  inflowTrend,
+			InflowRatioPrev: ratioPrev,
 		}
 		allSectors = append(allSectors, item)
 

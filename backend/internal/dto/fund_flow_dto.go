@@ -29,6 +29,8 @@ type SectorFlowItem struct {
 	InflowRatio30d  float64 `json:"inflow_ratio_30d"` // 30日流入天数占比 %
 	InflowDays30d   int     `json:"inflow_days_30d"`
 	TotalDays30d    int     `json:"total_days_30d"`
+	InflowTrend30d  string  `json:"inflow_trend_30d"` // "up"/"down"/"" 跨过55%阈值
+	InflowRatioPrev float64 `json:"inflow_ratio_prev"` // 上一交易日30日流入天数占比 %
 }
 
 type SectorFundFlowResponse struct {

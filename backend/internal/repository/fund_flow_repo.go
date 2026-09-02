@@ -60,6 +60,23 @@ func (r *FundFlowRepository) GetLatestTradeDate() (string, error) {
 	return latestDate, err
 }
 
+// GetPreviousTradeDate returns the trading date immediately before endDate.
+func (r *FundFlowRepository) GetPreviousTradeDate(endDate string) (string, error) {
+	var prevDate string
+	err := r.quantDb.Model(&models.SectorFundFlow{}).
+		Select("MAX(trade_date)").
+		Where("trade_date < ?", endDate).
+		Scan(&prevDate).Error
+	if err != nil {
+		return "", err
+	}
+	// Normalize to YYYY-MM-DD (MySQL may return full timestamp)
+	if len(prevDate) > 10 {
+		prevDate = prevDate[:10]
+	}
+	return prevDate, nil
+}
+
 // InflowDayStat counts inflow vs total trading days for a sector over a lookback window.
 type InflowDayStat struct {
 	SectorName string
@@ -70,6 +87,10 @@ type InflowDayStat struct {
 // GetInflowDayStats returns, for every sector, how many of the last `days` trading
 // dates (up to endDate) had net inflow, plus how many of those dates the sector actually had data.
 func (r *FundFlowRepository) GetInflowDayStats(endDate string, days int) (map[string]InflowDayStat, error) {
+	// Normalize to YYYY-MM-DD (MySQL may return full timestamp from callers)
+	if len(endDate) > 10 {
+		endDate = endDate[:10]
+	}
 	type row struct {
 		SectorName string
 		InflowDays int
