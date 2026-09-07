@@ -9,11 +9,12 @@ import (
 )
 
 type MarketBreadthRepository struct {
-	db *gorm.DB
+	db      *gorm.DB
+	quantDb *gorm.DB
 }
 
-func NewMarketBreadthRepository(db *gorm.DB) *MarketBreadthRepository {
-	return &MarketBreadthRepository{db: db}
+func NewMarketBreadthRepository(db *gorm.DB, quantDb *gorm.DB) *MarketBreadthRepository {
+	return &MarketBreadthRepository{db: db, quantDb: quantDb}
 }
 
 func (r *MarketBreadthRepository) GetByDate(date time.Time) (*models.MarketBreadth, error) {
@@ -108,4 +109,62 @@ func (r *MarketBreadthRepository) GetLatestAdvancers() (int, error) {
 		Limit(1).
 		Scan(&advancers).Error
 	return advancers, err
+}
+
+// IntradayCumulative holds cumulative minute-level turnover (amount, in yuan) up to
+// each hour mark, plus the latest minute present for the day.
+type IntradayCumulative struct {
+	Cum1000      float64 `gorm:"column:cum_1000"`
+	Cum1100      float64 `gorm:"column:cum_1100"`
+	Cum1130      float64 `gorm:"column:cum_1130"`
+	Cum1400      float64 `gorm:"column:cum_1400"`
+	Cum1500      float64 `gorm:"column:cum_1500"`
+	LatestMinute string  `gorm:"column:latest_minute"`
+}
+
+// GetIntradayCumulative sums quant_db.stk_min_kline.amount for a single trade date
+// at the 10:00 / 11:00 / 11:30 / 14:00 / 15:00 hour marks (each mark counts data
+// before or at that time), returning cumulative turnover in yuan.
+func (r *MarketBreadthRepository) GetIntradayCumulative(date string) (*IntradayCumulative, error) {
+	start, err := time.ParseInLocation("2006-01-02", date, time.Local)
+	if err != nil {
+		return nil, err
+	}
+	end := start.AddDate(0, 0, 1)
+
+	var res IntradayCumulative
+	err = r.quantDb.Raw(`
+		SELECT
+			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '10:00:00' THEN amount ELSE 0 END), 0) AS cum_1000,
+			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '11:00:00' THEN amount ELSE 0 END), 0) AS cum_1100,
+			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '11:30:00' THEN amount ELSE 0 END), 0) AS cum_1130,
+			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '14:00:00' THEN amount ELSE 0 END), 0) AS cum_1400,
+			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '15:00:00' THEN amount ELSE 0 END), 0) AS cum_1500,
+			COALESCE(DATE_FORMAT(MAX(trade_time), '%H:%i'), '') AS latest_minute
+		FROM stk_min_kline
+		WHERE trade_time >= ? AND trade_time < ?
+	`, start.Format("2006-01-02 00:00:00"), end.Format("2006-01-02 00:00:00")).Scan(&res).Error
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetPreviousMinKlineDate returns the previous trading date (YYYY-MM-DD) before the
+// given date, derived from quant_db.stk_min_kline.
+func (r *MarketBreadthRepository) GetPreviousMinKlineDate(date string) (string, error) {
+	start, err := time.ParseInLocation("2006-01-02", date, time.Local)
+	if err != nil {
+		return "", err
+	}
+	var prev string
+	err = r.quantDb.Raw(`
+		SELECT COALESCE(DATE_FORMAT(MAX(trade_time), '%Y-%m-%d'), '')
+		FROM stk_min_kline
+		WHERE trade_time < ?
+	`, start.Format("2006-01-02 00:00:00")).Scan(&prev).Error
+	if err != nil {
+		return "", err
+	}
+	return prev, nil
 }

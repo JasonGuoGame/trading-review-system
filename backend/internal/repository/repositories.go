@@ -34,7 +34,7 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		EntryDecision: NewEntryDecisionRepository(db),
 		ExitPlan:      NewExitPlanRepository(db),
 		DailyReview:   NewDailyReviewRepository(db),
-		MarketBreadth: NewMarketBreadthRepository(db),
+		MarketBreadth: NewMarketBreadthRepository(db, quantDb),
 		Abnormal:      NewAbnormalRepository(quantDb),
 		FundFlow:      NewFundFlowRepository(quantDb),
 		StockPool:     NewStockPoolRepository(db),

@@ -26,6 +26,9 @@ type SectorFlowItem struct {
 	Trend3d         string  `json:"trend_3d"`
 	Trend5d         string  `json:"trend_5d"`
 	LeaderStock     string  `json:"leader_stock"`
+	InflowRatio10d  float64 `json:"inflow_ratio_10d"` // 10日流入天数占比 %
+	InflowDays10d   int     `json:"inflow_days_10d"`
+	TotalDays10d    int     `json:"total_days_10d"`
 	InflowRatio30d  float64 `json:"inflow_ratio_30d"` // 30日流入天数占比 %
 	InflowDays30d   int     `json:"inflow_days_30d"`
 	TotalDays30d    int     `json:"total_days_30d"`

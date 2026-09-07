@@ -81,6 +81,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		api.GET("/market-breadth/:date", handlers.MarketBreadth.GetByDate)
 		api.PUT("/market-breadth/:date", handlers.MarketBreadth.Upsert)
 		api.GET("/market-breadth/top-sectors", handlers.MarketBreadth.GetTopSectorScores)
+		api.GET("/market-breadth/intraday-turnover", handlers.MarketBreadth.GetIntradayTurnover)
 
 		// Abnormal Capital
 		api.GET("/abnormal-capital/sectors", handlers.Abnormal.GetSectors)

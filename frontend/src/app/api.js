@@ -256,6 +256,11 @@ export const apiSlice = createApi({
       query: ({ trade_date, limit = 3 }) => `/market-breadth/top-sectors?trade_date=${trade_date}&limit=${limit}`,
       transformResponse: (res) => res.data,
     }),
+    getIntradayTurnover: builder.query({
+      query: (date) => `/market-breadth/intraday-turnover?date=${date}`,
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg }],
+    }),
     upsertMarketBreadth: builder.mutation({
       query: ({ date, ...body }) => ({
         url: `/market-breadth/${date}`,
@@ -661,6 +666,7 @@ export const {
   useUpsertDailyReviewMutation,
   useGetMarketBreadthQuery,
   useGetTopSectorScoresQuery,
+  useGetIntradayTurnoverQuery,
   useUpsertMarketBreadthMutation,
   useGetAbnormalCapitalQuery,
   useGetAbnormalSectorsQuery,

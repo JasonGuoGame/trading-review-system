@@ -38,10 +38,18 @@ export default function StrongSectorPanel({ data, loading, mode, onRowClick }) {
       render: (val) => <Text style={{ color: '#cf1322', fontWeight: 'bold' }}>+{val.toFixed(1)}亿</Text>,
     },
     {
-      title: '最新流入率',
-      dataIndex: 'today_inflow_rate',
-      key: 'today_inflow_rate',
-      render: (val) => <Text style={{ color: val > 0 ? '#cf1322' : '#595959' }}>{val.toFixed(2)}%</Text>,
+      title: '10日流入天数占比',
+      dataIndex: 'inflow_ratio_10d',
+      key: 'inflow_ratio_10d',
+      width: 130,
+      sorter: (a, b) => a.inflow_ratio_10d - b.inflow_ratio_10d,
+      render: (val, record) => (
+        <Tooltip title={`近10日流入 ${record.inflow_days_10d}/${record.total_days_10d} 天`}>
+          <Text style={{ color: val >= 50 ? '#cf1322' : '#3f8600', fontWeight: 500 }}>
+            {val != null ? `${val.toFixed(0)}%` : '--'}
+          </Text>
+        </Tooltip>
+      ),
     },
     {
       title: '30日流入天数占比',

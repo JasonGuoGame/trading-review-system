@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetRecentTradesQuery,
+  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetIntradayTurnoverQuery, useGetRecentTradesQuery,
   useGetSectorFundFlowQuery, useGetTopMarketAttacksQuery,
   useGetMarketEarningEffectQuery, useGetStockPoolQuery,
   useGetTradeChecklistQuery, useUpsertTradeChecklistMutation,
@@ -54,6 +54,9 @@ const StatCard = ({ label, value, suffix = '', color = '#fff', sub, small }) => 
   </div>
 );
 
+// 亿元累计成交额格式化：≥1万亿时显示万亿，否则显示亿
+const formatYi = (v) => (v >= 10000 ? `${(v / 10000).toFixed(2)}万亿` : `${v.toFixed(0)}亿`);
+
 const TradePlaybook = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const selectedDateStr = selectedDate.format('YYYY-MM-DD');
@@ -63,6 +66,7 @@ const TradePlaybook = () => {
   const { data: breadth } = useGetMarketBreadthQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
   const { data: topSectorScoresRaw } = useGetTopSectorScoresQuery({ trade_date: selectedDateStr, limit: 3 }, { refetchOnMountOrArgChange: true });
   const topSectorScores = Array.isArray(topSectorScoresRaw) ? topSectorScoresRaw : [];
+  const { data: intradayTurnover } = useGetIntradayTurnoverQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
   const { data: recentTrades } = useGetRecentTradesQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 10, date: selectedDateStr }, { refetchOnMountOrArgChange: true });
   const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 10, trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
@@ -119,13 +123,13 @@ const TradePlaybook = () => {
   const board4Count = breadth?.board4_count ?? 0;
   const board5Count = breadth?.board5_count ?? 0;
   const totalTurnover = breadth?.total_turnover ?? 0;
-  const turnoverChange = breadth?.turnover_change ?? 0;
   const strongestSector = breadth?.strongest_sector || '--';
   const strongestScore = breadth?.strongest_sector_score ?? 0;
   const marketScore = breadth?.market_score ?? 0;
   const emotionStage = breadth?.emotion_stage || '未知';
   const tradingLevel = breadth?.trading_level ?? 0;
   const tradingAdvice = breadth?.trading_advice || '--';
+  const turnoverMarks = Array.isArray(intradayTurnover) ? intradayTurnover : [];
 
   const posAdvice = getPositionAdvice(advancers, decliners);
   const step1Passed = advancers >= 2800;
@@ -210,7 +214,6 @@ const TradePlaybook = () => {
               {/* Row 2: Turnover + Market Health */}
               <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col span={4}><StatCard label="成交额" value={totalTurnover > 0 ? (totalTurnover / 10000).toFixed(2) : '--'} suffix="万亿" color="#1677ff" /></Col>
-                <Col span={4}><StatCard label="成交额环比" value={turnoverChange > 0 ? `+${turnoverChange.toFixed(1)}` : turnoverChange.toFixed(1)} suffix="%" color={turnoverChange >= 0 ? '#52c41a' : '#ff4d4f'} /></Col>
                 <Col span={4}><StatCard label="市场评分" value={marketScore} suffix="/100" color={marketScore >= 60 ? '#52c41a' : marketScore >= 40 ? '#faad14' : '#ff4d4f'} /></Col>
                 <Col span={4}>
                   <div style={{ textAlign: 'center', padding: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, height: '100%' }}>
@@ -224,7 +227,7 @@ const TradePlaybook = () => {
                     <div style={{ marginTop: 4, fontWeight: 600, color: '#fff', fontSize: 12 }}>{tradingLevelLabel}</div>
                   </div>
                 </Col>
-                <Col span={4}>
+                <Col span={8}>
                 <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.06)', height: '100%' }}>
                   <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>最强板块 TOP3</Text>
                   {(topSectorScores && topSectorScores.length > 0) ? topSectorScores.map((s, i) => (
@@ -238,6 +241,35 @@ const TradePlaybook = () => {
                 </div>
               </Col>
               </Row>
+
+              {/* 分时成交额环比：整点时刻对比上一交易日累计成交额 */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Text strong style={{ color: '#fff', fontSize: 13, display: 'block', marginBottom: 10 }}>
+                  ⏱ 分时成交额环比（对比上一交易日同时点累计成交额）
+                </Text>
+                {turnoverMarks.length > 0 ? (
+                  <Row gutter={[12, 8]}>
+                    {turnoverMarks.map((m) => {
+                      const up = m.change >= 0;
+                      return (
+                        <Col span={4} key={m.mark}>
+                          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 6px', border: '1px solid rgba(255,255,255,0.06)', height: '100%' }}>
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>成交额环比 {m.mark}</Text>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: up ? '#52c41a' : '#ff4d4f', lineHeight: 1.3 }}>
+                              {up ? '+' : ''}{m.change.toFixed(1)}%
+                            </div>
+                            <Text type="secondary" style={{ fontSize: 10 }}>
+                              今 {formatYi(m.today)} · 昨 {formatYi(m.prev)}
+                            </Text>
+                          </div>
+                        </Col>
+                      );
+                    })}
+                  </Row>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>暂无分时成交数据</Text>
+                )}
+              </div>
 
               {/* Row 3: Limit-up chain */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>

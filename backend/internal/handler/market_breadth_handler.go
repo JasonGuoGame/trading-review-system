@@ -86,3 +86,17 @@ func (h *MarketBreadthHandler) GetTopSectorScores(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
+
+// GetIntradayTurnover returns cumulative intraday turnover 环比 at each hour mark.
+func (h *MarketBreadthHandler) GetIntradayTurnover(c *gin.Context) {
+	dateStr := c.Query("date")
+	if dateStr == "" {
+		dateStr = time.Now().Format("2006-01-02")
+	}
+	data, err := h.service.GetIntradayTurnover(dateStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}

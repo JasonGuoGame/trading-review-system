@@ -49,6 +49,12 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		inflowStats = map[string]repository.InflowDayStat{}
 	}
 
+	// 10日流入天数占比（用于表格列）
+	inflowStats10, err := s.repo.GetInflowDayStats(endDateStr, 10)
+	if err != nil {
+		inflowStats10 = map[string]repository.InflowDayStat{}
+	}
+
 	// 上一交易日的30日流入占比，用于判断是否跨过55%阈值
 	prevDate, _ := s.repo.GetPreviousTradeDate(endDateStr)
 	prevInflowStats := map[string]repository.InflowDayStat{}
@@ -154,6 +160,16 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 		trend3d := calculateTrend(flows3d)
 		trend5d := calculateTrend(flows) // flows has up to fetchDays (5 or more)
 
+		var ratio10d float64
+		var inflowDays10d, totalDays10d int
+		if st, ok := inflowStats10[name]; ok {
+			inflowDays10d = st.InflowDays
+			totalDays10d = st.TotalDays
+			if totalDays10d > 0 {
+				ratio10d = float64(inflowDays10d) / float64(totalDays10d) * 100
+			}
+		}
+
 		var ratio30d float64
 		var inflowDays30d, totalDays30d int
 		if st, ok := inflowStats[name]; ok {
@@ -172,10 +188,11 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			hasPrev = true
 		}
 		inflowTrend := ""
-		const threshold = 55.0
-		if hasPrev && ratioPrev < threshold && ratio30d >= threshold {
+		const upthreshold = 50.0
+		const downthreshold = 75.0
+		if hasPrev && ratioPrev < upthreshold && ratio10d >= upthreshold {
 			inflowTrend = "up"
-		} else if hasPrev && ratioPrev > threshold && ratio30d <= threshold {
+		} else if hasPrev && ratioPrev > downthreshold && ratio10d <= downthreshold {
 			inflowTrend = "down"
 		}
 
@@ -187,6 +204,9 @@ func (s *FundFlowService) GetFundFlowData(query dto.FundFlowQuery) (*dto.SectorF
 			Trend:           trend3d, // Default trend shows 3d
 			Trend3d:         trend3d,
 			Trend5d:         trend5d,
+			InflowRatio10d:  ratio10d,
+			InflowDays10d:   inflowDays10d,
+			TotalDays10d:    totalDays10d,
 			InflowRatio30d:  ratio30d,
 			InflowDays30d:   inflowDays30d,
 			TotalDays30d:    totalDays30d,
