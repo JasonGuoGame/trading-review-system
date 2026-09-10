@@ -14,6 +14,8 @@ type StkSectorScore struct {
 	ContinuityScore float64   `gorm:"column:continuity_score;type:decimal(5,2);default:0.00" json:"continuity_score"`
 	TotalScore      float64   `gorm:"column:total_score;type:decimal(5,2);default:0.00" json:"total_score"`
 	RankPos         *int      `gorm:"column:rank_pos" json:"rank_pos"`
+	SnapshotTime    *time.Time `gorm:"column:snapshot_time" json:"snapshot_time"`
+	RankChange      int        `gorm:"column:rank_change;default:0" json:"rank_change"`
 	CreatedAt       time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 

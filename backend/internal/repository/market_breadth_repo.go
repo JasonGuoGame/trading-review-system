@@ -64,14 +64,32 @@ func (r *MarketBreadthRepository) Upsert(breadth *models.MarketBreadth) error {
 	return r.db.Save(breadth).Error
 }
 
-// GetTopSectorScores returns the top N sectors by total_score for a given date.
+// GetTopSectorScores returns the top N sectors by total_score for a given date,
+// restricted to the latest intraday snapshot (snapshot_time) of that day.
 func (r *MarketBreadthRepository) GetTopSectorScores(tradeDate string, limit int) ([]models.StkSectorScore, error) {
 	var scores []models.StkSectorScore
-	err := r.db.Where("trade_date = ?", tradeDate).
+	// 取交易日当天最后一次盘中快照的数据
+	err := r.db.Where("trade_date = ? AND snapshot_time = (?)",
+		tradeDate,
+		r.db.Model(&models.StkSectorScore{}).Select("MAX(snapshot_time)").Where("trade_date = ?", tradeDate),
+	).
 		Order("total_score DESC").
 		Limit(limit).
 		Find(&scores).Error
-	return scores, err
+	if err != nil {
+		return nil, err
+	}
+	// 无快照数据（历史数据 snapshot_time 为 NULL）时回退到全天数据
+	if len(scores) == 0 {
+		err = r.db.Where("trade_date = ?", tradeDate).
+			Order("total_score DESC").
+			Limit(limit).
+			Find(&scores).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+	return scores, nil
 }
 
 // MarketBreadthSnapshot holds date-level market breadth summary.
@@ -118,12 +136,13 @@ type IntradayCumulative struct {
 	Cum1100      float64 `gorm:"column:cum_1100"`
 	Cum1130      float64 `gorm:"column:cum_1130"`
 	Cum1400      float64 `gorm:"column:cum_1400"`
+	Cum1440      float64 `gorm:"column:cum_1440"`
 	Cum1500      float64 `gorm:"column:cum_1500"`
 	LatestMinute string  `gorm:"column:latest_minute"`
 }
 
 // GetIntradayCumulative sums quant_db.stk_min_kline.amount for a single trade date
-// at the 10:00 / 11:00 / 11:30 / 14:00 / 15:00 hour marks (each mark counts data
+// at the 10:00 / 11:00 / 11:30 / 14:00 / 14:40 / 15:00 marks (each mark counts data
 // before or at that time), returning cumulative turnover in yuan.
 func (r *MarketBreadthRepository) GetIntradayCumulative(date string) (*IntradayCumulative, error) {
 	start, err := time.ParseInLocation("2006-01-02", date, time.Local)
@@ -139,6 +158,7 @@ func (r *MarketBreadthRepository) GetIntradayCumulative(date string) (*IntradayC
 			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '11:00:00' THEN amount ELSE 0 END), 0) AS cum_1100,
 			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '11:30:00' THEN amount ELSE 0 END), 0) AS cum_1130,
 			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '14:00:00' THEN amount ELSE 0 END), 0) AS cum_1400,
+			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '14:40:00' THEN amount ELSE 0 END), 0) AS cum_1440,
 			COALESCE(SUM(CASE WHEN TIME(trade_time) <= '15:00:00' THEN amount ELSE 0 END), 0) AS cum_1500,
 			COALESCE(DATE_FORMAT(MAX(trade_time), '%H:%i'), '') AS latest_minute
 		FROM stk_min_kline

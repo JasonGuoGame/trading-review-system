@@ -29,7 +29,7 @@ func (s *MarketBreadthService) GetTopSectorScores(tradeDate string, limit int) (
 }
 
 // GetIntradayTurnover returns the cumulative intraday turnover comparison (成交额环比)
-// at the 10:00 / 11:00 / 11:30 / 14:00 / 15:00 hour marks against the previous
+// at the 10:00 / 11:00 / 11:30 / 14:00 / 14:40 / 15:00 marks against the previous
 // trading day, restricted to marks up to the latest available minute.
 func (s *MarketBreadthService) GetIntradayTurnover(date string) ([]dto.IntradayTurnoverMark, error) {
 	today, err := s.repo.GetIntradayCumulative(date)
@@ -60,6 +60,7 @@ func (s *MarketBreadthService) GetIntradayTurnover(date string) ([]dto.IntradayT
 		{"11:00", "11:00", today.Cum1100, prev.Cum1100},
 		{"11:30", "11:30", today.Cum1130, prev.Cum1130},
 		{"14:00", "14:00", today.Cum1400, prev.Cum1400},
+		{"14:40", "14:40", today.Cum1440, prev.Cum1440},
 		{"15:00", "15:00", today.Cum1500, prev.Cum1500},
 	}
 

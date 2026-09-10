@@ -81,23 +81,28 @@ type ConsistentStrengthRow struct {
 }
 
 func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]ConsistentStrengthRow, error) {
-	// Uses pre-computed persistence_7d and is_leader columns (populated by ETL)
+	// Uses pre-computed persistence_7d and is_leader columns (populated by ETL).
+	// Each source table is restricted to its latest intraday snapshot (snapshot_time),
+	// using MySQL's NULL-safe equality so historical data (snapshot_time IS NULL)
+	// still matches when no snapshot exists yet.
 	sql := `
 		SELECT sector_name, persistence_7d AS strong_days,
 			'sector_score' AS source,
 			high_20d_count, high_60d_count, high_250d_count
 		FROM stk_sector_scores
 		WHERE trade_date = ? AND is_leader = 1
+		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
 		UNION ALL
 		SELECT sector_name, persistence_7d AS strong_days,
 			'sector_breadth' AS source,
 			0 AS high_20d_count, 0 AS high_60d_count, 0 AS high_250d_count
 		FROM stk_sector_breadths
 		WHERE trade_date = ? AND is_leader = 1 AND sector_type = 'industry'
+		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ?)
 		ORDER BY strong_days DESC
 	`
 	var rows []ConsistentStrengthRow
-	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		log.Printf("[sector-sentiment] GetConsistentStrength error: %v", err)
 		return nil, err
 	}
@@ -109,20 +114,22 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 // had is_leader=1, keyed by "sectorName|source".
 func (r *SectorSentimentRepository) GetLeaderCountMap(tradeDate string) (map[string]int, error) {
 	sql := `
-		SELECT sector_name, 'sector_score' AS source, COUNT(*) AS cnt
-		FROM stk_sector_scores
-		WHERE trade_date <= ? AND is_leader = 1
-		  AND trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
+		SELECT s.sector_name, 'sector_score' AS source, COUNT(*) AS cnt
+		FROM stk_sector_scores s
+		WHERE s.trade_date <= ? AND s.is_leader = 1
+		  AND s.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
 			FROM stk_sector_scores WHERE trade_date <= ? ORDER BY td DESC LIMIT 30) AS d)
-		GROUP BY sector_name
+		  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
+		GROUP BY s.sector_name
 		UNION ALL
-		SELECT sector_name, 'sector_breadth' AS source, COUNT(*) AS cnt
-		FROM stk_sector_breadths
-		WHERE trade_date <= ? AND is_leader = 1 AND sector_type = 'industry'
-		  AND trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
+		SELECT b.sector_name, 'sector_breadth' AS source, COUNT(*) AS cnt
+		FROM stk_sector_breadths b
+		WHERE b.trade_date <= ? AND b.is_leader = 1 AND b.sector_type = 'industry'
+		  AND b.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
 			FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry'
 			ORDER BY td DESC LIMIT 30) AS d)
-		GROUP BY sector_name
+		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+		GROUP BY b.sector_name
 	`
 	type row struct {
 		SectorName string `gorm:"column:sector_name"`
@@ -155,15 +162,17 @@ func (r *SectorSentimentRepository) GetPrevHighCounts(tradeDate string, sectors 
 		return nil, nil
 	}
 	sql := `
-		SELECT sector_name, high_20d_count, high_60d_count, high_250d_count,
+		SELECT s.sector_name, s.high_20d_count, s.high_60d_count, s.high_250d_count,
 			'sector_score' AS source
-		FROM stk_sector_scores
-		WHERE trade_date = ? AND sector_name IN ?
+		FROM stk_sector_scores s
+		WHERE s.trade_date = ? AND s.sector_name IN ?
+		  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
 		UNION ALL
-		SELECT sector_name, high_20d_count, high_60d_count, high_250d_count,
+		SELECT b.sector_name, b.high_20d_count, b.high_60d_count, b.high_250d_count,
 			'sector_breadth' AS source
-		FROM stk_sector_breadths
-		WHERE trade_date = ? AND sector_name IN ? AND sector_type = 'industry'
+		FROM stk_sector_breadths b
+		WHERE b.trade_date = ? AND b.sector_name IN ? AND b.sector_type = 'industry'
+		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
 	`
 	var rows []PrevHighCount
 	if err := r.db.Raw(sql, tradeDate, sectors, tradeDate, sectors).Scan(&rows).Error; err != nil {
@@ -178,9 +187,10 @@ func (r *SectorSentimentRepository) GetSectorRecentRanksFromScores(sectorName, t
 	}
 	var rows []rankRow
 	sql := `
-		SELECT rank_pos FROM stk_sector_scores
-		WHERE sector_name = ? AND trade_date <= ?
-		ORDER BY trade_date DESC LIMIT 5
+		SELECT s.rank_pos FROM stk_sector_scores s
+		WHERE s.sector_name = ? AND s.trade_date <= ?
+		  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
+		ORDER BY s.trade_date DESC LIMIT 5
 	`
 	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
@@ -198,9 +208,10 @@ func (r *SectorSentimentRepository) GetSectorRecentRanks(sectorName, tradeDate s
 	}
 	var rows []rankRow
 	sql := `
-		SELECT rank_pos FROM stk_sector_breadths
-		WHERE sector_name = ? AND sector_type = 'industry' AND trade_date <= ?
-		ORDER BY trade_date DESC LIMIT 5
+		SELECT b.rank_pos FROM stk_sector_breadths b
+		WHERE b.sector_name = ? AND b.sector_type = 'industry' AND b.trade_date <= ?
+		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+		ORDER BY b.trade_date DESC LIMIT 5
 	`
 	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
@@ -241,6 +252,7 @@ func (r *SectorSentimentRepository) GetNewFaces(tradeDate string) ([]NewFaceRow,
 			SELECT sector_name, rank_pos AS today_rank
 			FROM stk_sector_scores
 			WHERE trade_date = (SELECT d_today FROM ScoreLatest) AND rank_pos <= 10
+			  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = (SELECT d_today FROM ScoreLatest))
 		),
 		ScorePast AS (
 			SELECT sector_name, MIN(rank_pos) AS min_past_rank
@@ -271,6 +283,7 @@ func (r *SectorSentimentRepository) GetNewFaces(tradeDate string) ([]NewFaceRow,
 			FROM stk_sector_breadths
 			WHERE trade_date = (SELECT d_today FROM BreadthLatest)
 			  AND rank_pos <= 10 AND sector_type = 'industry'
+			  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = (SELECT d_today FROM BreadthLatest))
 		),
 		BreadthPast AS (
 			SELECT sector_name, MIN(rank_pos) AS min_past_rank
@@ -316,13 +329,14 @@ type IceRecoveryRow struct {
 func (r *SectorSentimentRepository) GetIceRecovery(tradeDate string) ([]IceRecoveryRow, error) {
 	sql := `
 		WITH SectorHistory AS (
-			SELECT sector_name, trade_date, red_rate,
-				MAX(red_rate) OVER(
-					PARTITION BY sector_name ORDER BY trade_date
+			SELECT b.sector_name, b.trade_date, b.red_rate,
+				MAX(b.red_rate) OVER(
+					PARTITION BY b.sector_name ORDER BY b.trade_date
 					ROWS BETWEEN 5 PRECEDING AND 1 PRECEDING
 				) AS prev_5d_max
-			FROM stk_sector_breadths
-			WHERE sector_type = 'industry'
+			FROM stk_sector_breadths b
+			WHERE b.sector_type = 'industry'
+			  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
 		)
 		SELECT sector_name, red_rate, prev_5d_max
 		FROM SectorHistory
@@ -346,10 +360,11 @@ func (r *SectorSentimentRepository) GetSectorPrev5dRates(sectorName, tradeDate s
 	}
 	var rows []rateRow
 	sql := `
-		SELECT red_rate FROM stk_sector_breadths
-		WHERE sector_name = ? AND sector_type = 'industry'
-		  AND trade_date < ?
-		ORDER BY trade_date DESC LIMIT 5
+		SELECT b.red_rate FROM stk_sector_breadths b
+		WHERE b.sector_name = ? AND b.sector_type = 'industry'
+		  AND b.trade_date < ?
+		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+		ORDER BY b.trade_date DESC LIMIT 5
 	`
 	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
@@ -382,15 +397,16 @@ func (r *SectorSentimentRepository) GetDivergenceTrend(tradeDate string) ([]Dive
 			ORDER BY trade_date DESC LIMIT 20
 		)
 		SELECT
-			trade_date,
-			COALESCE(AVG(CASE WHEN sector_type='broad' AND sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000') THEN red_rate END), 0) AS broad_avg_rate,
-			COALESCE(AVG(CASE WHEN sector_type='industry' THEN red_rate END), 0) AS industry_avg_rate,
-			COUNT(CASE WHEN sector_type='industry' AND red_rate >= 80 THEN 1 END) AS hot_sectors_count,
-			COUNT(CASE WHEN sector_type='industry' THEN 1 END) AS total_sectors
-		FROM stk_sector_breadths
-		WHERE trade_date IN (SELECT trade_date FROM RecentDates)
-		GROUP BY trade_date
-		ORDER BY trade_date ASC
+			b.trade_date,
+			COALESCE(AVG(CASE WHEN b.sector_type='broad' AND b.sector_name NOT IN ('上证指数','深证成指','创业板指','沪深300','中证1000') THEN b.red_rate END), 0) AS broad_avg_rate,
+			COALESCE(AVG(CASE WHEN b.sector_type='industry' THEN b.red_rate END), 0) AS industry_avg_rate,
+			COUNT(CASE WHEN b.sector_type='industry' AND b.red_rate >= 80 THEN 1 END) AS hot_sectors_count,
+			COUNT(CASE WHEN b.sector_type='industry' THEN 1 END) AS total_sectors
+		FROM stk_sector_breadths b
+		WHERE b.trade_date IN (SELECT trade_date FROM RecentDates)
+		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+		GROUP BY b.trade_date
+		ORDER BY b.trade_date ASC
 	`
 	var rows []DivergenceRow
 	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
@@ -406,18 +422,21 @@ func (r *SectorSentimentRepository) GetIndustryMedianRate(tradeDate string) (flo
 		SELECT AVG(red_rate) FROM (
 			SELECT red_rate FROM stk_sector_breadths
 			WHERE trade_date = ? AND sector_type = 'industry'
+			  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ?)
 			ORDER BY red_rate
 			LIMIT 2 - (SELECT COUNT(*) FROM stk_sector_breadths
-			           WHERE trade_date = ? AND sector_type = 'industry') % 2
+			           WHERE trade_date = ? AND sector_type = 'industry'
+			             AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ?)) % 2
 			OFFSET (SELECT (COUNT(*) - 1) / 2 FROM stk_sector_breadths
-			        WHERE trade_date = ? AND sector_type = 'industry')
+			        WHERE trade_date = ? AND sector_type = 'industry'
+			          AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ?))
 		) AS sub
 	`
 	var med float64
-	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate).Scan(&med).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&med).Error; err != nil {
 		log.Printf("[sector-sentiment] median query failed, falling back to avg: %v", err)
 		err2 := r.db.Raw(
-			"SELECT COALESCE(AVG(red_rate), 0) FROM stk_sector_breadths WHERE trade_date = ? AND sector_type = 'industry'",
+			"SELECT COALESCE(AVG(red_rate), 0) FROM stk_sector_breadths b WHERE b.trade_date = ? AND b.sector_type = 'industry' AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date)",
 			tradeDate,
 		).Scan(&med).Error
 		if err2 != nil {
@@ -443,14 +462,15 @@ type ConcentrationRow struct {
 
 func (r *SectorSentimentRepository) GetConcentration(tradeDate string) ([]ConcentrationRow, error) {
 	sql := `
-		SELECT sector_name, red_rate, total_stocks,
-			high_20d_count, high_60d_count, high_250d_count
-		FROM stk_sector_breadths
-		WHERE trade_date = ?
-		  AND sector_type = 'industry'
-		  AND total_stocks >= 20
-		  AND red_rate >= 85
-		ORDER BY red_rate DESC
+		SELECT b.sector_name, b.red_rate, b.total_stocks,
+			b.high_20d_count, b.high_60d_count, b.high_250d_count
+		FROM stk_sector_breadths b
+		WHERE b.trade_date = ?
+		  AND b.sector_type = 'industry'
+		  AND b.total_stocks >= 20
+		  AND b.red_rate >= 85
+		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+		ORDER BY b.red_rate DESC
 	`
 	var rows []ConcentrationRow
 	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
@@ -475,6 +495,8 @@ type SectorDriftRow struct {
 func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) ([]SectorDriftRow, error) {
 	// Collect all dates from both tables, then LEFT JOIN each table's data
 	// so we get breadth rank + red_rate + scores rank on every date.
+	// Each table now keeps intraday snapshots, so for every trade_date we take
+	// the LAST snapshot_time (NULL-safe <=> fallback for historical days).
 	sql := `
 		WITH dates AS (
 			SELECT DISTINCT trade_date FROM stk_sector_breadths
@@ -484,14 +506,22 @@ func (r *SectorSentimentRepository) GetSectorDrift(sectorName string, days int) 
 			WHERE sector_name = ?
 		),
 		breadth_data AS (
-			SELECT trade_date, rank_pos, red_rate
-			FROM stk_sector_breadths
-			WHERE sector_name = ? AND sector_type = 'industry'
+			SELECT b.trade_date, b.rank_pos, b.red_rate
+			FROM stk_sector_breadths b
+			WHERE b.sector_name = ? AND b.sector_type = 'industry'
+			  AND b.snapshot_time <=> (
+				SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2
+				WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry'
+			  )
 		),
 		score_data AS (
-			SELECT trade_date, rank_pos
-			FROM stk_sector_scores
-			WHERE sector_name = ?
+			SELECT s.trade_date, s.rank_pos
+			FROM stk_sector_scores s
+			WHERE s.sector_name = ?
+			  AND s.snapshot_time <=> (
+				SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2
+				WHERE s2.trade_date = s.trade_date
+			  )
 		)
 		SELECT d.trade_date,
 			b.rank_pos AS rank_pos,
@@ -535,11 +565,12 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 			SELECT MAX(trade_date) AS max_dt FROM stk_sector_scores WHERE trade_date <= ?
 		),
 		ScoreDailyRank AS (
-			SELECT sector_name, trade_date, rank_pos, money_score,
-				high_20d_count, high_60d_count, high_250d_count,
-				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
-			FROM stk_sector_scores
-			WHERE trade_date <= ?
+			SELECT s.sector_name, s.trade_date, s.rank_pos, s.money_score,
+				s.high_20d_count, s.high_60d_count, s.high_250d_count,
+				DENSE_RANK() OVER (PARTITION BY s.sector_name ORDER BY s.trade_date DESC) AS day_idx
+			FROM stk_sector_scores s
+			WHERE s.trade_date <= ?
+			  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
 		),
 		ScoreTrend AS (
 			SELECT sector_name,
@@ -570,11 +601,12 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 			SELECT MAX(trade_date) AS max_dt FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry'
 		),
 		BreadthDailyRank AS (
-			SELECT sector_name, trade_date, rank_pos,
-				high_20d_count, high_60d_count, high_250d_count,
-				DENSE_RANK() OVER (PARTITION BY sector_name ORDER BY trade_date DESC) AS day_idx
-			FROM stk_sector_breadths
-			WHERE trade_date <= ? AND sector_type = 'industry'
+			SELECT b.sector_name, b.trade_date, b.rank_pos,
+				b.high_20d_count, b.high_60d_count, b.high_250d_count,
+				DENSE_RANK() OVER (PARTITION BY b.sector_name ORDER BY b.trade_date DESC) AS day_idx
+			FROM stk_sector_breadths b
+			WHERE b.trade_date <= ? AND b.sector_type = 'industry'
+			  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
 		),
 		BreadthTrend AS (
 			SELECT sector_name,
@@ -612,25 +644,29 @@ func (r *SectorSentimentRepository) GetClimbingSectors(tradeDate string) ([]Clim
 	return rows, nil
 }
 
-// GetTopSectorScores returns top 10 sectors by rank from stk_sector_scores.
+// GetTopSectorScores returns top 10 sectors by rank from stk_sector_scores,
+// restricted to the latest intraday snapshot (snapshot_time) of the day.
 func (r *SectorSentimentRepository) GetTopSectorScores(tradeDate string) ([]TopSectorItem, error) {
 	sql := `SELECT sector_name, rank_pos, total_score AS score
 		FROM stk_sector_scores WHERE trade_date = ?
+		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
 		ORDER BY rank_pos ASC LIMIT 10`
 	var rows []TopSectorItem
-	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil
 }
 
-// GetTopSectorBreadths returns top 10 sectors by rank from stk_sector_breadths.
+// GetTopSectorBreadths returns top 10 sectors by rank from stk_sector_breadths,
+// restricted to the latest intraday snapshot (snapshot_time) of the day.
 func (r *SectorSentimentRepository) GetTopSectorBreadths(tradeDate string) ([]TopSectorItem, error) {
 	sql := `SELECT sector_name, rank_pos, red_rate AS score
 		FROM stk_sector_breadths WHERE trade_date = ? AND sector_type = 'industry'
+		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ?)
 		ORDER BY rank_pos ASC LIMIT 10`
 	var rows []TopSectorItem
-	if err := r.db.Raw(sql, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	return rows, nil
@@ -720,6 +756,95 @@ func (r *SectorSentimentRepository) GetNewHighStocks(sectorName, tradeDate strin
 	`
 	var rows []NewHighStockRow
 	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// ============================================================
+// 7. 盘中排名上升 — Top Rising Sectors (morning → afternoon)
+// ============================================================
+
+// RisingSectorRow is a sector that rose in rank from morning to afternoon,
+// computed as SUM(rank_change) > 0 across the day's intraday snapshots.
+type RisingSectorRow struct {
+	SectorName    string `gorm:"column:sector_name"`
+	Source        string `gorm:"column:source"` // "sector_score" or "sector_breadth"
+	Rise          int    `gorm:"column:rise"`
+	MorningRank   *int   `gorm:"column:morning_rank"`
+	AfternoonRank *int   `gorm:"column:afternoon_rank"`
+}
+
+// GetTopRisingSectors returns the sectors with the largest positive intraday
+// rank rise. For stk_sector_scores (which keeps one row per snapshot), the rise
+// is SUM(rank_change) — the telescoping net change from the first (morning)
+// snapshot to the last (afternoon) snapshot. For stk_sector_breadths (one row
+// per day, no intraday snapshots yet), rank_change is summed directly and the
+// morning/afternoon ranks collapse to the single daily rank.
+func (r *SectorSentimentRepository) GetTopRisingSectors(tradeDate string, limit int) ([]RisingSectorRow, error) {
+	sql := `
+		SELECT sector_name, source, rise, morning_rank, afternoon_rank
+		FROM (
+			SELECT s.sector_name,
+				'sector_score' AS source,
+				COALESCE(SUM(s.rank_change), 0) AS rise,
+				MAX(CASE WHEN s.snapshot_time = f.first_ts THEN s.rank_pos END) AS morning_rank,
+				MAX(CASE WHEN s.snapshot_time = f.last_ts THEN s.rank_pos END) AS afternoon_rank
+			FROM stk_sector_scores s
+			JOIN (
+				SELECT sector_name,
+					MIN(snapshot_time) AS first_ts,
+					MAX(snapshot_time) AS last_ts
+				FROM stk_sector_scores
+				WHERE trade_date = ?
+				GROUP BY sector_name
+			) f ON f.sector_name = s.sector_name
+			WHERE s.trade_date = ?
+			GROUP BY s.sector_name
+
+			UNION ALL
+
+			SELECT b.sector_name,
+				'sector_breadth' AS source,
+				COALESCE(SUM(b.rank_change), 0) AS rise,
+				MIN(b.rank_pos) AS morning_rank,
+				MAX(b.rank_pos) AS afternoon_rank
+			FROM stk_sector_breadths b
+			WHERE b.trade_date = ? AND b.sector_type = 'industry'
+			GROUP BY b.sector_name
+		) t
+		WHERE t.rise > 0
+		ORDER BY t.rise DESC, t.afternoon_rank ASC
+		LIMIT ?
+	`
+	var rows []RisingSectorRow
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, limit).Scan(&rows).Error; err != nil {
+		log.Printf("[sector-sentiment] GetTopRisingSectors error: %v", err)
+		return nil, err
+	}
+	log.Printf("[sector-sentiment] top rising sectors (%s): %d", tradeDate, len(rows))
+	return rows, nil
+}
+
+// IntradayDriftRow is one intraday snapshot of a sector's score rank.
+type IntradayDriftRow struct {
+	SnapshotTime string `gorm:"column:snapshot_time"`
+	RankPos      *int   `gorm:"column:rank_pos"`
+	RankChange   int    `gorm:"column:rank_change"`
+}
+
+// GetSectorIntradayDrift returns the intraday score-rank drift of a sector
+// across the day's snapshots (morning → afternoon), for the drift chart.
+func (r *SectorSentimentRepository) GetSectorIntradayDrift(sectorName, tradeDate string) ([]IntradayDriftRow, error) {
+	sql := `
+		SELECT DATE_FORMAT(snapshot_time, '%H:%i') AS snapshot_time, rank_pos, rank_change
+		FROM stk_sector_scores
+		WHERE sector_name = ? AND trade_date = ? AND snapshot_time IS NOT NULL
+		ORDER BY snapshot_time ASC
+	`
+	var rows []IntradayDriftRow
+	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
+		log.Printf("[sector-sentiment] GetSectorIntradayDrift error: %v", err)
 		return nil, err
 	}
 	return rows, nil

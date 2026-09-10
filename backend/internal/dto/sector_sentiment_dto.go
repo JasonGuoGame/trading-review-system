@@ -98,6 +98,15 @@ type TopSectorItem struct {
 	TopStock   string  `json:"top_stock"`  // highest-volume stock in this sector
 }
 
+// RisingSectorItem is a sector that rose in rank from morning to afternoon.
+type RisingSectorItem struct {
+	SectorName    string `json:"sector_name"`
+	Source        string `json:"source"` // "sector_score" or "sector_breadth"
+	Rise          int    `json:"rise"`   // 上升位次（正数）
+	MorningRank   *int   `json:"morning_rank"`
+	AfternoonRank *int   `json:"afternoon_rank"`
+}
+
 // SectorSentimentFullResponse combines all signals.
 type SectorSentimentFullResponse struct {
 	TradeDate          string                    `json:"trade_date"`
@@ -109,6 +118,7 @@ type SectorSentimentFullResponse struct {
 	ClimbingSectors    []ClimbingSectorItem     `json:"climbing_sectors"`
 	TopScores          []TopSectorItem          `json:"top_scores"`
 	TopBreadths        []TopSectorItem          `json:"top_breadths"`
+	TopRisingSectors   []RisingSectorItem       `json:"top_rising_sectors"`
 }
 
 // ============================================================
@@ -128,6 +138,20 @@ type SectorDriftResponse struct {
 	SectorName string             `json:"sector_name"`
 	Days       int                `json:"days"`
 	Points     []SectorDriftPoint `json:"points"`
+}
+
+// IntradayDriftPoint is one intraday snapshot of a sector's score rank.
+type IntradayDriftPoint struct {
+	SnapshotTime string `json:"snapshot_time"` // "HH:MM"
+	RankPos      *int   `json:"rank_pos"`
+	RankChange   int    `json:"rank_change"` // 该快照相对上一快照的排名变化（正数=上升）
+}
+
+// IntradayDriftResponse is the intraday (morning → afternoon) rank drift for a sector.
+type IntradayDriftResponse struct {
+	SectorName string               `json:"sector_name"`
+	TradeDate  string               `json:"trade_date"`
+	Points     []IntradayDriftPoint `json:"points"`
 }
 
 // ============================================================

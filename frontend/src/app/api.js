@@ -578,6 +578,10 @@ export const apiSlice = createApi({
       query: ({ sector_name, days = 30 }) => `/sector-sentiment/sector-drift?sector_name=${encodeURIComponent(sector_name)}&days=${days}`,
       transformResponse: (res) => res.data,
     }),
+    getIntradayDrift: builder.query({
+      query: ({ sector_name, trade_date }) => `/sector-sentiment/intraday-drift?sector_name=${encodeURIComponent(sector_name)}&trade_date=${trade_date || ''}`,
+      transformResponse: (res) => res.data,
+    }),
     getNewHighStocks: builder.query({
       query: ({ sector_name, trade_date }) => `/sector-sentiment/new-high-stocks?sector_name=${encodeURIComponent(sector_name)}&trade_date=${trade_date || ''}`,
       transformResponse: (res) => res.data,
@@ -717,6 +721,7 @@ export const {
   useGetSectorNamesQuery,
   useGetSectorDriftQuery,
   useLazyGetSectorDriftQuery,
+  useLazyGetIntradayDriftQuery,
   useLazyGetNewHighStocksQuery,
   useGetClimbingSectorsQuery,
   useGetSavedSqlsQuery,

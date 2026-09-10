@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react'
-import { Row, Col, Card, Tabs, Table, Tag, Spin, Empty, Typography, Input, Button, Descriptions, Space, message, DatePicker } from 'antd'
-import { TrophyOutlined, RiseOutlined, FallOutlined, WarningOutlined, SearchOutlined, CalendarOutlined } from '@ant-design/icons'
+import { CalendarOutlined, FallOutlined, RiseOutlined, SearchOutlined, TrophyOutlined, WarningOutlined } from '@ant-design/icons'
+import { Button, Card, Col, DatePicker, Descriptions, Empty, Input, Row, Space, Spin, Table, Tabs, Tag, Typography, message } from 'antd'
+import dayjs from 'dayjs'
+import { useEffect, useState } from 'react'
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis, Radar,
+  RadarChart,
   ResponsiveContainer,
 } from 'recharts'
-import dayjs from 'dayjs'
 import {
-  useGetChipLatestDateQuery,
-  useGetChipRadarQuery,
   useGetChipAccumulationQuery,
-  useGetChipPeakMoveQuery,
-  useGetChipDivergenceQuery,
   useGetChipDistributionQuery,
+  useGetChipDivergenceQuery,
+  useGetChipLatestDateQuery,
+  useGetChipPeakMoveQuery,
+  useGetChipRadarQuery,
   useLazySearchChipStockQuery,
 } from '../app/api'
 
@@ -52,55 +55,73 @@ const commonColumns = (showBehavior, showPeak, showWidth, showDist) => {
   if (showBehavior) {
     cols.push(
       { title: '行为', dataIndex: 'behavior_label', width: 70, render: (v) => <Tag color={v === '吸筹' ? 'red' : v === '拉升' ? 'orange' : 'default'}>{v || '-'}</Tag> },
-      { title: '吸筹强度', dataIndex: 'behavior_strength', width: 90, sorter: (a, b) => a.behavior_strength - b.behavior_strength,
-        render: (v) => <span style={{ color: '#faad14', fontWeight: 600 }}>{v?.toFixed(1)}</span> },
+      {
+        title: '吸筹强度', dataIndex: 'behavior_strength', width: 90, sorter: (a, b) => a.behavior_strength - b.behavior_strength,
+        render: (v) => <span style={{ color: '#faad14', fontWeight: 600 }}>{v?.toFixed(1)}</span>
+      },
     )
   }
   cols.push(
     { title: '控盘', dataIndex: 'control_degree', width: 70, render: (v, r) => <span><Tag color={v >= 80 ? 'red' : v >= 60 ? 'orange' : 'default'}>{v}</Tag>{r.control_level && <span style={{ color: '#8b949e', fontSize: 10, marginLeft: 4 }}>{r.control_level}</span>}</span> },
-    { title: '资金', dataIndex: 'capital_score', width: 70, render: (v) => <Tag color={v >= 80 ? 'purple' : v >= 60 ? 'blue' : 'default'}>{v}</Tag> },
+    { title: '资金', dataIndex: 'capital_score', width: 70, sorter: (a, b) => a.capital_score - b.capital_score, render: (v) => <Tag color={v >= 80 ? 'purple' : v >= 60 ? 'blue' : 'default'}>{v}</Tag> },
   )
   if (showBehavior) {
     cols.push(
-      { title: '主力净流入', dataIndex: 'main_net_inflow', width: 100, sorter: (a, b) => a.main_net_inflow - b.main_net_inflow,
-        render: (v) => <span style={{ color: v > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}亿</span> },
+      {
+        title: '主力净流入', dataIndex: 'main_net_inflow', width: 100, sorter: (a, b) => a.main_net_inflow - b.main_net_inflow,
+        render: (v) => <span style={{ color: v > 0 ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}亿</span>
+      },
       { title: '连续流入', dataIndex: 'inflow_days', width: 80, render: (v) => <span style={{ color: v >= 3 ? '#ff4d4f' : '#faad14', fontWeight: 600 }}>{v || 0}天</span> },
-      { title: '涨跌', dataIndex: 'change_pct', width: 80,
+      {
+        title: '涨跌', dataIndex: 'change_pct', width: 80,
         render: (v) => v != null
           ? <span style={{ color: v > 0 ? '#ff4d4f' : v < 0 ? '#52c41a' : '#8b949e', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span>
-          : <span style={{ color: '#8b949e' }}>-</span> },
+          : <span style={{ color: '#8b949e' }}>-</span>
+      },
     )
   }
   if (showPeak) {
     cols.push(
-      { title: '筹码上移', dataIndex: 'peak_move_pct', width: 90, sorter: (a, b) => a.peak_move_pct - b.peak_move_pct,
-        render: (v) => <span style={{ color: v > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
+      {
+        title: '筹码上移', dataIndex: 'peak_move_pct', width: 90, sorter: (a, b) => a.peak_move_pct - b.peak_move_pct,
+        render: (v) => <span style={{ color: v > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span>
+      },
       { title: '主力成本', dataIndex: 'estimated_main_cost', width: 90, render: (v) => <span style={{ color: '#c9d1d9' }}>{v?.toFixed(2)}</span> },
       { title: '现价', dataIndex: 'current_price', width: 80, render: (v) => <span style={{ color: '#fff' }}>{v?.toFixed(2)}</span> },
-      { title: '涨跌', dataIndex: 'change_pct', width: 80,
+      {
+        title: '涨跌', dataIndex: 'change_pct', width: 80,
         render: (v) => v != null
           ? <span style={{ color: v > 0 ? '#ff4d4f' : v < 0 ? '#52c41a' : '#8b949e', fontWeight: 600 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span>
-          : <span style={{ color: '#8b949e' }}>-</span> },
+          : <span style={{ color: '#8b949e' }}>-</span>
+      },
     )
   }
   if (showWidth) {
     cols.push(
-      { title: '筹码宽度', dataIndex: 'chip_width70', width: 90, sorter: (a, b) => a.chip_width70 - b.chip_width70,
-        render: (v) => <span style={{ color: v > 0.35 ? '#ff4d4f' : v > 0.25 ? '#faad14' : '#52c41a', fontWeight: 600 }}>{v?.toFixed(4)}</span> },
+      {
+        title: '筹码宽度', dataIndex: 'chip_width70', width: 90, sorter: (a, b) => a.chip_width70 - b.chip_width70,
+        render: (v) => <span style={{ color: v > 0.35 ? '#ff4d4f' : v > 0.25 ? '#faad14' : '#52c41a', fontWeight: 600 }}>{v?.toFixed(4)}</span>
+      },
     )
   }
   if (showDist) {
     cols.push(
-      { title: '出货强度', dataIndex: 'behavior_strength', width: 90, sorter: (a, b) => a.behavior_strength - b.behavior_strength,
-        render: (v) => <span style={{ color: '#ff4d4f', fontWeight: 600 }}>{v?.toFixed(1)}</span> },
-      { title: '主力收益率', dataIndex: 'cost_profit_pct', width: 100, sorter: (a, b) => a.cost_profit_pct - b.cost_profit_pct,
-        render: (v) => <span style={{ color: '#52c41a', fontWeight: 600 }}>+{v?.toFixed(1)}%</span> },
+      {
+        title: '出货强度', dataIndex: 'behavior_strength', width: 90, sorter: (a, b) => a.behavior_strength - b.behavior_strength,
+        render: (v) => <span style={{ color: '#ff4d4f', fontWeight: 600 }}>{v?.toFixed(1)}</span>
+      },
+      {
+        title: '主力收益率', dataIndex: 'cost_profit_pct', width: 100, sorter: (a, b) => a.cost_profit_pct - b.cost_profit_pct,
+        render: (v) => <span style={{ color: '#52c41a', fontWeight: 600 }}>+{v?.toFixed(1)}%</span>
+      },
     )
   }
   cols.push(
     { title: '获利盘', dataIndex: 'profit_ratio', width: 75, render: (v) => <span style={{ color: v > 80 ? '#ff4d4f' : '#c9d1d9' }}>{v?.toFixed(0)}%</span> },
-    { title: '共振', dataIndex: 'chip_resonance_score', width: 65, sorter: (a, b) => a.chip_resonance_score - b.chip_resonance_score,
-      render: (v) => <span style={{ color: v >= 80 ? '#ff4d4f' : v >= 60 ? '#faad14' : '#52c41a', fontWeight: 600 }}>{v}</span> },
+    {
+      title: '共振', dataIndex: 'chip_resonance_score', width: 65, sorter: (a, b) => a.chip_resonance_score - b.chip_resonance_score,
+      render: (v) => <span style={{ color: v >= 80 ? '#ff4d4f' : v >= 60 ? '#faad14' : '#52c41a', fontWeight: 600 }}>{v}</span>
+    },
     { title: '评级', dataIndex: 'resonance_rating', width: 90, render: (v) => <span style={{ color: RESONANCE_COLORS[v] || '#8b949e' }}>{v}</span> },
   )
   return cols
@@ -108,8 +129,8 @@ const commonColumns = (showBehavior, showPeak, showWidth, showDist) => {
 
 const ChipMonitorPage = () => {
   // Persist search state across page navigation
-  const readSS = (key, fb) => { try { const v = sessionStorage.getItem('cm_'+key); return v != null ? JSON.parse(v) : fb } catch { return fb } }
-  const writeSS = (key, val) => { try { sessionStorage.setItem('cm_'+key, JSON.stringify(val)) } catch {} }
+  const readSS = (key, fb) => { try { const v = sessionStorage.getItem('cm_' + key); return v != null ? JSON.parse(v) : fb } catch { return fb } }
+  const writeSS = (key, val) => { try { sessionStorage.setItem('cm_' + key, JSON.stringify(val)) } catch { } }
 
   const [activeTab, setActiveTab] = useState('accumulation')
   const [searchQuery, setSearchQuery] = useState(() => readSS('searchQuery', ''))

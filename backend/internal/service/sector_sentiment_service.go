@@ -329,6 +329,13 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 	topScores, _ := s.repo.GetTopSectorScores(tradeDate)
 	topBreadths, _ := s.repo.GetTopSectorBreadths(tradeDate)
 
+	// Top-5 rising sectors (morning → afternoon)
+	topRising, err := s.GetTopRisingSectors(tradeDate, 5)
+	if err != nil {
+		log.Printf("[sector-sentiment] top rising sectors partial error: %v", err)
+		topRising = []dto.RisingSectorItem{}
+	}
+
 	// Collect sector names for top-stock lookup
 	allTopSectors := make([]string, 0, len(topScores)+len(topBreadths))
 	for _, r := range topScores {
@@ -362,6 +369,7 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		ClimbingSectors:    climbing,
 		TopScores:          topScoresDTO,
 		TopBreadths:        topBreadthsDTO,
+		TopRisingSectors:   topRising,
 	}, nil
 }
 
@@ -407,6 +415,50 @@ func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.Cli
 		}
 	}
 	return items, nil
+}
+
+// ============================================================
+// 7. 盘中排名上升
+// ============================================================
+
+// GetTopRisingSectors returns the top N sectors that rose in rank during the day.
+func (s *SectorSentimentService) GetTopRisingSectors(tradeDate string, limit int) ([]dto.RisingSectorItem, error) {
+	rows, err := s.repo.GetTopRisingSectors(tradeDate, limit)
+	if err != nil {
+		return nil, fmt.Errorf("盘中排名上升查询失败: %w", err)
+	}
+	items := make([]dto.RisingSectorItem, len(rows))
+	for i, r := range rows {
+		items[i] = dto.RisingSectorItem{
+			SectorName:    r.SectorName,
+			Source:        r.Source,
+			Rise:          r.Rise,
+			MorningRank:   r.MorningRank,
+			AfternoonRank: r.AfternoonRank,
+		}
+	}
+	return items, nil
+}
+
+// GetSectorIntradayDrift returns the intraday (morning → afternoon) rank drift of a sector.
+func (s *SectorSentimentService) GetSectorIntradayDrift(sectorName, tradeDate string) (*dto.IntradayDriftResponse, error) {
+	rows, err := s.repo.GetSectorIntradayDrift(sectorName, tradeDate)
+	if err != nil {
+		return nil, fmt.Errorf("盘中漂移数据查询失败: %w", err)
+	}
+	points := make([]dto.IntradayDriftPoint, len(rows))
+	for i, r := range rows {
+		points[i] = dto.IntradayDriftPoint{
+			SnapshotTime: r.SnapshotTime,
+			RankPos:      r.RankPos,
+			RankChange:   r.RankChange,
+		}
+	}
+	return &dto.IntradayDriftResponse{
+		SectorName: sectorName,
+		TradeDate:  tradeDate,
+		Points:     points,
+	}, nil
 }
 
 // ============================================================

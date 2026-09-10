@@ -43,7 +43,7 @@ import {
   ResponsiveContainer,
   XAxis, YAxis,
 } from 'recharts'
-import { useGetFullReportQuery, useGetSectorNamesQuery, useGetSectorSentimentLatestDateQuery, useLazyGetNewHighStocksQuery, useLazyGetSectorDriftQuery } from '../app/api'
+import { useGetFullReportQuery, useGetSectorNamesQuery, useGetSectorSentimentLatestDateQuery, useLazyGetNewHighStocksQuery, useLazyGetSectorDriftQuery, useLazyGetIntradayDriftQuery } from '../app/api'
 
 // ============================================================
 // Constants
@@ -1278,6 +1278,125 @@ function SectorDriftPanel() {
 }
 
 // ============================================================
+// 盘中上升 · 排名跃升 TOP5
+// ============================================================
+
+// IntradayDriftChart renders a sector's rank drift across the day's snapshots
+// (morning → afternoon), where a lower rank number means stronger.
+function IntradayDriftChart({ data, loading, sectorName }) {
+  const points = useMemo(() => (data?.points || []).map((p) => ({
+    time: p.snapshot_time,
+    rank: p.rank_pos,
+  })), [data])
+
+  if (loading) return <Spin style={{ display: 'block', margin: '20px auto' }} />
+  if (!data || points.length === 0) {
+    return <Empty description="暂无盘中快照数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+  }
+
+  const allRanks = points.map((p) => p.rank).filter((r) => r != null)
+  const minRank = Math.min(...allRanks, 1)
+  const maxRank = Math.max(...allRanks, 1)
+  const pad = Math.max(5, Math.round((maxRank - minRank) * 0.25))
+  const domainMin = Math.max(1, minRank - pad)
+  const domainMax = maxRank + pad
+
+  const first = points[0]?.rank
+  const last = points[points.length - 1]?.rank
+  const rise = (first != null && last != null) ? first - last : null
+
+  return (
+    <div>
+      <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
+        📈 {sectorName} 盘中排名漂移（{points[0]?.time} → {points[points.length - 1]?.time}，排名越小越强）
+      </div>
+      <ResponsiveContainer width="100%" height={340}>
+        <LineChart data={points}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+          <XAxis dataKey="time" tick={{ fill: '#8c8c8c', fontSize: 11 }} />
+          <YAxis
+            reversed
+            domain={[domainMin, domainMax]}
+            tick={{ fill: '#fa541c', fontSize: 11 }}
+            label={{ value: '排名 (↓越小越强)', angle: -90, position: 'insideLeft', style: { fill: '#fa541c', fontSize: 10 } }}
+          />
+          <ReTooltip
+            contentStyle={{ background: '#141414', border: '1px solid #333', borderRadius: 8 }}
+            formatter={(value, name) => (name === 'rank' ? [`第 ${value} 名`, '排名'] : [value, name])}
+          />
+          <ReferenceLine y={5} stroke="#52c41a" strokeDasharray="4 4" />
+          <ReferenceLine y={10} stroke="#faad14" strokeDasharray="4 4" />
+          <Line
+            type="monotone"
+            dataKey="rank"
+            stroke="#fa541c"
+            strokeWidth={2.5}
+            dot={{ r: 4, fill: '#fa541c' }}
+            name="排名"
+            connectNulls
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div style={{ marginTop: 12, display: 'flex', gap: 24, fontSize: 13, color: '#c9d1d9' }}>
+        <span>早晨排名：<b style={{ color: '#1677ff' }}>{first ?? '--'}</b></span>
+        <span>下午排名：<b style={{ color: '#fa8c16' }}>{last ?? '--'}</b></span>
+        <span>
+          净上升：
+          <b style={{ color: rise != null && rise > 0 ? '#ff4d4f' : '#52c41a' }}>
+            {rise != null && rise > 0 ? `+${rise}` : rise ?? '--'}
+          </b> 位
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function RisingSectorsPanel({ data, tradeDate }) {
+  const [triggerDrift, { data: driftData, isFetching: driftLoading }] = useLazyGetIntradayDriftQuery()
+  const [selected, setSelected] = useState(null)
+
+  const openDrift = (row) => {
+    setSelected({ sector_name: row.sector_name })
+    triggerDrift({ sector_name: row.sector_name, trade_date: tradeDate })
+  }
+
+  const sourceLabel = (src) => (src === 'sector_breadth' ? '宽度排名' : '评分排名')
+  const sourceColor = (src) => (src === 'sector_breadth' ? 'blue' : 'purple')
+
+  return (
+    <>
+      <Table
+        dataSource={data}
+        rowKey={(r) => `${r.source}|${r.sector_name}`}
+        size="small"
+        pagination={false}
+        onRow={(record) => ({
+          onClick: () => openDrift(record),
+          style: { cursor: 'pointer' },
+        })}
+        columns={[
+          { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (v) => <span style={{ color: '#e6e6e6' }}>{v}</span> },
+          { title: '来源', dataIndex: 'source', key: 'source', width: 90, render: (v) => <Tag color={sourceColor(v)}>{sourceLabel(v)}</Tag> },
+          { title: '早晨排名', dataIndex: 'morning_rank', key: 'morning_rank', width: 90, align: 'center', render: (v) => v ?? '--' },
+          { title: '下午排名', dataIndex: 'afternoon_rank', key: 'afternoon_rank', width: 90, align: 'center', render: (v) => v ?? '--' },
+          { title: '上升位次', dataIndex: 'rise', key: 'rise', width: 100, align: 'center', render: (v) => <Tag color="red">▲ {v}</Tag> },
+        ]}
+      />
+      <Modal
+        title={selected ? `「${selected.sector_name}」盘中排名漂移` : '盘中排名漂移'}
+        open={!!selected}
+        onCancel={() => setSelected(null)}
+        footer={null}
+        width={760}
+        destroyOnClose
+      >
+        <IntradayDriftChart data={driftData} loading={driftLoading} sectorName={selected?.sector_name} />
+      </Modal>
+    </>
+  )
+}
+
+// ============================================================
 // Main Page Component
 // ============================================================
 
@@ -1320,6 +1439,7 @@ export default function SectorSentimentPage() {
     climbing_sectors: climbingSectors = [],
     top_scores: topScores = [],
     top_breadths: topBreadths = [],
+    top_rising_sectors: topRisingSectors = [],
   } = data
 
   return (
@@ -1530,6 +1650,34 @@ export default function SectorSentimentPage() {
           </Col>
         </Row>
       )}
+
+      {/* =========================================== */}
+      {/* 盘中上升 · 排名跃升 TOP5 */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <RiseOutlined style={{ marginRight: 8, color: '#fa541c' }} />
+            盘中上升 · 排名跃升 TOP5
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              从早晨到下午排名上升最多的板块（点击查看盘中漂移图）
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{
+          header: {
+            borderBottom: '1px solid #21262d',
+            background: 'linear-gradient(90deg, rgba(250,84,28,0.06) 0%, rgba(250,173,20,0.04) 100%)',
+          },
+        }}
+      >
+        {topRisingSectors.length > 0 ? (
+          <RisingSectorsPanel data={topRisingSectors} tradeDate={queryDate} />
+        ) : (
+          <Empty description="今日暂无盘中排名上升的板块" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+      </Card>
 
       {/* =========================================== */}
       {/* Sector Rank Drift */}
