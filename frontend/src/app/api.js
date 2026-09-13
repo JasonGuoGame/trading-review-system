@@ -543,23 +543,35 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
     getConsistentStrength: builder.query({
-      query: () => '/sector-sentiment/consistent-strength',
+      query: (tradeDate) => `/sector-sentiment/consistent-strength?trade_date=${tradeDate || ''}`,
       transformResponse: (res) => res.data,
     }),
     getNewFaces: builder.query({
-      query: () => '/sector-sentiment/new-faces',
+      query: (tradeDate) => `/sector-sentiment/new-faces?trade_date=${tradeDate || ''}`,
       transformResponse: (res) => res.data,
     }),
     getIceRecovery: builder.query({
-      query: () => '/sector-sentiment/ice-recovery',
+      query: (tradeDate) => `/sector-sentiment/ice-recovery?trade_date=${tradeDate || ''}`,
       transformResponse: (res) => res.data,
     }),
     getSectorDivergence: builder.query({
-      query: () => '/sector-sentiment/divergence',
+      query: (tradeDate) => `/sector-sentiment/divergence?trade_date=${tradeDate || ''}`,
       transformResponse: (res) => res.data,
     }),
     getConcentration: builder.query({
-      query: () => '/sector-sentiment/concentration',
+      query: (tradeDate) => `/sector-sentiment/concentration?trade_date=${tradeDate || ''}`,
+      transformResponse: (res) => res.data,
+    }),
+    getTopSectors: builder.query({
+      query: (tradeDate) => `/sector-sentiment/top-sectors?trade_date=${tradeDate || ''}`,
+      transformResponse: (res) => res.data,
+    }),
+    getTopRisingSectors: builder.query({
+      query: (tradeDate) => `/sector-sentiment/top-rising?trade_date=${tradeDate || ''}`,
+      transformResponse: (res) => res.data,
+    }),
+    getTopFallingSectors: builder.query({
+      query: (tradeDate) => `/sector-sentiment/top-falling?trade_date=${tradeDate || ''}`,
       transformResponse: (res) => res.data,
     }),
     getFullReport: builder.query({
@@ -571,7 +583,7 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
     getClimbingSectors: builder.query({
-      query: () => '/sector-sentiment/climbing-sectors',
+      query: (tradeDate) => `/sector-sentiment/climbing-sectors?trade_date=${tradeDate || ''}`,
       transformResponse: (res) => res.data,
     }),
     getSectorDrift: builder.query({
@@ -579,7 +591,7 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
     getIntradayDrift: builder.query({
-      query: ({ sector_name, trade_date }) => `/sector-sentiment/intraday-drift?sector_name=${encodeURIComponent(sector_name)}&trade_date=${trade_date || ''}`,
+      query: ({ sector_name, trade_date, source = 'sector_score' }) => `/sector-sentiment/intraday-drift?sector_name=${encodeURIComponent(sector_name)}&trade_date=${trade_date || ''}&source=${source}`,
       transformResponse: (res) => res.data,
     }),
     getNewHighStocks: builder.query({
@@ -717,6 +729,9 @@ export const {
   useGetIceRecoveryQuery,
   useGetSectorDivergenceQuery,
   useGetConcentrationQuery,
+  useGetTopSectorsQuery,
+  useGetTopRisingSectorsQuery,
+  useGetTopFallingSectorsQuery,
   useGetFullReportQuery,
   useGetSectorNamesQuery,
   useGetSectorDriftQuery,

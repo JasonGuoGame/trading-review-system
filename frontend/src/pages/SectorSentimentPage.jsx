@@ -3,6 +3,7 @@ import {
   DashboardOutlined,
   ExperimentOutlined,
   EyeOutlined,
+  FallOutlined,
   FireOutlined,
   QuestionCircleOutlined,
   RiseOutlined,
@@ -30,7 +31,7 @@ import {
   Tooltip,
 } from 'antd'
 import dayjs from 'dayjs'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -43,7 +44,22 @@ import {
   ResponsiveContainer,
   XAxis, YAxis,
 } from 'recharts'
-import { useGetFullReportQuery, useGetSectorNamesQuery, useGetSectorSentimentLatestDateQuery, useLazyGetNewHighStocksQuery, useLazyGetSectorDriftQuery, useLazyGetIntradayDriftQuery } from '../app/api'
+import {
+  useGetConsistentStrengthQuery,
+  useGetConcentrationQuery,
+  useGetNewFacesQuery,
+  useGetIceRecoveryQuery,
+  useGetClimbingSectorsQuery,
+  useGetSectorDivergenceQuery,
+  useGetTopSectorsQuery,
+  useGetTopRisingSectorsQuery,
+  useGetTopFallingSectorsQuery,
+  useGetSectorNamesQuery,
+  useGetSectorSentimentLatestDateQuery,
+  useLazyGetNewHighStocksQuery,
+  useLazyGetSectorDriftQuery,
+  useLazyGetIntradayDriftQuery,
+} from '../app/api'
 
 // ============================================================
 // Constants
@@ -245,11 +261,13 @@ function DivergencePanel({ divergence }) {
 
 // ------ 连强信号 (Left) ------
 
-function ConsistentStrengthPanel({ data, tradeDate }) {
+function ConsistentStrengthPanel({ scores = [], breadths = [], tradeDate }) {
   const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
   const [newHighModal, setNewHighModal] = useState(null)
+  const [showRecentRanks, setShowRecentRanks] = useState(false)
+  const [driftTarget, setDriftTarget] = useState(null)
 
-  if (!data || data.length === 0) {
+  if (scores.length === 0 && breadths.length === 0) {
     return <Empty description="暂无连续走强板块" />
   }
 
@@ -270,7 +288,7 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
           {record.is_new && (
             <Tag color="green" style={{ fontSize: 10, marginRight: 4, padding: '0 4px', lineHeight: '16px' }}>NEW</Tag>
           )}
-          {name}
+          <DriftLink onClick={() => setDriftTarget({ sector_name: record.sector_name, source: record.source })}>{name}</DriftLink>
         </span>
       ),
     },
@@ -295,16 +313,7 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
         return <span style={{ color: c >= 20 ? '#faad14' : c >= 10 ? '#c9d1d9' : '#8c8c8c', fontWeight: c >= 15 ? 600 : 400 }}>{c}次</span>
       },
     },
-    {
-      title: '数据源',
-      dataIndex: 'source',
-      key: 'source',
-      width: 70,
-      align: 'center',
-      sorter: (a, b) => a.source.localeCompare(b.source),
-      render: (s) => <Tag color={s === 'sector_score' ? 'purple' : 'blue'}>{s === 'sector_score' ? '评分' : '宽度'}</Tag>,
-    },
-    {
+    ...(showRecentRanks ? [{
       title: '近5日排名阶梯',
       dataIndex: 'recent_ranks',
       key: 'recent_ranks',
@@ -339,7 +348,7 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
           <span style={{ fontSize: 10, color: '#8c8c8c', marginLeft: 4 }}>旧→新</span>
         </div>
       ),
-    },
+    }] : []),
     {
       title: '20日新高',
       dataIndex: 'high_20d_count',
@@ -408,19 +417,16 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
     },
   ]
 
-  // Top-3 20日新高 values (descending, unique) for row highlighting
-  const top3Vals20d = useMemo(() => {
-    return [...new Set(data.map((d) => d.high_20d_count || 0))].sort((a, b) => b - a).slice(0, 3)
-  }, [data])
-
   const top3Colors = ['#5c3d00', '#1a3a5c', '#4a1a2e'] // gold, blue, rose — distinct on dark bg
 
-  return (
-    <>
+  const renderTable = (data) => {
+    // Top-3 20日新高 values (descending, unique) for row highlighting
+    const top3Vals20d = [...new Set(data.map((d) => d.high_20d_count || 0))].sort((a, b) => b - a).slice(0, 3)
+    return (
       <Table
         dataSource={data}
         columns={columns}
-        rowKey={(record) => `${record.sector_name}-${record.source}`}
+        rowKey={(record) => record.sector_name}
         size="small"
         pagination={false}
         locale={{ emptyText: '暂无连续走强板块' }}
@@ -432,6 +438,35 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
           }
           return {}
         }}
+      />
+    )
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Switch size="small" checked={showRecentRanks} onChange={setShowRecentRanks} />
+        <span style={{ fontSize: 12, color: '#8c8c8c' }}>近5日排名阶梯</span>
+      </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <div style={{ fontSize: 12, color: '#b37feb', marginBottom: 6, fontWeight: 600 }}>
+            📊 评分排名 · stk_sector_scores
+          </div>
+          {scores.length > 0 ? renderTable(scores) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        </Col>
+        <Col xs={24} lg={12}>
+          <div style={{ fontSize: 12, color: '#1677ff', marginBottom: 6, fontWeight: 600 }}>
+            📈 宽度排名 · stk_sector_breadths
+          </div>
+          {breadths.length > 0 ? renderTable(breadths) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        </Col>
+      </Row>
+      <IntradayDriftModal
+        sectorName={driftTarget?.sector_name}
+        source={driftTarget?.source}
+        tradeDate={tradeDate}
+        onClose={() => setDriftTarget(null)}
       />
       <Modal
         title={newHighModal?.title || '新高股票'}
@@ -467,7 +502,9 @@ function ConsistentStrengthPanel({ data, tradeDate }) {
 
 // ------ 新面孔信号 (Right) ------
 
-function NewFacesPanel({ data }) {
+function NewFacesPanel({ data, tradeDate }) {
+  const [driftTarget, setDriftTarget] = useState(null)
+
   if (!data || data.length === 0) {
     return <Empty description="暂无新面孔异动" />
   }
@@ -486,7 +523,7 @@ function NewFacesPanel({ data }) {
             fontWeight: isFirstTimer ? 600 : undefined,
           }}>
             {isFirstTimer && '🆕 '}
-            {name}
+            <DriftLink onClick={() => setDriftTarget({ sector_name: record.sector_name, source: record.source })}>{name}</DriftLink>
           </span>
         )
       },
@@ -558,6 +595,12 @@ function NewFacesPanel({ data }) {
         pagination={false}
         locale={{ emptyText: '暂无新面孔异动' }}
       />
+      <IntradayDriftModal
+        sectorName={driftTarget?.sector_name}
+        source={driftTarget?.source}
+        tradeDate={tradeDate}
+        onClose={() => setDriftTarget(null)}
+      />
     </div>
   )
 }
@@ -567,6 +610,7 @@ function NewFacesPanel({ data }) {
 function ClimbingSectorsPanel({ data, tradeDate }) {
   const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
   const [newHighModal, setNewHighModal] = useState(null)
+  const [driftTarget, setDriftTarget] = useState(null)
 
   if (!data || data.length === 0) {
     return <Empty description="暂无爬坡板块" />
@@ -583,6 +627,9 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
       dataIndex: 'sector_name',
       key: 'sector_name',
       sorter: (a, b) => a.sector_name.localeCompare(b.sector_name, 'zh'),
+      render: (name, record) => (
+        <DriftLink onClick={() => setDriftTarget({ sector_name: record.sector_name, source: record.source })}>{name}</DriftLink>
+      ),
     },
     {
       title: '数据源',
@@ -733,6 +780,12 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
           return {}
         }}
       />
+      <IntradayDriftModal
+        sectorName={driftTarget?.sector_name}
+        source={driftTarget?.source}
+        tradeDate={tradeDate}
+        onClose={() => setDriftTarget(null)}
+      />
       <Modal
         title={newHighModal?.title || '新高股票'}
         open={!!newHighModal}
@@ -767,14 +820,12 @@ function ClimbingSectorsPanel({ data, tradeDate }) {
 
 // ------ 冰点回升信号 (Bottom) ------
 
-function IceRecoveryPanel({ data }) {
-  if (!data || data.length === 0) {
-    return <Empty description="暂无冰点回升信号（好事，说明市场没有极度压抑后反弹的情况）" />
-  }
+function IceRecoveryPanel({ data, tradeDate }) {
+  const [driftTarget, setDriftTarget] = useState(null)
 
   // Build data for bar chart: each sector shows prev 5d avg vs today
   const chartData = useMemo(() => {
-    return data.map(item => {
+    return (data || []).map(item => {
       const prevAvg = item.prev_5d_rates && item.prev_5d_rates.length > 0
         ? item.prev_5d_rates.reduce((a, b) => a + b, 0) / item.prev_5d_rates.length
         : 0
@@ -786,6 +837,10 @@ function IceRecoveryPanel({ data }) {
     })
   }, [data])
 
+  if (!data || data.length === 0) {
+    return <Empty description="暂无冰点回升信号（好事，说明市场没有极度压抑后反弹的情况）" />
+  }
+
   const columns = [
     {
       title: '板块',
@@ -794,7 +849,7 @@ function IceRecoveryPanel({ data }) {
       render: (name) => (
         <span>
           <ThunderboltOutlined style={{ color: '#1677ff', marginRight: 6 }} />
-          {name}
+          <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_breadth' })}>{name}</DriftLink>
           <Tag color="blue" style={{ marginLeft: 8, fontSize: 10 }}>破冰反转</Tag>
         </span>
       ),
@@ -895,6 +950,12 @@ function IceRecoveryPanel({ data }) {
         pagination={false}
         locale={{ emptyText: '暂无' }}
       />
+      <IntradayDriftModal
+        sectorName={driftTarget?.sector_name}
+        source={driftTarget?.source}
+        tradeDate={tradeDate}
+        onClose={() => setDriftTarget(null)}
+      />
     </div>
   )
 }
@@ -904,6 +965,7 @@ function IceRecoveryPanel({ data }) {
 function ConcentrationPanel({ data, tradeDate }) {
   const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
   const [newHighModal, setNewHighModal] = useState(null)
+  const [driftTarget, setDriftTarget] = useState(null)
 
   if (!data || data.length === 0) {
     return <Empty description="暂无大兵团共振板块" />
@@ -945,7 +1007,7 @@ function ConcentrationPanel({ data, tradeDate }) {
       render: (name) => (
         <span>
           <TrophyOutlined style={{ color: '#faad14', marginRight: 6 }} />
-          {name}
+          <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_breadth' })}>{name}</DriftLink>
         </span>
       ),
     },
@@ -1006,6 +1068,12 @@ function ConcentrationPanel({ data, tradeDate }) {
         size="small"
         pagination={false}
         locale={{ emptyText: '暂无' }}
+      />
+      <IntradayDriftModal
+        sectorName={driftTarget?.sector_name}
+        source={driftTarget?.source}
+        tradeDate={tradeDate}
+        onClose={() => setDriftTarget(null)}
       />
       <Modal
         title={newHighModal?.title || '新高股票'}
@@ -1351,37 +1419,151 @@ function IntradayDriftChart({ data, loading, sectorName }) {
   )
 }
 
-function RisingSectorsPanel({ data, tradeDate }) {
+// IntradayDriftModal — a self-contained modal that loads and shows a sector's
+// intraday (morning → afternoon) rank drift when opened. Any table on the page
+// can reuse it by passing the clicked sector's name + source.
+function IntradayDriftModal({ sectorName, source = 'sector_score', tradeDate, onClose }) {
+  const [trigger, { data, isFetching }] = useLazyGetIntradayDriftQuery()
+
+  useEffect(() => {
+    if (sectorName) {
+      trigger({ sector_name: sectorName, trade_date: tradeDate, source })
+    }
+  }, [sectorName, source, tradeDate, trigger])
+
+  return (
+    <Modal
+      title={sectorName ? `「${sectorName}」盘中排名漂移` : '盘中排名漂移'}
+      open={!!sectorName}
+      onCancel={onClose}
+      footer={null}
+      width={760}
+      destroyOnClose
+    >
+      <IntradayDriftChart data={data} loading={isFetching} sectorName={sectorName} />
+    </Modal>
+  )
+}
+
+// A clickable sector-name cell that opens the intraday drift modal.
+function DriftLink({ children, onClick, style }) {
+  return (
+    <span
+      onClick={onClick}
+      title="点击查看盘中漂移图"
+      style={{ cursor: 'pointer', ...style }}
+    >
+      {children}
+    </span>
+  )
+}
+
+function RisingSectorsPanel({ scores = [], breadths = [], tradeDate }) {
   const [triggerDrift, { data: driftData, isFetching: driftLoading }] = useLazyGetIntradayDriftQuery()
   const [selected, setSelected] = useState(null)
 
   const openDrift = (row) => {
-    setSelected({ sector_name: row.sector_name })
-    triggerDrift({ sector_name: row.sector_name, trade_date: tradeDate })
+    setSelected({ sector_name: row.sector_name, source: row.source })
+    triggerDrift({ sector_name: row.sector_name, trade_date: tradeDate, source: row.source })
   }
 
-  const sourceLabel = (src) => (src === 'sector_breadth' ? '宽度排名' : '评分排名')
-  const sourceColor = (src) => (src === 'sector_breadth' ? 'blue' : 'purple')
+  const columns = [
+    { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (v) => <span style={{ color: '#e6e6e6' }}>{v}</span> },
+    { title: '早晨排名', dataIndex: 'morning_rank', key: 'morning_rank', width: 84, align: 'center', render: (v) => v ?? '--' },
+    { title: '下午排名', dataIndex: 'afternoon_rank', key: 'afternoon_rank', width: 84, align: 'center', render: (v) => v ?? '--' },
+    { title: '上升位次', dataIndex: 'rise', key: 'rise', width: 92, align: 'center', render: (v) => <Tag color="red">▲ {v}</Tag> },
+  ]
+
+  const renderTable = (list) => (
+    <Table
+      dataSource={list}
+      rowKey={(r) => r.sector_name}
+      size="small"
+      pagination={false}
+      onRow={(record) => ({
+        onClick: () => openDrift(record),
+        style: { cursor: 'pointer' },
+      })}
+      columns={columns}
+    />
+  )
 
   return (
     <>
-      <Table
-        dataSource={data}
-        rowKey={(r) => `${r.source}|${r.sector_name}`}
-        size="small"
-        pagination={false}
-        onRow={(record) => ({
-          onClick: () => openDrift(record),
-          style: { cursor: 'pointer' },
-        })}
-        columns={[
-          { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (v) => <span style={{ color: '#e6e6e6' }}>{v}</span> },
-          { title: '来源', dataIndex: 'source', key: 'source', width: 90, render: (v) => <Tag color={sourceColor(v)}>{sourceLabel(v)}</Tag> },
-          { title: '早晨排名', dataIndex: 'morning_rank', key: 'morning_rank', width: 90, align: 'center', render: (v) => v ?? '--' },
-          { title: '下午排名', dataIndex: 'afternoon_rank', key: 'afternoon_rank', width: 90, align: 'center', render: (v) => v ?? '--' },
-          { title: '上升位次', dataIndex: 'rise', key: 'rise', width: 100, align: 'center', render: (v) => <Tag color="red">▲ {v}</Tag> },
-        ]}
-      />
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <div style={{ fontSize: 12, color: '#b37feb', marginBottom: 6, fontWeight: 600 }}>
+            📊 评分排名 · stk_sector_scores
+          </div>
+          {scores.length > 0 ? renderTable(scores) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        </Col>
+        <Col xs={24} lg={12}>
+          <div style={{ fontSize: 12, color: '#1677ff', marginBottom: 6, fontWeight: 600 }}>
+            📈 宽度排名 · stk_sector_breadths
+          </div>
+          {breadths.length > 0 ? renderTable(breadths) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        </Col>
+      </Row>
+      <Modal
+        title={selected ? `「${selected.sector_name}」盘中排名漂移` : '盘中排名漂移'}
+        open={!!selected}
+        onCancel={() => setSelected(null)}
+        footer={null}
+        width={760}
+        destroyOnClose
+      >
+        <IntradayDriftChart data={driftData} loading={driftLoading} sectorName={selected?.sector_name} />
+      </Modal>
+    </>
+  )
+}
+
+function FallingSectorsPanel({ scores = [], breadths = [], tradeDate }) {
+  const [triggerDrift, { data: driftData, isFetching: driftLoading }] = useLazyGetIntradayDriftQuery()
+  const [selected, setSelected] = useState(null)
+
+  const openDrift = (row) => {
+    setSelected({ sector_name: row.sector_name, source: row.source })
+    triggerDrift({ sector_name: row.sector_name, trade_date: tradeDate, source: row.source })
+  }
+
+  const columns = [
+    { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (v) => <span style={{ color: '#e6e6e6' }}>{v}</span> },
+    { title: '早晨排名', dataIndex: 'morning_rank', key: 'morning_rank', width: 84, align: 'center', render: (v) => v ?? '--' },
+    { title: '下午排名', dataIndex: 'afternoon_rank', key: 'afternoon_rank', width: 84, align: 'center', render: (v) => v ?? '--' },
+    { title: '下降位次', dataIndex: 'fall', key: 'fall', width: 92, align: 'center', render: (v) => <Tag color="green">▼ {v}</Tag> },
+  ]
+
+  const renderTable = (list) => (
+    <Table
+      dataSource={list}
+      rowKey={(r) => r.sector_name}
+      size="small"
+      pagination={false}
+      onRow={(record) => ({
+        onClick: () => openDrift(record),
+        style: { cursor: 'pointer' },
+      })}
+      columns={columns}
+    />
+  )
+
+  return (
+    <>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <div style={{ fontSize: 12, color: '#b37feb', marginBottom: 6, fontWeight: 600 }}>
+            📉 评分排名 · stk_sector_scores
+          </div>
+          {scores.length > 0 ? renderTable(scores) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        </Col>
+        <Col xs={24} lg={12}>
+          <div style={{ fontSize: 12, color: '#1677ff', marginBottom: 6, fontWeight: 600 }}>
+            📉 宽度排名 · stk_sector_breadths
+          </div>
+          {breadths.length > 0 ? renderTable(breadths) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        </Col>
+      </Row>
       <Modal
         title={selected ? `「${selected.sector_name}」盘中排名漂移` : '盘中排名漂移'}
         open={!!selected}
@@ -1400,47 +1582,40 @@ function RisingSectorsPanel({ data, tradeDate }) {
 // Main Page Component
 // ============================================================
 
+// A compact per-card loading placeholder so each feature can render
+// independently without blocking the rest of the page.
+function CardLoading() {
+  return <Spin style={{ display: 'block', margin: '24px auto' }} />
+}
+
 export default function SectorSentimentPage() {
   const { data: latestDate } = useGetSectorSentimentLatestDateQuery()
   const [selectedDate, setSelectedDate] = useState(null)
   const queryDate = selectedDate || latestDate || undefined
-  const { data, isLoading, isError, error } = useGetFullReportQuery(queryDate, { skip: !queryDate, refetchOnMountOrArgChange: true })
+  const [driftTarget, setDriftTarget] = useState(null)
 
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-        <Spin size="large" tip="加载板块情绪数据..." />
-      </div>
-    )
-  }
+  // Each feature is loaded by its own API and rendered as soon as its data
+  // arrives — no single slow endpoint blocks the whole page.
+  const { data: divergence, isFetching: divergenceLoading } = useGetSectorDivergenceQuery(queryDate, { skip: !queryDate })
+  const { data: consistentStrength, isFetching: consistentLoading } = useGetConsistentStrengthQuery(queryDate, { skip: !queryDate })
+  const { data: climbingSectors = [], isFetching: climbingLoading } = useGetClimbingSectorsQuery(queryDate, { skip: !queryDate })
+  const { data: newFaces = [], isFetching: newFacesLoading } = useGetNewFacesQuery(queryDate, { skip: !queryDate })
+  const { data: iceRecovery = [], isFetching: iceLoading } = useGetIceRecoveryQuery(queryDate, { skip: !queryDate })
+  const { data: concentration = [], isFetching: concentrationLoading } = useGetConcentrationQuery(queryDate, { skip: !queryDate })
+  const { data: topSectorsData, isFetching: topSectorsLoading } = useGetTopSectorsQuery(queryDate, { skip: !queryDate })
+  const { data: topRisingData, isFetching: risingLoading } = useGetTopRisingSectorsQuery(queryDate, { skip: !queryDate })
+  const { data: topFallingData, isFetching: fallingLoading } = useGetTopFallingSectorsQuery(queryDate, { skip: !queryDate })
 
-  if (isError) {
-    return (
-      <Alert
-        type="error"
-        message="数据加载失败"
-        description={error?.message || '无法获取板块情绪数据，请检查后端服务是否正常运行。'}
-        style={{ margin: 24 }}
-      />
-    )
-  }
-
-  if (!data) {
-    return <Empty description="暂无板块情绪数据" style={{ marginTop: 100 }} />
-  }
-
-  const {
-    trade_date: tradeDate,
-    consistent_strength: consistent = [],
-    new_faces: newFaces = [],
-    ice_recovery: iceRecovery = [],
-    divergence,
-    concentration = [],
-    climbing_sectors: climbingSectors = [],
-    top_scores: topScores = [],
-    top_breadths: topBreadths = [],
-    top_rising_sectors: topRisingSectors = [],
-  } = data
+  // 连强信号 returns a single merged list tagged by source; split it for the
+  // two side-by-side tables.
+  const consistentScores = (consistentStrength || []).filter((it) => it.source === 'sector_score')
+  const consistentBreadths = (consistentStrength || []).filter((it) => it.source === 'sector_breadth')
+  const topScores = topSectorsData?.top_scores || []
+  const topBreadths = topSectorsData?.top_breadths || []
+  const topRisingScores = topRisingData?.scores || []
+  const topRisingBreadths = topRisingData?.breadths || []
+  const topFallingScores = topFallingData?.scores || []
+  const topFallingBreadths = topFallingData?.breadths || []
 
   return (
     <div style={{ padding: '16px 20px' }}>
@@ -1464,7 +1639,7 @@ export default function SectorSentimentPage() {
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: '#8c8c8c' }}>
-            <FireOutlined style={{ color: '#fa8c16' }} /> 连强: {consistent.length}个
+            <FireOutlined style={{ color: '#fa8c16' }} /> 连强: {consistentScores.length + consistentBreadths.length}个
           </span>
           <span style={{ fontSize: 12, color: '#8c8c8c' }}>
             <RocketOutlined style={{ color: '#b37feb' }} /> 新面孔: {newFaces.length}个
@@ -1494,7 +1669,7 @@ export default function SectorSentimentPage() {
         style={{ marginBottom: 16 }}
         styles={{ header: { borderBottom: '1px solid #21262d' } }}
       >
-        <DivergencePanel divergence={divergence} />
+        {divergenceLoading ? <CardLoading /> : <DivergencePanel divergence={divergence} />}
       </Card>
 
       {/* =========================================== */}
@@ -1513,7 +1688,7 @@ export default function SectorSentimentPage() {
         style={{ marginBottom: 16 }}
         styles={{ header: { borderBottom: '1px solid #21262d' } }}
       >
-        <ConsistentStrengthPanel data={consistent} tradeDate={queryDate} />
+        {consistentLoading ? <CardLoading /> : <ConsistentStrengthPanel scores={consistentScores} breadths={consistentBreadths} tradeDate={queryDate} />}
       </Card>
 
       {/* =========================================== */}
@@ -1537,7 +1712,7 @@ export default function SectorSentimentPage() {
           },
         }}
       >
-        <ClimbingSectorsPanel data={climbingSectors} tradeDate={queryDate} />
+        {climbingLoading ? <CardLoading /> : <ClimbingSectorsPanel data={climbingSectors} tradeDate={queryDate} />}
       </Card>
 
       {/* =========================================== */}
@@ -1556,7 +1731,7 @@ export default function SectorSentimentPage() {
         style={{ marginBottom: 16 }}
         styles={{ header: { borderBottom: '1px solid #21262d' } }}
       >
-        <NewFacesPanel data={newFaces} />
+        {newFacesLoading ? <CardLoading /> : <NewFacesPanel data={newFaces} tradeDate={queryDate} />}
       </Card>
 
       {/* =========================================== */}
@@ -1580,7 +1755,7 @@ export default function SectorSentimentPage() {
           },
         }}
       >
-        <IceRecoveryPanel data={iceRecovery} />
+        {iceLoading ? <CardLoading /> : <IceRecoveryPanel data={iceRecovery} tradeDate={queryDate} />}
       </Card>
 
       {/* =========================================== */}
@@ -1598,11 +1773,15 @@ export default function SectorSentimentPage() {
         }
         styles={{ header: { borderBottom: '1px solid #21262d' } }}
       >
-        <ConcentrationPanel data={concentration} tradeDate={queryDate} />
+        {concentrationLoading ? <CardLoading /> : <ConcentrationPanel data={concentration} tradeDate={queryDate} />}
       </Card>
 
       {/* Top-10 Leaderboards: Scores (Left) + Breadths (Right) */}
-      {(topScores.length > 0 || topBreadths.length > 0) && (
+      {topSectorsLoading ? (
+        <Card size="small" style={{ marginBottom: 16 }}>
+          <CardLoading />
+        </Card>
+      ) : (topScores.length > 0 || topBreadths.length > 0) ? (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} lg={12}>
             <Card
@@ -1618,7 +1797,7 @@ export default function SectorSentimentPage() {
                   pagination={false}
                   columns={[
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="purple">{r}</Tag> },
-                    { title: '板块', dataIndex: 'sector_name', key: 'sector_name' },
+                    { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (name) => <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_score' })}>{name}</DriftLink> },
                     { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 100, render: (v) => <span style={{ color: '#b37feb' }}>{v || '--'}</span> },
                     { title: '总分', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => v?.toFixed(1) },
                   ]}
@@ -1640,7 +1819,7 @@ export default function SectorSentimentPage() {
                   pagination={false}
                   columns={[
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="blue">{r}</Tag> },
-                    { title: '板块', dataIndex: 'sector_name', key: 'sector_name' },
+                    { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (name) => <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_breadth' })}>{name}</DriftLink> },
                     { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 100, render: (v) => <span style={{ color: '#91caff' }}>{v || '--'}</span> },
                     { title: '红盘率', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => `${v?.toFixed(1)}%` },
                   ]}
@@ -1649,7 +1828,7 @@ export default function SectorSentimentPage() {
             </Card>
           </Col>
         </Row>
-      )}
+      ) : null}
 
       {/* =========================================== */}
       {/* 盘中上升 · 排名跃升 TOP5 */}
@@ -1672,10 +1851,42 @@ export default function SectorSentimentPage() {
           },
         }}
       >
-        {topRisingSectors.length > 0 ? (
-          <RisingSectorsPanel data={topRisingSectors} tradeDate={queryDate} />
+        {risingLoading ? (
+          <CardLoading />
+        ) : topRisingScores.length > 0 || topRisingBreadths.length > 0 ? (
+          <RisingSectorsPanel scores={topRisingScores} breadths={topRisingBreadths} tradeDate={queryDate} />
         ) : (
           <Empty description="今日暂无盘中排名上升的板块" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+      </Card>
+
+      {/* =========================================== */}
+      {/* 盘中下降 · 排名下降 TOP5 */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <FallOutlined style={{ marginRight: 8, color: '#52c41a' }} />
+            盘中下降 · 排名下降 TOP5
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              从早晨到下午排名下降最多的板块（点击查看盘中漂移图）
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{
+          header: {
+            borderBottom: '1px solid #21262d',
+            background: 'linear-gradient(90deg, rgba(82,196,26,0.06) 0%, rgba(19,194,194,0.04) 100%)',
+          },
+        }}
+      >
+        {fallingLoading ? (
+          <CardLoading />
+        ) : topFallingScores.length > 0 || topFallingBreadths.length > 0 ? (
+          <FallingSectorsPanel scores={topFallingScores} breadths={topFallingBreadths} tradeDate={queryDate} />
+        ) : (
+          <Empty description="今日暂无盘中排名下降的板块" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
       </Card>
 
@@ -1711,6 +1922,14 @@ export default function SectorSentimentPage() {
         <span><TrophyOutlined style={{ color: '#faad14' }} /> 大兵团=权重共振</span>
         <span><DashboardOutlined style={{ color: '#1677ff' }} /> 天平=背离监测</span>
       </div>
+
+      {/* Intraday drift modal for the Top-10 leaderboards */}
+      <IntradayDriftModal
+        sectorName={driftTarget?.sector_name}
+        source={driftTarget?.source}
+        tradeDate={queryDate}
+        onClose={() => setDriftTarget(null)}
+      />
     </div>
   )
 }

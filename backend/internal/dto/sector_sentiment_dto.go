@@ -18,7 +18,7 @@ type ConsistentStrengthItem struct {
 	High20dPrev   int    `json:"high_20d_prev"`    // 上一交易日20日新高数量
 	High60dPrev   int    `json:"high_60d_prev"`    // 上一交易日60日新高数量
 	High250dPrev   int    `json:"high_250d_prev"`    // 上一交易日250日新高数量
-	LeaderCount30d int    `json:"leader_count_30d"`   // 最近30个交易日is_leader=1的次数
+	LeaderCount30d int    `json:"leader_count_30d"`   // 最近30个交易日排名前15(rank_pos≤15)的次数
 }
 
 // ============================================================
@@ -107,10 +107,20 @@ type RisingSectorItem struct {
 	AfternoonRank *int   `json:"afternoon_rank"`
 }
 
+// FallingSectorItem is a sector that fell in rank from morning to afternoon.
+type FallingSectorItem struct {
+	SectorName    string `json:"sector_name"`
+	Source        string `json:"source"` // "sector_score" or "sector_breadth"
+	Fall          int    `json:"fall"`   // 下降位次（正数）
+	MorningRank   *int   `json:"morning_rank"`
+	AfternoonRank *int   `json:"afternoon_rank"`
+}
+
 // SectorSentimentFullResponse combines all signals.
 type SectorSentimentFullResponse struct {
 	TradeDate          string                    `json:"trade_date"`
-	ConsistentStrength []ConsistentStrengthItem `json:"consistent_strength"`
+	ConsistentScores   []ConsistentStrengthItem `json:"consistent_scores"`
+	ConsistentBreadths []ConsistentStrengthItem `json:"consistent_breadths"`
 	NewFaces           []NewFaceItem            `json:"new_faces"`
 	IceRecovery        []IceRecoveryItem        `json:"ice_recovery"`
 	Divergence         *DivergenceResponse      `json:"divergence"`
@@ -118,7 +128,28 @@ type SectorSentimentFullResponse struct {
 	ClimbingSectors    []ClimbingSectorItem     `json:"climbing_sectors"`
 	TopScores          []TopSectorItem          `json:"top_scores"`
 	TopBreadths        []TopSectorItem          `json:"top_breadths"`
-	TopRisingSectors   []RisingSectorItem       `json:"top_rising_sectors"`
+	TopRisingScores    []RisingSectorItem       `json:"top_rising_scores"`
+	TopRisingBreadths  []RisingSectorItem       `json:"top_rising_breadths"`
+	TopFallingScores   []FallingSectorItem      `json:"top_falling_scores"`
+	TopFallingBreadths []FallingSectorItem      `json:"top_falling_breadths"`
+}
+
+// TopSectorsResponse is the top-10 leaderboard for both sources.
+type TopSectorsResponse struct {
+	TopScores   []TopSectorItem `json:"top_scores"`
+	TopBreadths []TopSectorItem `json:"top_breadths"`
+}
+
+// RisingSectorsResponse is the intraday rising sectors for both sources.
+type RisingSectorsResponse struct {
+	Scores   []RisingSectorItem `json:"scores"`
+	Breadths []RisingSectorItem `json:"breadths"`
+}
+
+// FallingSectorsResponse is the intraday falling sectors for both sources.
+type FallingSectorsResponse struct {
+	Scores   []FallingSectorItem `json:"scores"`
+	Breadths []FallingSectorItem `json:"breadths"`
 }
 
 // ============================================================

@@ -38,8 +38,8 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 	}
 
 	// Detect new entries (not in yesterday's list).
-	// Compares against yesterday's consistent strength results (uses is_leader flag,
-	// which correctly identifies leaders even when their current-day rank is > 15).
+	// Compares against yesterday's consistent strength results (top-15 ≥3 of last
+	// 7 days), which correctly identifies leaders even when their current-day rank is > 15.
 	// If yesterday's data cannot be fetched, default IsNew to false
 	// rather than incorrectly marking everything as new.
 	yesterdaySet := make(map[string]bool)
@@ -273,6 +273,47 @@ func (s *SectorSentimentService) GetConcentration(tradeDate string) ([]dto.Conce
 }
 
 // ============================================================
+// Top-10 leaderboards
+// ============================================================
+
+// GetTopSectors returns the top-10 leaderboards for both sources, with the
+// highest-volume stock (龙头) attached to each row.
+func (s *SectorSentimentService) GetTopSectors(tradeDate string) ([]dto.TopSectorItem, []dto.TopSectorItem, error) {
+	topScores, err := s.repo.GetTopSectorScores(tradeDate)
+	if err != nil {
+		return nil, nil, fmt.Errorf("评分排名查询失败: %w", err)
+	}
+	topBreadths, err := s.repo.GetTopSectorBreadths(tradeDate)
+	if err != nil {
+		return nil, nil, fmt.Errorf("宽度排名查询失败: %w", err)
+	}
+
+	// Collect sector names for top-stock lookup
+	allTopSectors := make([]string, 0, len(topScores)+len(topBreadths))
+	for _, r := range topScores {
+		allTopSectors = append(allTopSectors, r.SectorName)
+	}
+	for _, r := range topBreadths {
+		allTopSectors = append(allTopSectors, r.SectorName)
+	}
+	topStockMap, err := s.repo.GetTopStocksBySectors(tradeDate, allTopSectors)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetTopStocksBySectors failed: %v", err)
+		topStockMap = make(map[string]string)
+	}
+
+	topScoresDTO := make([]dto.TopSectorItem, len(topScores))
+	for i, r := range topScores {
+		topScoresDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName]}
+	}
+	topBreadthsDTO := make([]dto.TopSectorItem, len(topBreadths))
+	for i, r := range topBreadths {
+		topBreadthsDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName]}
+	}
+	return topScoresDTO, topBreadthsDTO, nil
+}
+
+// ============================================================
 // Full report
 // ============================================================
 
@@ -293,6 +334,17 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 	if err != nil {
 		log.Printf("[sector-sentiment] consistent strength partial error: %v", err)
 		consistent = []dto.ConsistentStrengthItem{}
+	}
+	// Split the merged list by source so the frontend can render two side-by-side
+	// tables (scores from stk_sector_scores, breadths from stk_sector_breadths).
+	consistentScores := make([]dto.ConsistentStrengthItem, 0, len(consistent))
+	consistentBreadths := make([]dto.ConsistentStrengthItem, 0, len(consistent))
+	for _, it := range consistent {
+		if it.Source == "sector_score" {
+			consistentScores = append(consistentScores, it)
+		} else {
+			consistentBreadths = append(consistentBreadths, it)
+		}
 	}
 
 	newFaces, err := s.GetNewFaces(tradeDate)
@@ -326,42 +378,33 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 	}
 
 	// Top-10 leaderboards
-	topScores, _ := s.repo.GetTopSectorScores(tradeDate)
-	topBreadths, _ := s.repo.GetTopSectorBreadths(tradeDate)
+	topScoresDTO, topBreadthsDTO, err := s.GetTopSectors(tradeDate)
+	if err != nil {
+		log.Printf("[sector-sentiment] top sectors partial error: %v", err)
+		topScoresDTO = []dto.TopSectorItem{}
+		topBreadthsDTO = []dto.TopSectorItem{}
+	}
 
-	// Top-5 rising sectors (morning → afternoon)
-	topRising, err := s.GetTopRisingSectors(tradeDate, 5)
+	// Top-5 rising sectors (morning → afternoon), split by data source
+	topRisingScores, topRisingBreadths, err := s.GetTopRisingSectors(tradeDate, 5)
 	if err != nil {
 		log.Printf("[sector-sentiment] top rising sectors partial error: %v", err)
-		topRising = []dto.RisingSectorItem{}
+		topRisingScores = []dto.RisingSectorItem{}
+		topRisingBreadths = []dto.RisingSectorItem{}
 	}
 
-	// Collect sector names for top-stock lookup
-	allTopSectors := make([]string, 0, len(topScores)+len(topBreadths))
-	for _, r := range topScores {
-		allTopSectors = append(allTopSectors, r.SectorName)
-	}
-	for _, r := range topBreadths {
-		allTopSectors = append(allTopSectors, r.SectorName)
-	}
-	topStockMap, err := s.repo.GetTopStocksBySectors(tradeDate, allTopSectors)
+	// Top-5 falling sectors (morning → afternoon), split by data source
+	topFallingScores, topFallingBreadths, err := s.GetTopFallingSectors(tradeDate, 5)
 	if err != nil {
-		log.Printf("[sector-sentiment] GetTopStocksBySectors failed: %v", err)
-		topStockMap = make(map[string]string)
-	}
-
-	topScoresDTO := make([]dto.TopSectorItem, len(topScores))
-	for i, r := range topScores {
-		topScoresDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName]}
-	}
-	topBreadthsDTO := make([]dto.TopSectorItem, len(topBreadths))
-	for i, r := range topBreadths {
-		topBreadthsDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName]}
+		log.Printf("[sector-sentiment] top falling sectors partial error: %v", err)
+		topFallingScores = []dto.FallingSectorItem{}
+		topFallingBreadths = []dto.FallingSectorItem{}
 	}
 
 	return &dto.SectorSentimentFullResponse{
 		TradeDate:          tradeDate,
-		ConsistentStrength: consistent,
+		ConsistentScores:   consistentScores,
+		ConsistentBreadths: consistentBreadths,
 		NewFaces:           newFaces,
 		IceRecovery:        iceRecovery,
 		Divergence:         divergence,
@@ -369,7 +412,10 @@ func (s *SectorSentimentService) GetFullReport(tradeDate string) (*dto.SectorSen
 		ClimbingSectors:    climbing,
 		TopScores:          topScoresDTO,
 		TopBreadths:        topBreadthsDTO,
-		TopRisingSectors:   topRising,
+		TopRisingScores:    topRisingScores,
+		TopRisingBreadths:  topRisingBreadths,
+		TopFallingScores:   topFallingScores,
+		TopFallingBreadths: topFallingBreadths,
 	}, nil
 }
 
@@ -421,28 +467,59 @@ func (s *SectorSentimentService) GetClimbingSectors(tradeDate string) ([]dto.Cli
 // 7. 盘中排名上升
 // ============================================================
 
-// GetTopRisingSectors returns the top N sectors that rose in rank during the day.
-func (s *SectorSentimentService) GetTopRisingSectors(tradeDate string, limit int) ([]dto.RisingSectorItem, error) {
-	rows, err := s.repo.GetTopRisingSectors(tradeDate, limit)
+// GetTopRisingSectors returns the top N sectors that rose in rank during the day,
+// split into two lists: scores (from stk_sector_scores) and breadths (from
+// stk_sector_breadths).
+func (s *SectorSentimentService) GetTopRisingSectors(tradeDate string, limit int) ([]dto.RisingSectorItem, []dto.RisingSectorItem, error) {
+	scores, breadths, err := s.repo.GetTopRisingSectors(tradeDate, limit)
 	if err != nil {
-		return nil, fmt.Errorf("盘中排名上升查询失败: %w", err)
+		return nil, nil, fmt.Errorf("盘中排名上升查询失败: %w", err)
 	}
-	items := make([]dto.RisingSectorItem, len(rows))
-	for i, r := range rows {
-		items[i] = dto.RisingSectorItem{
-			SectorName:    r.SectorName,
-			Source:        r.Source,
-			Rise:          r.Rise,
-			MorningRank:   r.MorningRank,
-			AfternoonRank: r.AfternoonRank,
+
+	toItems := func(rows []repository.RisingSectorRow) []dto.RisingSectorItem {
+		items := make([]dto.RisingSectorItem, len(rows))
+		for i, r := range rows {
+			items[i] = dto.RisingSectorItem{
+				SectorName:    r.SectorName,
+				Source:        r.Source,
+				Rise:          r.Rise,
+				MorningRank:   r.MorningRank,
+				AfternoonRank: r.AfternoonRank,
+			}
 		}
+		return items
 	}
-	return items, nil
+	return toItems(scores), toItems(breadths), nil
+}
+
+// GetTopFallingSectors returns the top N sectors that fell in rank during the day,
+// split into two lists: scores (from stk_sector_scores) and breadths (from
+// stk_sector_breadths).
+func (s *SectorSentimentService) GetTopFallingSectors(tradeDate string, limit int) ([]dto.FallingSectorItem, []dto.FallingSectorItem, error) {
+	scores, breadths, err := s.repo.GetTopFallingSectors(tradeDate, limit)
+	if err != nil {
+		return nil, nil, fmt.Errorf("盘中排名下降查询失败: %w", err)
+	}
+
+	toItems := func(rows []repository.FallingSectorRow) []dto.FallingSectorItem {
+		items := make([]dto.FallingSectorItem, len(rows))
+		for i, r := range rows {
+			items[i] = dto.FallingSectorItem{
+				SectorName:    r.SectorName,
+				Source:        r.Source,
+				Fall:          r.Fall,
+				MorningRank:   r.MorningRank,
+				AfternoonRank: r.AfternoonRank,
+			}
+		}
+		return items
+	}
+	return toItems(scores), toItems(breadths), nil
 }
 
 // GetSectorIntradayDrift returns the intraday (morning → afternoon) rank drift of a sector.
-func (s *SectorSentimentService) GetSectorIntradayDrift(sectorName, tradeDate string) (*dto.IntradayDriftResponse, error) {
-	rows, err := s.repo.GetSectorIntradayDrift(sectorName, tradeDate)
+func (s *SectorSentimentService) GetSectorIntradayDrift(sectorName, tradeDate, source string) (*dto.IntradayDriftResponse, error) {
+	rows, err := s.repo.GetSectorIntradayDrift(sectorName, tradeDate, source)
 	if err != nil {
 		return nil, fmt.Errorf("盘中漂移数据查询失败: %w", err)
 	}

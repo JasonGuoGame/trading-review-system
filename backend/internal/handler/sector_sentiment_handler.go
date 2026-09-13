@@ -104,6 +104,51 @@ func (h *SectorSentimentHandler) GetConcentration(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
 
+// GetTopSectors returns the top-10 leaderboards (scores + breadths).
+func (h *SectorSentimentHandler) GetTopSectors(c *gin.Context) {
+	tradeDate := h.getTradeDate(c)
+	scores, breadths, err := h.service.GetTopSectors(tradeDate)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetTopSectors error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: dto.TopSectorsResponse{
+		TopScores:   scores,
+		TopBreadths: breadths,
+	}})
+}
+
+// GetTopRising returns the intraday rising sectors (scores + breadths).
+func (h *SectorSentimentHandler) GetTopRising(c *gin.Context) {
+	tradeDate := h.getTradeDate(c)
+	scores, breadths, err := h.service.GetTopRisingSectors(tradeDate, 5)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetTopRising error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: dto.RisingSectorsResponse{
+		Scores:   scores,
+		Breadths: breadths,
+	}})
+}
+
+// GetTopFalling returns the intraday falling sectors (scores + breadths).
+func (h *SectorSentimentHandler) GetTopFalling(c *gin.Context) {
+	tradeDate := h.getTradeDate(c)
+	scores, breadths, err := h.service.GetTopFallingSectors(tradeDate, 5)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetTopFalling error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: dto.FallingSectorsResponse{
+		Scores:   scores,
+		Breadths: breadths,
+	}})
+}
+
 // GetFullReport returns all sector sentiment signals combined.
 func (h *SectorSentimentHandler) GetFullReport(c *gin.Context) {
 	tradeDate := h.getTradeDate(c)
@@ -123,8 +168,12 @@ func (h *SectorSentimentHandler) GetIntradayDrift(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, dto.APIResponse{Code: 400, Message: "sector_name is required"})
 		return
 	}
+	source := c.Query("source")
+	if source == "" {
+		source = "sector_score"
+	}
 	tradeDate := h.getTradeDate(c)
-	data, err := h.service.GetSectorIntradayDrift(sectorName, tradeDate)
+	data, err := h.service.GetSectorIntradayDrift(sectorName, tradeDate, source)
 	if err != nil {
 		log.Printf("[sector-sentiment] GetIntradayDrift error: %v", err)
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
