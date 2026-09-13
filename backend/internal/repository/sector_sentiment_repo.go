@@ -111,22 +111,34 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 
 		UNION ALL
 
-		SELECT b.sector_name, COUNT(DISTINCT b.trade_date) AS strong_days,
+		SELECT t.sector_name, t.strong_days AS strong_days,
 			'sector_breadth' AS source,
-			0 AS high_20d_count, 0 AS high_60d_count, 0 AS high_250d_count
-		FROM stk_sector_breadths b
-		WHERE b.sector_type = 'industry'
-		  AND b.trade_date <= ?
-		  AND b.rank_pos <= 15
-		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
-		  AND b.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry' ORDER BY td DESC LIMIT 7) AS d)
-		GROUP BY b.sector_name
-		HAVING strong_days >= 3
+			COALESCE(l.high_20d_count, 0) AS high_20d_count,
+			COALESCE(l.high_60d_count, 0) AS high_60d_count,
+			COALESCE(l.high_250d_count, 0) AS high_250d_count
+		FROM (
+			SELECT b.sector_name, COUNT(DISTINCT b.trade_date) AS strong_days
+			FROM stk_sector_breadths b
+			WHERE b.sector_type = 'industry'
+			  AND b.trade_date <= ?
+			  AND b.rank_pos <= 15
+			  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+			  AND b.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry' ORDER BY td DESC LIMIT 7) AS d)
+			GROUP BY b.sector_name
+			HAVING strong_days >= 3
+		) t
+		LEFT JOIN (
+			SELECT sector_name, high_20d_count, high_60d_count, high_250d_count
+			FROM stk_sector_breadths
+			WHERE trade_date = ?
+			  AND sector_type = 'industry'
+			  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ? AND sector_type = 'industry')
+		) l ON l.sector_name = t.sector_name
 
 		ORDER BY strong_days DESC
 	`
 	var rows []ConsistentStrengthRow
-	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		log.Printf("[sector-sentiment] GetConsistentStrength error: %v", err)
 		return nil, err
 	}
