@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetIntradayTurnoverQuery, useGetRecentTradesQuery,
+  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetIntradayTurnoverQuery, useGetMarketRisingSectorsQuery, useGetRecentTradesQuery,
   useGetSectorFundFlowQuery, useGetTopMarketAttacksQuery,
   useGetMarketEarningEffectQuery, useGetStockPoolQuery,
   useGetTradeChecklistQuery, useUpsertTradeChecklistMutation,
@@ -67,6 +67,9 @@ const TradePlaybook = () => {
   const { data: topSectorScoresRaw } = useGetTopSectorScoresQuery({ trade_date: selectedDateStr, limit: 3 }, { refetchOnMountOrArgChange: true });
   const topSectorScores = Array.isArray(topSectorScoresRaw) ? topSectorScoresRaw : [];
   const { data: intradayTurnover } = useGetIntradayTurnoverQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
+  const { data: risingSectorsRaw } = useGetMarketRisingSectorsQuery({ trade_date: selectedDateStr, limit: 5 }, { refetchOnMountOrArgChange: true });
+  const risingSectors = Array.isArray(risingSectorsRaw?.sectors) ? risingSectorsRaw.sectors : [];
+  const risingSnapshotTime = risingSectorsRaw?.snapshot_time || '';
   const { data: recentTrades } = useGetRecentTradesQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 10, date: selectedDateStr }, { refetchOnMountOrArgChange: true });
   const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 10, trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
@@ -241,6 +244,56 @@ const TradePlaybook = () => {
                 </div>
               </Col>
               </Row>
+
+              {/* 盘中板块快速上升 TOP5（最新快照 · rank_change 最大 · 附资金异动） */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Text strong style={{ color: '#fff', fontSize: 13 }}>
+                    ⚡ 盘中板块快速上升 TOP5（排名上升最快 · 附资金异动）
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    快照时间 {risingSnapshotTime || '—'}
+                  </Text>
+                </div>
+                {risingSectors.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {risingSectors.map((s, i) => (
+                      <div key={s.sector_name || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ flex: '0 0 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: '#faad14', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>#{i + 1}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                            <Text style={{ color: '#fff', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.sector_name}>{s.sector_name}</Text>
+                            <Text type="secondary" style={{ fontSize: 10 }}>评分 {s.total_score?.toFixed(1)}</Text>
+                          </div>
+                          <Tag color="red" style={{ margin: 0, flexShrink: 0 }}>↑{s.rank_change}位</Tag>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                          {s.stocks && s.stocks.length > 0 ? (
+                            s.stocks.map((st) => (
+                              <span
+                                key={st.symbol}
+                                title={`${st.symbol} ${st.name} · 爆量${st.vol_ratio.toFixed(2)}倍 · 脉冲${st.surge_count}次 · 单分${st.max_surge_ret.toFixed(2)}%`}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'default',
+                                  background: 'rgba(255,77,79,0.10)', border: '1px solid rgba(255,77,79,0.28)', color: '#ff7875',
+                                }}
+                              >
+                                {st.name}
+                                <span style={{ fontWeight: 700, color: '#ffa39e' }}>{st.vol_ratio.toFixed(2)}×</span>
+                              </span>
+                            ))
+                          ) : (
+                            <Text type="secondary" style={{ fontSize: 11 }}>无资金异动</Text>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>暂无数据</Text>
+                )}
+              </div>
 
               {/* 分时成交额环比：整点时刻对比上一交易日累计成交额 */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>

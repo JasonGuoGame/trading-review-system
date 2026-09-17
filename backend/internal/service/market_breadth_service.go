@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"time"
 
 	"trading-review-system/backend/internal/dto"
@@ -83,4 +84,94 @@ func (s *MarketBreadthService) GetIntradayTurnover(date string) ([]dto.IntradayT
 		})
 	}
 	return result, nil
+}
+
+// GetTopRisingSectors returns the fastest-rising sectors (by rank_change in the
+// latest snapshot) together with the capital-abnormal stocks belonging to each.
+func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int) (*dto.RisingSectorsWithSnapshot, error) {
+	snapshotTime, sectors, err := s.repo.GetTopRisingSectors(tradeDate, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(sectors) == 0 {
+		return &dto.RisingSectorsWithSnapshot{SnapshotTime: snapshotTime, Sectors: []dto.RisingSectorWithStocks{}}, nil
+	}
+
+	result := make([]dto.RisingSectorWithStocks, 0, len(sectors))
+	coreSet := make(map[string]bool, len(sectors))
+	for _, sec := range sectors {
+		coreSet[sec.SectorName] = true
+		result = append(result, dto.RisingSectorWithStocks{
+			SectorName: sec.SectorName,
+			RankPos:    sec.RankPos,
+			RankChange: sec.RankChange,
+			TotalScore: sec.TotalScore,
+			Stocks:     []dto.RisingSectorStock{},
+		})
+	}
+
+	// Map full sector classification names (quant_db.sectors) to their core name,
+	// keeping only the ones that correspond to a top rising sector.
+	allNames, err := s.repo.GetAllSectorNames()
+	if err != nil {
+		return nil, err
+	}
+	fullNameToCore := make(map[string]string)
+	fullNames := make([]string, 0)
+	for _, name := range allNames {
+		if core := coreSectorName(name); coreSet[core] {
+			fullNameToCore[name] = core
+			fullNames = append(fullNames, name)
+		}
+	}
+	if len(fullNames) == 0 {
+		return &dto.RisingSectorsWithSnapshot{SnapshotTime: snapshotTime, Sectors: result}, nil
+	}
+
+	// Precise membership via stock_sector_relation, intersected with capital-abnormal.
+	rows, err := s.repo.GetAbnormalStocksBySectorRelation(tradeDate, fullNames)
+	if err != nil {
+		return nil, err
+	}
+
+	idx := make(map[string]int, len(result))
+	for i, r := range result {
+		idx[r.SectorName] = i
+	}
+	// A stock may appear in several classification systems that map to the same core
+	// sector (e.g. GN钠离子电池 and 概念-钠离子电池), so dedupe by symbol per sector.
+	seen := make(map[string]bool)
+	for _, row := range rows {
+		core := fullNameToCore[row.RelSector]
+		i, ok := idx[core]
+		if !ok {
+			continue
+		}
+		key := core + "|" + row.Symbol
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		result[i].Stocks = append(result[i].Stocks, dto.RisingSectorStock{
+			Symbol:      row.Symbol,
+			Name:        row.Name,
+			VolRatio:    row.VolRatio,
+			SurgeCount:  row.SurgeCount,
+			MaxSurgeRet: row.MaxSurgeRet,
+		})
+	}
+	return &dto.RisingSectorsWithSnapshot{SnapshotTime: snapshotTime, Sectors: result}, nil
+}
+
+// coreSectorName strips a sector classification prefix (申万 SW2/SW3、同花顺 THY2/THY3、
+// 概念 GN/TGN/TDGN、行业-/概念-) and a trailing 加权 suffix, returning the plain
+// sector name used by stk_sector_scores.sector_name.
+func coreSectorName(name string) string {
+	for _, p := range []string{"TDGN", "TGN", "GN", "SW2", "SW3", "THY2", "THY3", "行业-", "概念-"} {
+		if strings.HasPrefix(name, p) {
+			name = strings.TrimPrefix(name, p)
+			break
+		}
+	}
+	return strings.TrimSuffix(name, "加权")
 }

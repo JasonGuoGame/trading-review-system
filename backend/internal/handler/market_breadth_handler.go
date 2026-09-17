@@ -100,3 +100,22 @@ func (h *MarketBreadthHandler) GetIntradayTurnover(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
+
+// GetTopRisingSectors returns the fastest-rising sectors (by rank_change) plus
+// their capital-abnormal stocks.
+func (h *MarketBreadthHandler) GetTopRisingSectors(c *gin.Context) {
+	tradeDate := c.Query("trade_date")
+	if tradeDate == "" {
+		tradeDate = time.Now().Format("2006-01-02")
+	}
+	limit := 5
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 {
+		limit = l
+	}
+	data, err := h.service.GetTopRisingSectors(tradeDate, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}

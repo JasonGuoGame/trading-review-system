@@ -188,3 +188,87 @@ func (r *MarketBreadthRepository) GetPreviousMinKlineDate(date string) (string, 
 	}
 	return prev, nil
 }
+
+// TopRisingSectorRow is one sector from stk_sector_scores ordered by rank_change.
+type TopRisingSectorRow struct {
+	SectorName string  `gorm:"column:sector_name"`
+	RankPos    int     `gorm:"column:rank_pos"`
+	RankChange int     `gorm:"column:rank_change"`
+	TotalScore float64 `gorm:"column:total_score"`
+}
+
+// GetTopRisingSectors returns the sectors with the largest positive rank_change
+// (排名上升最快) in the latest intraday snapshot of the given trade date, together
+// with that snapshot's time (empty string for EOD-only historical data).
+func (r *MarketBreadthRepository) GetTopRisingSectors(tradeDate string, limit int) (string, []TopRisingSectorRow, error) {
+	var snapshotTime string
+	if err := r.db.Raw(`
+		SELECT COALESCE(DATE_FORMAT(MAX(snapshot_time), '%Y-%m-%d %H:%i:%s'), '')
+		FROM stk_sector_scores
+		WHERE trade_date = ?
+	`, tradeDate).Scan(&snapshotTime).Error; err != nil {
+		return "", nil, err
+	}
+
+	var rows []TopRisingSectorRow
+	err := r.db.Raw(`
+		SELECT sector_name,
+			COALESCE(rank_pos, 0)      AS rank_pos,
+			COALESCE(rank_change, 0)   AS rank_change,
+			COALESCE(total_score, 0)   AS total_score
+		FROM stk_sector_scores
+		WHERE trade_date = ?
+		  AND rank_change > 0
+		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
+		ORDER BY rank_change DESC, rank_pos ASC
+		LIMIT ?
+	`, tradeDate, tradeDate, limit).Scan(&rows).Error
+	if err != nil {
+		return "", nil, err
+	}
+	return snapshotTime, rows, nil
+}
+
+// GetAllSectorNames returns every sector classification name in quant_db.sectors.
+func (r *MarketBreadthRepository) GetAllSectorNames() ([]string, error) {
+	var names []string
+	err := r.quantDb.Table("sectors").Order("name").Pluck("name", &names).Error
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
+}
+
+// SectorRelationStockRow is a capital-abnormal stock matched to a sector through
+// quant_db.stock_sector_relation (precise membership), rather than the loose
+// sector_name string stored in stk_capital_abnormal.
+type SectorRelationStockRow struct {
+	Symbol      string  `gorm:"column:symbol"`
+	Name        string  `gorm:"column:name"`
+	VolRatio    float64 `gorm:"column:vol_ratio"`
+	SurgeCount  int     `gorm:"column:surge_count"`
+	MaxSurgeRet float64 `gorm:"column:max_surge_ret"`
+	RelSector   string  `gorm:"column:rel_sector_name"`
+}
+
+// GetAbnormalStocksBySectorRelation returns capital-abnormal stocks for a trade
+// date whose stock_sector_relation.sector_name is one of the given full names.
+func (r *MarketBreadthRepository) GetAbnormalStocksBySectorRelation(tradeDate string, sectorFullNames []string) ([]SectorRelationStockRow, error) {
+	var rows []SectorRelationStockRow
+	err := r.quantDb.Raw(`
+		SELECT ca.symbol,
+			COALESCE(ca.name, '')          AS name,
+			COALESCE(ca.vol_ratio, 0)      AS vol_ratio,
+			COALESCE(ca.surge_count, 0)    AS surge_count,
+			COALESCE(ca.max_surge_ret, 0)  AS max_surge_ret,
+			rel.sector_name                AS rel_sector_name
+		FROM stk_capital_abnormal ca
+		JOIN stock_sector_relation rel ON rel.symbol = ca.symbol
+		WHERE ca.trade_date = ?
+		  AND rel.sector_name IN ?
+	`, tradeDate, sectorFullNames).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
