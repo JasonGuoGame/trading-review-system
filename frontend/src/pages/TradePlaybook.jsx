@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Row, Col, Tag, Checkbox, Button, Spin, Collapse, Progress, message, DatePicker } from 'antd';
+import { Typography, Card, Row, Col, Tag, Checkbox, Button, Spin, Collapse, Progress, message, DatePicker, Select } from 'antd';
 import {
   CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined,
   RiseOutlined, FallOutlined, AimOutlined, CalendarOutlined,
@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
-  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetIntradayTurnoverQuery, useGetMarketRisingSectorsQuery, useGetRecentTradesQuery,
+  useGetMarketBreadthQuery, useGetTopSectorScoresQuery, useGetIntradayTurnoverQuery, useGetMarketRisingSectorsQuery, useGetMarketSnapshotTimesQuery, useGetRecentTradesQuery,
   useGetSectorFundFlowQuery, useGetTopMarketAttacksQuery,
   useGetMarketEarningEffectQuery, useGetStockPoolQuery,
   useGetTradeChecklistQuery, useUpsertTradeChecklistMutation,
@@ -67,9 +67,16 @@ const TradePlaybook = () => {
   const { data: topSectorScoresRaw } = useGetTopSectorScoresQuery({ trade_date: selectedDateStr, limit: 3 }, { refetchOnMountOrArgChange: true });
   const topSectorScores = Array.isArray(topSectorScoresRaw) ? topSectorScoresRaw : [];
   const { data: intradayTurnover } = useGetIntradayTurnoverQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
-  const { data: risingSectorsRaw } = useGetMarketRisingSectorsQuery({ trade_date: selectedDateStr, limit: 5 }, { refetchOnMountOrArgChange: true });
+  const [selectedSnapshot, setSelectedSnapshot] = useState(null);
+  const { data: snapshotTimesRaw } = useGetMarketSnapshotTimesQuery({ trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
+  const snapshotTimes = Array.isArray(snapshotTimesRaw) ? snapshotTimesRaw : [];
+  const latestSnapshot = snapshotTimes.length > 0 ? snapshotTimes[snapshotTimes.length - 1] : '';
+  const effectiveSnapshot = selectedSnapshot || latestSnapshot;
+  const { data: risingSectorsRaw } = useGetMarketRisingSectorsQuery(
+    { trade_date: selectedDateStr, limit: 5, snapshot_time: effectiveSnapshot || undefined },
+    { refetchOnMountOrArgChange: true },
+  );
   const risingSectors = Array.isArray(risingSectorsRaw?.sectors) ? risingSectorsRaw.sectors : [];
-  const risingSnapshotTime = risingSectorsRaw?.snapshot_time || '';
   const { data: recentTrades } = useGetRecentTradesQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: fundFlow } = useGetSectorFundFlowQuery({ limit: 10, date: selectedDateStr }, { refetchOnMountOrArgChange: true });
   const { data: topAttacks } = useGetTopMarketAttacksQuery({ limit: 10, trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
@@ -91,6 +98,11 @@ const TradePlaybook = () => {
       });
     }
   }, [checklist]);
+
+  // 切换交易日时，重置快照选择，回落到当天最新快照
+  useEffect(() => {
+    setSelectedSnapshot(null);
+  }, [selectedDateStr]);
 
   const handleCheck = (key) => {
     setCheckItems((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -247,13 +259,24 @@ const TradePlaybook = () => {
 
               {/* 盘中板块快速上升 TOP5（最新快照 · rank_change 最大 · 附资金异动） */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12, flexWrap: 'wrap' }}>
                   <Text strong style={{ color: '#fff', fontSize: 13 }}>
                     ⚡ 盘中板块快速上升 TOP5（排名上升最快 · 附资金异动）
                   </Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    快照时间 {risingSnapshotTime || '—'}
-                  </Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>快照时间</Text>
+                    <Select
+                      size="small"
+                      style={{ minWidth: 110 }}
+                      value={effectiveSnapshot || undefined}
+                      onChange={setSelectedSnapshot}
+                      options={snapshotTimes.map((t) => ({ value: t, label: t.slice(11) }))}
+                      placeholder={snapshotTimes.length > 0 ? '选择快照' : '无快照'}
+                      disabled={snapshotTimes.length === 0}
+                      showSearch
+                      optionFilterProp="label"
+                    />
+                  </div>
                 </div>
                 {risingSectors.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

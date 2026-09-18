@@ -262,7 +262,16 @@ export const apiSlice = createApi({
       providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg }],
     }),
     getMarketRisingSectors: builder.query({
-      query: ({ trade_date, limit = 5 }) => `/market-breadth/rising-sectors?trade_date=${trade_date}&limit=${limit}`,
+      query: ({ trade_date, limit = 5, snapshot_time }) => {
+        const params = new URLSearchParams({ trade_date, limit });
+        if (snapshot_time) params.set('snapshot_time', snapshot_time);
+        return `/market-breadth/rising-sectors?${params.toString()}`;
+      },
+      transformResponse: (res) => res.data,
+      providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg?.trade_date }],
+    }),
+    getMarketSnapshotTimes: builder.query({
+      query: ({ trade_date }) => `/market-breadth/snapshot-times?trade_date=${trade_date}`,
       transformResponse: (res) => res.data,
       providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg?.trade_date }],
     }),
@@ -689,6 +698,7 @@ export const {
   useGetTopSectorScoresQuery,
   useGetIntradayTurnoverQuery,
   useGetMarketRisingSectorsQuery,
+  useGetMarketSnapshotTimesQuery,
   useUpsertMarketBreadthMutation,
   useGetAbnormalCapitalQuery,
   useGetAbnormalSectorsQuery,

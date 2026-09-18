@@ -86,15 +86,21 @@ func (s *MarketBreadthService) GetIntradayTurnover(date string) ([]dto.IntradayT
 	return result, nil
 }
 
+// GetSnapshotTimes returns every distinct intraday snapshot time for a trade date.
+func (s *MarketBreadthService) GetSnapshotTimes(tradeDate string) ([]string, error) {
+	return s.repo.GetSnapshotTimes(tradeDate)
+}
+
 // GetTopRisingSectors returns the fastest-rising sectors (by rank_change in the
-// latest snapshot) together with the capital-abnormal stocks belonging to each.
-func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int) (*dto.RisingSectorsWithSnapshot, error) {
-	snapshotTime, sectors, err := s.repo.GetTopRisingSectors(tradeDate, limit)
+// given snapshot, or the latest one when snapshotTime is empty) together with the
+// capital-abnormal stocks belonging to each.
+func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int, snapshotTime string) (*dto.RisingSectorsWithSnapshot, error) {
+	resolvedSnapshot, sectors, err := s.repo.GetTopRisingSectors(tradeDate, limit, snapshotTime)
 	if err != nil {
 		return nil, err
 	}
 	if len(sectors) == 0 {
-		return &dto.RisingSectorsWithSnapshot{SnapshotTime: snapshotTime, Sectors: []dto.RisingSectorWithStocks{}}, nil
+		return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, Sectors: []dto.RisingSectorWithStocks{}}, nil
 	}
 
 	result := make([]dto.RisingSectorWithStocks, 0, len(sectors))
@@ -125,7 +131,7 @@ func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int) 
 		}
 	}
 	if len(fullNames) == 0 {
-		return &dto.RisingSectorsWithSnapshot{SnapshotTime: snapshotTime, Sectors: result}, nil
+		return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, Sectors: result}, nil
 	}
 
 	// Precise membership via stock_sector_relation, intersected with capital-abnormal.
@@ -160,7 +166,7 @@ func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int) 
 			MaxSurgeRet: row.MaxSurgeRet,
 		})
 	}
-	return &dto.RisingSectorsWithSnapshot{SnapshotTime: snapshotTime, Sectors: result}, nil
+	return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, Sectors: result}, nil
 }
 
 // coreSectorName strips a sector classification prefix (申万 SW2/SW3、同花顺 THY2/THY3、

@@ -197,33 +197,59 @@ type TopRisingSectorRow struct {
 	TotalScore float64 `gorm:"column:total_score"`
 }
 
-// GetTopRisingSectors returns the sectors with the largest positive rank_change
-// (排名上升最快) in the latest intraday snapshot of the given trade date, together
-// with that snapshot's time (empty string for EOD-only historical data).
-func (r *MarketBreadthRepository) GetTopRisingSectors(tradeDate string, limit int) (string, []TopRisingSectorRow, error) {
-	var snapshotTime string
-	if err := r.db.Raw(`
-		SELECT COALESCE(DATE_FORMAT(MAX(snapshot_time), '%Y-%m-%d %H:%i:%s'), '')
+// GetSnapshotTimes returns every distinct intraday snapshot time (formatted
+// "YYYY-MM-DD HH:MM:SS") for a trade date, in ascending order.
+func (r *MarketBreadthRepository) GetSnapshotTimes(tradeDate string) ([]string, error) {
+	var times []string
+	err := r.db.Raw(`
+		SELECT DATE_FORMAT(snapshot_time, '%Y-%m-%d %H:%i:%s') AS t
 		FROM stk_sector_scores
-		WHERE trade_date = ?
-	`, tradeDate).Scan(&snapshotTime).Error; err != nil {
-		return "", nil, err
+		WHERE trade_date = ? AND snapshot_time IS NOT NULL
+		GROUP BY t
+		ORDER BY t ASC
+	`, tradeDate).Scan(&times).Error
+	if err != nil {
+		return nil, err
+	}
+	return times, nil
+}
+
+// GetTopRisingSectors returns the sectors with the largest positive rank_change
+// (排名上升最快) in a given intraday snapshot of the trade date. When snapshotTime
+// is empty, the latest snapshot of the day is used (and for EOD-only historical
+// data with no snapshots at all, the whole day is used). It also returns the
+// snapshot time the rows were read from (empty for EOD-only historical data).
+func (r *MarketBreadthRepository) GetTopRisingSectors(tradeDate string, limit int, snapshotTime string) (string, []TopRisingSectorRow, error) {
+	// Resolve the snapshot time when not explicitly provided.
+	if snapshotTime == "" {
+		if err := r.db.Raw(`
+			SELECT COALESCE(DATE_FORMAT(MAX(snapshot_time), '%Y-%m-%d %H:%i:%s'), '')
+			FROM stk_sector_scores
+			WHERE trade_date = ?
+		`, tradeDate).Scan(&snapshotTime).Error; err != nil {
+			return "", nil, err
+		}
 	}
 
-	var rows []TopRisingSectorRow
-	err := r.db.Raw(`
+	query := `
 		SELECT sector_name,
 			COALESCE(rank_pos, 0)      AS rank_pos,
 			COALESCE(rank_change, 0)   AS rank_change,
 			COALESCE(total_score, 0)   AS total_score
 		FROM stk_sector_scores
 		WHERE trade_date = ?
-		  AND rank_change > 0
-		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
-		ORDER BY rank_change DESC, rank_pos ASC
-		LIMIT ?
-	`, tradeDate, tradeDate, limit).Scan(&rows).Error
-	if err != nil {
+		  AND rank_change > 0`
+	args := []interface{}{tradeDate}
+
+	if snapshotTime != "" {
+		query += ` AND DATE_FORMAT(snapshot_time, '%Y-%m-%d %H:%i:%s') = ?`
+		args = append(args, snapshotTime)
+	}
+	query += ` ORDER BY rank_change DESC, rank_pos ASC LIMIT ?`
+	args = append(args, limit)
+
+	var rows []TopRisingSectorRow
+	if err := r.db.Raw(query, args...).Scan(&rows).Error; err != nil {
 		return "", nil, err
 	}
 	return snapshotTime, rows, nil
