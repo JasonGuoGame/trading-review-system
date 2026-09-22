@@ -1350,21 +1350,37 @@ function SectorDriftPanel() {
 // ============================================================
 
 // IntradayDriftChart renders a sector's rank drift across the day's snapshots
-// (morning → afternoon), where a lower rank number means stronger.
+// (morning → afternoon), where a lower rank number means stronger. Below it, the
+// sector's capital-abnormal stocks (资金异动成分股) are always shown whenever they
+// exist for the trade date — independent of whether intraday snapshot points exist.
 function IntradayDriftChart({ data, loading, sectorName }) {
   const points = useMemo(() => (data?.points || []).map((p) => ({
     time: p.snapshot_time,
     rank: p.rank_pos,
   })), [data])
 
+  // 资金异动成分股：后端只按 trade_date 过滤（与 snapshot_time 无关），
+  // 这里按首次异动时刻排序（早→晚），与上方漂移图的时间轴呼应。
+  const abnormalStocks = useMemo(() => {
+    const list = (data?.abnormal_stocks || []).map((s) => ({
+      ...s,
+      firstTime: s.surge_times && s.surge_times.length > 0 ? s.surge_times[0] : null,
+    }))
+    list.sort((a, b) => (a.firstTime || '99:99').localeCompare(b.firstTime || '99:99'))
+    return list
+  }, [data])
+
   if (loading) return <Spin style={{ display: 'block', margin: '20px auto' }} />
-  if (!data || points.length === 0) {
-    return <Empty description="暂无盘中快照数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+
+  const hasPoints = points.length > 0
+  const hasAbnormal = abnormalStocks.length > 0
+  if (!data || (!hasPoints && !hasAbnormal)) {
+    return <Empty description="暂无盘中数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
   }
 
   const allRanks = points.map((p) => p.rank).filter((r) => r != null)
-  const minRank = Math.min(...allRanks, 1)
-  const maxRank = Math.max(...allRanks, 1)
+  const minRank = hasPoints ? Math.min(...allRanks, 1) : 1
+  const maxRank = hasPoints ? Math.max(...allRanks, 1) : 1
   const pad = Math.max(5, Math.round((maxRank - minRank) * 0.25))
   const domainMin = Math.max(1, minRank - pad)
   const domainMax = maxRank + pad
@@ -1375,45 +1391,82 @@ function IntradayDriftChart({ data, loading, sectorName }) {
 
   return (
     <div>
-      <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
-        📈 {sectorName} 盘中排名漂移（{points[0]?.time} → {points[points.length - 1]?.time}，排名越小越强）
-      </div>
-      <ResponsiveContainer width="100%" height={340}>
-        <LineChart data={points}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
-          <XAxis dataKey="time" tick={{ fill: '#8c8c8c', fontSize: 11 }} />
-          <YAxis
-            reversed
-            domain={[domainMin, domainMax]}
-            tick={{ fill: '#fa541c', fontSize: 11 }}
-            label={{ value: '排名 (↓越小越强)', angle: -90, position: 'insideLeft', style: { fill: '#fa541c', fontSize: 10 } }}
-          />
-          <ReTooltip
-            contentStyle={{ background: '#141414', border: '1px solid #333', borderRadius: 8 }}
-            formatter={(value, name) => (name === 'rank' ? [`第 ${value} 名`, '排名'] : [value, name])}
-          />
-          <ReferenceLine y={5} stroke="#52c41a" strokeDasharray="4 4" />
-          <ReferenceLine y={10} stroke="#faad14" strokeDasharray="4 4" />
-          <Line
-            type="monotone"
-            dataKey="rank"
-            stroke="#fa541c"
-            strokeWidth={2.5}
-            dot={{ r: 4, fill: '#fa541c' }}
-            name="排名"
-            connectNulls
-          />
-        </LineChart>
-      </ResponsiveContainer>
-      <div style={{ marginTop: 12, display: 'flex', gap: 24, fontSize: 13, color: '#c9d1d9' }}>
-        <span>早晨排名：<b style={{ color: '#1677ff' }}>{first ?? '--'}</b></span>
-        <span>下午排名：<b style={{ color: '#fa8c16' }}>{last ?? '--'}</b></span>
-        <span>
-          净上升：
-          <b style={{ color: rise != null && rise > 0 ? '#ff4d4f' : '#52c41a' }}>
-            {rise != null && rise > 0 ? `+${rise}` : rise ?? '--'}
-          </b> 位
-        </span>
+      {hasPoints ? (
+        <>
+          <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
+            📈 {sectorName} 盘中排名漂移（{points[0]?.time} → {points[points.length - 1]?.time}，排名越小越强）
+          </div>
+          <ResponsiveContainer width="100%" height={340}>
+            <LineChart data={points}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" />
+              <XAxis dataKey="time" tick={{ fill: '#8c8c8c', fontSize: 11 }} />
+              <YAxis
+                reversed
+                domain={[domainMin, domainMax]}
+                tick={{ fill: '#fa541c', fontSize: 11 }}
+                label={{ value: '排名 (↓越小越强)', angle: -90, position: 'insideLeft', style: { fill: '#fa541c', fontSize: 10 } }}
+              />
+              <ReTooltip
+                contentStyle={{ background: '#141414', border: '1px solid #333', borderRadius: 8 }}
+                formatter={(value, name) => (name === 'rank' ? [`第 ${value} 名`, '排名'] : [value, name])}
+              />
+              <ReferenceLine y={5} stroke="#52c41a" strokeDasharray="4 4" />
+              <ReferenceLine y={10} stroke="#faad14" strokeDasharray="4 4" />
+              <Line
+                type="monotone"
+                dataKey="rank"
+                stroke="#fa541c"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: '#fa541c' }}
+                name="排名"
+                connectNulls
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div style={{ marginTop: 12, display: 'flex', gap: 24, fontSize: 13, color: '#c9d1d9' }}>
+            <span>早晨排名：<b style={{ color: '#1677ff' }}>{first ?? '--'}</b></span>
+            <span>下午排名：<b style={{ color: '#fa8c16' }}>{last ?? '--'}</b></span>
+            <span>
+              净上升：
+              <b style={{ color: rise != null && rise > 0 ? '#ff4d4f' : '#52c41a' }}>
+                {rise != null && rise > 0 ? `+${rise}` : rise ?? '--'}
+              </b> 位
+            </span>
+          </div>
+        </>
+      ) : (
+        <span style={{ color: '#8c8c8c', fontSize: 12 }}>暂无盘中快照数据（仅显示当日资金异动成分股）</span>
+      )}
+
+      {/* 资金异动成分股 —— 只要 trade_date 相同就显示，与 snapshot_time 无关 */}
+      <div style={{ marginTop: 16, borderTop: '1px solid #21262d', paddingTop: 12 }}>
+        <div style={{ color: '#ff7875', fontSize: 12, fontWeight: 600, marginBottom: 10 }}>
+          💥 资金异动成分股（{abnormalStocks.length}只 · 早→晚）
+        </div>
+        {abnormalStocks.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {abnormalStocks.map((st) => (
+              <Tooltip
+                key={st.symbol}
+                title={`${st.symbol} ${st.name} · 爆量${st.vol_ratio.toFixed(2)}倍 · 脉冲${st.surge_count}次 · 单分+${st.max_surge_ret.toFixed(2)}% · 异动时刻 ${st.surge_times?.join('、') || '--'}`}
+              >
+                <span
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'default',
+                    background: 'rgba(255,77,79,0.10)', border: '1px solid rgba(255,77,79,0.28)',
+                  }}
+                >
+                  {st.firstTime && <span style={{ color: '#ffa39e', fontSize: 10 }}>{st.firstTime}</span>}
+                  <span style={{ color: '#fff', fontWeight: 600 }}>{st.name}</span>
+                  <span style={{ color: '#ff7875', fontWeight: 700 }}>{st.vol_ratio.toFixed(2)}×</span>
+                </span>
+              </Tooltip>
+            ))}
+          </div>
+        ) : (
+          <span style={{ color: '#8c8c8c', fontSize: 12 }}>该板块今日暂无资金异动成分股</span>
+        )}
       </div>
     </div>
   )

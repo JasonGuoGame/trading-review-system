@@ -975,3 +975,51 @@ func (r *SectorSentimentRepository) GetSectorIntradayDrift(sectorName, tradeDate
 	}
 	return rows, nil
 }
+
+// GetAllSectorFullNames returns every sector classification name in quant_db.sectors
+// (prefixed names such as "SW2风电设备" / "概念-钠离子电池" / "TDGN...").
+func (r *SectorSentimentRepository) GetAllSectorFullNames() ([]string, error) {
+	var names []string
+	err := r.quantDb.Table("sectors").Order("name").Pluck("name", &names).Error
+	if err != nil {
+		return nil, err
+	}
+	return names, nil
+}
+
+// AbnormalStockRow is a capital-abnormal stock matched to a sector through
+// quant_db.stock_sector_relation (precise membership), rather than the loose
+// sector_name string stored in stk_capital_abnormal.
+type AbnormalStockRow struct {
+	Symbol      string  `gorm:"column:symbol"`
+	Name        string  `gorm:"column:name"`
+	VolRatio    float64 `gorm:"column:vol_ratio"`
+	SurgeCount  int     `gorm:"column:surge_count"`
+	MaxSurgeRet float64 `gorm:"column:max_surge_ret"`
+	SurgeTimes  string  `gorm:"column:surge_times"`
+}
+
+// GetAbnormalStocksByFullNames returns capital-abnormal stocks for a trade date
+// whose stock_sector_relation.sector_name is one of the given full names.
+func (r *SectorSentimentRepository) GetAbnormalStocksByFullNames(tradeDate string, fullNames []string) ([]AbnormalStockRow, error) {
+	if len(fullNames) == 0 {
+		return []AbnormalStockRow{}, nil
+	}
+	var rows []AbnormalStockRow
+	err := r.quantDb.Raw(`
+		SELECT ca.symbol,
+			COALESCE(ca.name, '')         AS name,
+			COALESCE(ca.vol_ratio, 0)     AS vol_ratio,
+			COALESCE(ca.surge_count, 0)   AS surge_count,
+			COALESCE(ca.max_surge_ret, 0) AS max_surge_ret,
+			COALESCE(ca.surge_times, '')  AS surge_times
+		FROM stk_capital_abnormal ca
+		JOIN stock_sector_relation rel ON rel.symbol = ca.symbol
+		WHERE ca.trade_date = ?
+		  AND rel.sector_name IN ?
+	`, tradeDate, fullNames).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}

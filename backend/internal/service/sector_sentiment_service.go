@@ -1,8 +1,10 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/repository"
@@ -532,10 +534,88 @@ func (s *SectorSentimentService) GetSectorIntradayDrift(sectorName, tradeDate, s
 		}
 	}
 	return &dto.IntradayDriftResponse{
-		SectorName: sectorName,
-		TradeDate:  tradeDate,
-		Points:     points,
+		SectorName:     sectorName,
+		TradeDate:      tradeDate,
+		Points:         points,
+		AbnormalStocks: s.abnormalStocksForSector(sectorName, tradeDate),
 	}, nil
+}
+
+// abnormalStocksForSector returns the capital-abnormal constituent stocks of a
+// sector (matched precisely via stock_sector_relation) for a given trade date.
+// The core sector name is mapped back to the full classification names in
+// quant_db.sectors using the shared coreSectorName normalization.
+func (s *SectorSentimentService) abnormalStocksForSector(coreName, tradeDate string) []dto.IntradayAbnormalStock {
+	allNames, err := s.repo.GetAllSectorFullNames()
+	if err != nil {
+		log.Printf("[sector-sentiment] GetAllSectorFullNames error: %v", err)
+		return []dto.IntradayAbnormalStock{}
+	}
+	fullNames := make([]string, 0)
+	for _, name := range allNames {
+		if coreSectorName(name) == coreName {
+			fullNames = append(fullNames, name)
+		}
+	}
+	if len(fullNames) == 0 {
+		return []dto.IntradayAbnormalStock{}
+	}
+
+	rows, err := s.repo.GetAbnormalStocksByFullNames(tradeDate, fullNames)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetAbnormalStocksByFullNames error: %v", err)
+		return []dto.IntradayAbnormalStock{}
+	}
+
+	// A stock may appear under several classification systems that map to the
+	// same core sector, so dedupe by symbol.
+	seen := make(map[string]bool)
+	result := make([]dto.IntradayAbnormalStock, 0, len(rows))
+	for _, r := range rows {
+		if seen[r.Symbol] {
+			continue
+		}
+		seen[r.Symbol] = true
+		result = append(result, dto.IntradayAbnormalStock{
+			Symbol:      r.Symbol,
+			Name:        r.Name,
+			VolRatio:    r.VolRatio,
+			SurgeCount:  r.SurgeCount,
+			MaxSurgeRet: r.MaxSurgeRet,
+			SurgeTimes:  parseSurgeTimes(r.SurgeTimes),
+		})
+	}
+	return result
+}
+
+// parseSurgeTimes turns the stk_capital_abnormal.surge_times text into a list of
+// "HH:MM" strings. The stored value is either a JSON array or a comma-separated
+// list; both are tolerated.
+func parseSurgeTimes(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []string{}
+	}
+	if strings.HasPrefix(raw, "[") {
+		var arr []string
+		if err := json.Unmarshal([]byte(raw), &arr); err == nil {
+			out := make([]string, 0, len(arr))
+			for _, t := range arr {
+				if t = strings.TrimSpace(t); t != "" {
+					out = append(out, t)
+				}
+			}
+			return out
+		}
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // ============================================================

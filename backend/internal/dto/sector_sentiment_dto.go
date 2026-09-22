@@ -178,11 +178,24 @@ type IntradayDriftPoint struct {
 	RankChange   int    `json:"rank_change"` // 该快照相对上一快照的排名变化（正数=上升）
 }
 
+// IntradayAbnormalStock is a capital-abnormal (资金异动) constituent stock of the
+// sector on the drift-chart date, matched precisely via stock_sector_relation
+// (rather than the loose sector_name stored in stk_capital_abnormal).
+type IntradayAbnormalStock struct {
+	Symbol      string   `json:"symbol"`
+	Name        string   `json:"name"`
+	VolRatio    float64  `json:"vol_ratio"`     // 日线爆量倍数
+	SurgeCount  int      `json:"surge_count"`   // 分时脉冲次数
+	MaxSurgeRet float64  `json:"max_surge_ret"` // 单分最大涨幅%
+	SurgeTimes  []string `json:"surge_times"`   // 异动时刻 "HH:MM"
+}
+
 // IntradayDriftResponse is the intraday (morning → afternoon) rank drift for a sector.
 type IntradayDriftResponse struct {
-	SectorName string               `json:"sector_name"`
-	TradeDate  string               `json:"trade_date"`
-	Points     []IntradayDriftPoint `json:"points"`
+	SectorName     string                  `json:"sector_name"`
+	TradeDate      string                  `json:"trade_date"`
+	Points         []IntradayDriftPoint    `json:"points"`
+	AbnormalStocks []IntradayAbnormalStock `json:"abnormal_stocks"`
 }
 
 // ============================================================
