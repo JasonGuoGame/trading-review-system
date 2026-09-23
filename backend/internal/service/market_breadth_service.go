@@ -92,15 +92,16 @@ func (s *MarketBreadthService) GetSnapshotTimes(tradeDate string) ([]string, err
 }
 
 // GetTopRisingSectors returns the fastest-rising sectors (by rank_change in the
-// given snapshot, or the latest one when snapshotTime is empty) together with the
+// given snapshot, or the latest one when snapshotTime is empty; with merge >= 2 the
+// rank change is computed over the merged snapshot window) together with the
 // capital-abnormal stocks belonging to each.
-func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int, snapshotTime string) (*dto.RisingSectorsWithSnapshot, error) {
-	resolvedSnapshot, sectors, err := s.repo.GetTopRisingSectors(tradeDate, limit, snapshotTime)
+func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int, snapshotTime string, merge int) (*dto.RisingSectorsWithSnapshot, error) {
+	resolvedSnapshot, startSnapshot, sectors, err := s.repo.GetTopRisingSectors(tradeDate, limit, snapshotTime, merge)
 	if err != nil {
 		return nil, err
 	}
 	if len(sectors) == 0 {
-		return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, Sectors: []dto.RisingSectorWithStocks{}}, nil
+		return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, SnapshotTimeStart: startSnapshot, MergeCount: merge, Sectors: []dto.RisingSectorWithStocks{}}, nil
 	}
 
 	result := make([]dto.RisingSectorWithStocks, 0, len(sectors))
@@ -112,6 +113,8 @@ func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int, 
 			RankPos:    sec.RankPos,
 			RankChange: sec.RankChange,
 			TotalScore: sec.TotalScore,
+			StartRank:  sec.StartRank,
+			EndRank:    sec.EndRank,
 			Stocks:     []dto.RisingSectorStock{},
 		})
 	}
@@ -131,7 +134,7 @@ func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int, 
 		}
 	}
 	if len(fullNames) == 0 {
-		return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, Sectors: result}, nil
+		return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, SnapshotTimeStart: startSnapshot, MergeCount: merge, Sectors: result}, nil
 	}
 
 	// Precise membership via stock_sector_relation, intersected with capital-abnormal.
@@ -164,9 +167,10 @@ func (s *MarketBreadthService) GetTopRisingSectors(tradeDate string, limit int, 
 			VolRatio:    row.VolRatio,
 			SurgeCount:  row.SurgeCount,
 			MaxSurgeRet: row.MaxSurgeRet,
+			SurgeTimes:  parseSurgeTimes(row.SurgeTimes),
 		})
 	}
-	return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, Sectors: result}, nil
+	return &dto.RisingSectorsWithSnapshot{SnapshotTime: resolvedSnapshot, SnapshotTimeStart: startSnapshot, MergeCount: merge, Sectors: result}, nil
 }
 
 // coreSectorName strips a sector classification prefix (申万 SW2/SW3、同花顺 THY2/THY3、

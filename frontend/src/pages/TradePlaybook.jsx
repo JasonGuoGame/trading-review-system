@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Row, Col, Tag, Checkbox, Button, Spin, Collapse, Progress, message, DatePicker, Select } from 'antd';
+import { Typography, Card, Row, Col, Tag, Checkbox, Button, Spin, Collapse, Progress, message, DatePicker, Select, Segmented } from 'antd';
 import {
   CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined,
   RiseOutlined, FallOutlined, AimOutlined, CalendarOutlined,
@@ -68,12 +68,27 @@ const TradePlaybook = () => {
   const topSectorScores = Array.isArray(topSectorScoresRaw) ? topSectorScoresRaw : [];
   const { data: intradayTurnover } = useGetIntradayTurnoverQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
   const [selectedSnapshot, setSelectedSnapshot] = useState(null);
+  const [mergeCount, setMergeCount] = useState(1);
   const { data: snapshotTimesRaw } = useGetMarketSnapshotTimesQuery({ trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
   const snapshotTimes = Array.isArray(snapshotTimesRaw) ? snapshotTimesRaw : [];
-  const latestSnapshot = snapshotTimes.length > 0 ? snapshotTimes[snapshotTimes.length - 1] : '';
-  const effectiveSnapshot = selectedSnapshot || latestSnapshot;
+
+  // 根据合并条数生成可选窗口：单条时列出全部快照；合并 N 条时列出连续 N 条的滑动窗口（起→止）。
+  const snapshotOptions = (() => {
+    if (mergeCount <= 1) {
+      return snapshotTimes.map((t) => ({ value: t, label: t.slice(11) }));
+    }
+    const opts = [];
+    for (let i = mergeCount - 1; i < snapshotTimes.length; i++) {
+      const start = snapshotTimes[i - mergeCount + 1];
+      const end = snapshotTimes[i];
+      opts.push({ value: end, label: `${start.slice(11)}→${end.slice(11)}` });
+    }
+    return opts;
+  })();
+  const latestWindow = snapshotOptions.length > 0 ? snapshotOptions[snapshotOptions.length - 1].value : '';
+  const effectiveSnapshot = selectedSnapshot || latestWindow;
   const { data: risingSectorsRaw } = useGetMarketRisingSectorsQuery(
-    { trade_date: selectedDateStr, limit: 5, snapshot_time: effectiveSnapshot || undefined },
+    { trade_date: selectedDateStr, limit: 5, snapshot_time: effectiveSnapshot || undefined, merge: mergeCount },
     { refetchOnMountOrArgChange: true },
   );
   const risingSectors = Array.isArray(risingSectorsRaw?.sectors) ? risingSectorsRaw.sectors : [];
@@ -99,10 +114,10 @@ const TradePlaybook = () => {
     }
   }, [checklist]);
 
-  // 切换交易日时，重置快照选择，回落到当天最新快照
+  // 切换交易日或合并条数时，重置快照选择，回落到当天最新（完整）窗口
   useEffect(() => {
     setSelectedSnapshot(null);
-  }, [selectedDateStr]);
+  }, [selectedDateStr, mergeCount]);
 
   const handleCheck = (key) => {
     setCheckItems((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -264,15 +279,27 @@ const TradePlaybook = () => {
                     ⚡ 盘中板块快速上升 TOP5（排名上升最快 · 附资金异动）
                   </Text>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                    <Text type="secondary" style={{ fontSize: 11 }}>快照时间</Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>合并</Text>
+                    <Segmented
+                      size="small"
+                      value={mergeCount}
+                      onChange={setMergeCount}
+                      options={[
+                        { label: '单条', value: 1 },
+                        { label: '2条', value: 2 },
+                        { label: '3条', value: 3 },
+                        { label: '4条', value: 4 },
+                      ]}
+                    />
+                    <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>{mergeCount > 1 ? '快照窗口' : '快照时间'}</Text>
                     <Select
                       size="small"
-                      style={{ minWidth: 110 }}
+                      style={{ minWidth: 130 }}
                       value={effectiveSnapshot || undefined}
                       onChange={setSelectedSnapshot}
-                      options={snapshotTimes.map((t) => ({ value: t, label: t.slice(11) }))}
-                      placeholder={snapshotTimes.length > 0 ? '选择快照' : '无快照'}
-                      disabled={snapshotTimes.length === 0}
+                      options={snapshotOptions}
+                      placeholder={snapshotOptions.length > 0 ? '选择快照' : '无快照'}
+                      disabled={snapshotOptions.length === 0}
                       showSearch
                       optionFilterProp="label"
                     />
@@ -286,24 +313,34 @@ const TradePlaybook = () => {
                           <span style={{ color: '#faad14', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>#{i + 1}</span>
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                             <Text style={{ color: '#fff', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.sector_name}>{s.sector_name}</Text>
-                            <Text type="secondary" style={{ fontSize: 10 }}>评分 {s.total_score?.toFixed(1)}</Text>
+                            <Text type="secondary" style={{ fontSize: 10 }}>
+                              评分 {s.total_score?.toFixed(1)}
+                              {mergeCount > 1 && s.start_rank > 0 && s.end_rank > 0 ? ` · 第${s.start_rank}→第${s.end_rank}名` : ''}
+                            </Text>
                           </div>
                           <Tag color="red" style={{ margin: 0, flexShrink: 0 }}>↑{s.rank_change}位</Tag>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                        <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start' }}>
                           {s.stocks && s.stocks.length > 0 ? (
                             s.stocks.map((st) => (
                               <span
                                 key={st.symbol}
                                 title={`${st.symbol} ${st.name} · 爆量${st.vol_ratio.toFixed(2)}倍 · 脉冲${st.surge_count}次 · 单分${st.max_surge_ret.toFixed(2)}%`}
                                 style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1,
                                   padding: '2px 8px', borderRadius: 4, fontSize: 11, cursor: 'default',
                                   background: 'rgba(255,77,79,0.10)', border: '1px solid rgba(255,77,79,0.28)', color: '#ff7875',
                                 }}
                               >
-                                {st.name}
-                                <span style={{ fontWeight: 700, color: '#ffa39e' }}>{st.vol_ratio.toFixed(2)}×</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  {st.name}
+                                  <span style={{ fontWeight: 700, color: '#ffa39e' }}>{st.vol_ratio.toFixed(2)}×</span>
+                                </span>
+                                {st.surge_times && st.surge_times.length > 0 && (
+                                  <span style={{ fontSize: 10, color: '#ff9c9c', opacity: 0.9 }}>
+                                    ⏱ {st.surge_times.join('、')}
+                                  </span>
+                                )}
                               </span>
                             ))
                           ) : (

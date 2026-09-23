@@ -195,6 +195,8 @@ type TopRisingSectorRow struct {
 	RankPos    int     `gorm:"column:rank_pos"`
 	RankChange int     `gorm:"column:rank_change"`
 	TotalScore float64 `gorm:"column:total_score"`
+	StartRank  int     `gorm:"column:start_rank"`
+	EndRank    int     `gorm:"column:end_rank"`
 }
 
 // GetSnapshotTimes returns every distinct intraday snapshot time (formatted
@@ -214,45 +216,108 @@ func (r *MarketBreadthRepository) GetSnapshotTimes(tradeDate string) ([]string, 
 	return times, nil
 }
 
-// GetTopRisingSectors returns the sectors with the largest positive rank_change
-// (排名上升最快) in a given intraday snapshot of the trade date. When snapshotTime
-// is empty, the latest snapshot of the day is used (and for EOD-only historical
-// data with no snapshots at all, the whole day is used). It also returns the
-// snapshot time the rows were read from (empty for EOD-only historical data).
-func (r *MarketBreadthRepository) GetTopRisingSectors(tradeDate string, limit int, snapshotTime string) (string, []TopRisingSectorRow, error) {
-	// Resolve the snapshot time when not explicitly provided.
+// GetTopRisingSectors returns the sectors with the largest positive rank change
+// (排名上升最快) in a given intraday snapshot of the trade date. merge == 1 reads a
+// single snapshot's rank_change; merge >= 2 computes the net rank change between
+// the snapshot (merge-1) positions before snapshotTime and snapshotTime itself
+// (rank_pos(start) - rank_pos(end)). When snapshotTime is empty, the latest
+// snapshot of the day is used (and for EOD-only historical data with no snapshots
+// at all, the whole day is used). It returns the end snapshot time (empty for
+// EOD-only historical data), the start snapshot time (empty unless merge >= 2),
+// and the rows.
+func (r *MarketBreadthRepository) GetTopRisingSectors(tradeDate string, limit int, snapshotTime string, merge int) (string, string, []TopRisingSectorRow, error) {
+	if merge < 1 {
+		merge = 1
+	}
+	if merge > 4 {
+		merge = 4
+	}
+
+	// Resolve the end snapshot time when not explicitly provided.
 	if snapshotTime == "" {
 		if err := r.db.Raw(`
 			SELECT COALESCE(DATE_FORMAT(MAX(snapshot_time), '%Y-%m-%d %H:%i:%s'), '')
 			FROM stk_sector_scores
 			WHERE trade_date = ?
 		`, tradeDate).Scan(&snapshotTime).Error; err != nil {
-			return "", nil, err
+			return "", "", nil, err
 		}
 	}
 
+	// Single-snapshot mode: read rank_change directly.
+	if merge == 1 {
+		query := `
+			SELECT sector_name,
+				COALESCE(rank_pos, 0)      AS rank_pos,
+				COALESCE(rank_change, 0)   AS rank_change,
+				COALESCE(total_score, 0)   AS total_score
+			FROM stk_sector_scores
+			WHERE trade_date = ?
+			  AND rank_change > 0`
+		args := []interface{}{tradeDate}
+
+		if snapshotTime != "" {
+			query += ` AND DATE_FORMAT(snapshot_time, '%Y-%m-%d %H:%i:%s') = ?`
+			args = append(args, snapshotTime)
+		}
+		query += ` ORDER BY rank_change DESC, rank_pos ASC LIMIT ?`
+		args = append(args, limit)
+
+		var rows []TopRisingSectorRow
+		if err := r.db.Raw(query, args...).Scan(&rows).Error; err != nil {
+			return "", "", nil, err
+		}
+		return snapshotTime, "", rows, nil
+	}
+
+	// Merged mode: locate the start snapshot (merge-1) positions before the end.
+	if snapshotTime == "" {
+		// No snapshots at all (EOD-only historical data): nothing to merge.
+		return "", "", nil, nil
+	}
+	times, err := r.GetSnapshotTimes(tradeDate)
+	if err != nil {
+		return "", "", nil, err
+	}
+	endIdx := -1
+	for i, t := range times {
+		if t == snapshotTime {
+			endIdx = i
+			break
+		}
+	}
+	if endIdx < 0 {
+		// Provided snapshotTime not among the day's snapshots (shouldn't normally happen).
+		return "", "", nil, nil
+	}
+	startIdx := endIdx - (merge - 1)
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	startTime := times[startIdx]
+
 	query := `
-		SELECT sector_name,
-			COALESCE(rank_pos, 0)      AS rank_pos,
-			COALESCE(rank_change, 0)   AS rank_change,
-			COALESCE(total_score, 0)   AS total_score
-		FROM stk_sector_scores
-		WHERE trade_date = ?
-		  AND rank_change > 0`
-	args := []interface{}{tradeDate}
-
-	if snapshotTime != "" {
-		query += ` AND DATE_FORMAT(snapshot_time, '%Y-%m-%d %H:%i:%s') = ?`
-		args = append(args, snapshotTime)
-	}
-	query += ` ORDER BY rank_change DESC, rank_pos ASC LIMIT ?`
-	args = append(args, limit)
-
+		SELECT t.sector_name,
+			COALESCE(s.rank_pos, 0)                                 AS start_rank,
+			COALESCE(t.rank_pos, 0)                                 AS end_rank,
+			COALESCE(t.rank_pos, 0)                                 AS rank_pos,
+			COALESCE(s.rank_pos, 0) - COALESCE(t.rank_pos, 0)       AS rank_change,
+			COALESCE(t.total_score, 0)                              AS total_score
+		FROM stk_sector_scores t
+		JOIN stk_sector_scores s
+		  ON s.trade_date = t.trade_date
+		 AND s.sector_name = t.sector_name
+		 AND DATE_FORMAT(s.snapshot_time, '%Y-%m-%d %H:%i:%s') = ?
+		WHERE t.trade_date = ?
+		  AND DATE_FORMAT(t.snapshot_time, '%Y-%m-%d %H:%i:%s') = ?
+		  AND COALESCE(s.rank_pos, 0) - COALESCE(t.rank_pos, 0) > 0
+		ORDER BY rank_change DESC, t.rank_pos ASC
+		LIMIT ?`
 	var rows []TopRisingSectorRow
-	if err := r.db.Raw(query, args...).Scan(&rows).Error; err != nil {
-		return "", nil, err
+	if err := r.db.Raw(query, startTime, tradeDate, snapshotTime, limit).Scan(&rows).Error; err != nil {
+		return "", "", nil, err
 	}
-	return snapshotTime, rows, nil
+	return snapshotTime, startTime, rows, nil
 }
 
 // GetAllSectorNames returns every sector classification name in quant_db.sectors.
@@ -274,6 +339,7 @@ type SectorRelationStockRow struct {
 	VolRatio    float64 `gorm:"column:vol_ratio"`
 	SurgeCount  int     `gorm:"column:surge_count"`
 	MaxSurgeRet float64 `gorm:"column:max_surge_ret"`
+	SurgeTimes  string  `gorm:"column:surge_times"`
 	RelSector   string  `gorm:"column:rel_sector_name"`
 }
 
@@ -287,6 +353,7 @@ func (r *MarketBreadthRepository) GetAbnormalStocksBySectorRelation(tradeDate st
 			COALESCE(ca.vol_ratio, 0)      AS vol_ratio,
 			COALESCE(ca.surge_count, 0)    AS surge_count,
 			COALESCE(ca.max_surge_ret, 0)  AS max_surge_ret,
+			COALESCE(ca.surge_times, '')   AS surge_times,
 			rel.sector_name                AS rel_sector_name
 		FROM stk_capital_abnormal ca
 		JOIN stock_sector_relation rel ON rel.symbol = ca.symbol

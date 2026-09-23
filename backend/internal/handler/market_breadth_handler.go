@@ -113,7 +113,11 @@ func (h *MarketBreadthHandler) GetTopRisingSectors(c *gin.Context) {
 	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 {
 		limit = l
 	}
-	data, err := h.service.GetTopRisingSectors(tradeDate, limit, snapshotTime)
+	merge := 1
+	if m, err := strconv.Atoi(c.Query("merge")); err == nil && m >= 1 && m <= 4 {
+		merge = m
+	}
+	data, err := h.service.GetTopRisingSectors(tradeDate, limit, snapshotTime, merge)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
 		return

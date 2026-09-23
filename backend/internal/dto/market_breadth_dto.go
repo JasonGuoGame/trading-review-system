@@ -13,11 +13,12 @@ type IntradayTurnoverMark struct {
 // RisingSectorStock is a capital-abnormal (资金异动) stock that belongs to a
 // fast-rising sector.
 type RisingSectorStock struct {
-	Symbol      string  `json:"symbol"`
-	Name        string  `json:"name"`
-	VolRatio    float64 `json:"vol_ratio"`     // 日线爆量倍数
-	SurgeCount  int     `json:"surge_count"`   // 分时脉冲次数
-	MaxSurgeRet float64 `json:"max_surge_ret"` // 单分最大涨幅%
+	Symbol      string   `json:"symbol"`
+	Name        string   `json:"name"`
+	VolRatio    float64  `json:"vol_ratio"`     // 日线爆量倍数
+	SurgeCount  int      `json:"surge_count"`   // 分时脉冲次数
+	MaxSurgeRet float64  `json:"max_surge_ret"` // 单分最大涨幅%
+	SurgeTimes  []string `json:"surge_times"`   // 异动时刻 "HH:MM"
 }
 
 // RisingSectorWithStocks is one of the fastest-rising sectors (by rank_change in
@@ -27,6 +28,8 @@ type RisingSectorWithStocks struct {
 	RankPos    int                 `json:"rank_pos"`
 	RankChange int                 `json:"rank_change"`
 	TotalScore float64             `json:"total_score"`
+	StartRank  int                 `json:"start_rank"` // 合并窗口起点排名（merge≥2 时有值）
+	EndRank    int                 `json:"end_rank"`   // 合并窗口终点排名（merge≥2 时有值）
 	Stocks     []RisingSectorStock `json:"stocks"`
 }
 
@@ -34,6 +37,8 @@ type RisingSectorWithStocks struct {
 // snapshot time (snapshot_time) they were read from, so the frontend can surface
 // which intraday snapshot the ranking corresponds to.
 type RisingSectorsWithSnapshot struct {
-	SnapshotTime string                   `json:"snapshot_time"` // "2026-09-17 15:24:44"，历史收盘数据为空串
-	Sectors      []RisingSectorWithStocks `json:"sectors"`
+	SnapshotTime      string                   `json:"snapshot_time"`       // 窗口终点快照 "2026-09-17 15:24:44"，历史收盘数据为空串
+	SnapshotTimeStart string                   `json:"snapshot_time_start"` // 窗口起点快照（merge≥2 时有值）
+	MergeCount        int                      `json:"merge_count"`         // 合并快照条数（1=单条）
+	Sectors           []RisingSectorWithStocks `json:"sectors"`
 }

@@ -262,8 +262,8 @@ export const apiSlice = createApi({
       providesTags: (result, error, arg) => [{ type: 'MarketBreadth', id: arg }],
     }),
     getMarketRisingSectors: builder.query({
-      query: ({ trade_date, limit = 5, snapshot_time }) => {
-        const params = new URLSearchParams({ trade_date, limit });
+      query: ({ trade_date, limit = 5, snapshot_time, merge = 1 }) => {
+        const params = new URLSearchParams({ trade_date, limit, merge });
         if (snapshot_time) params.set('snapshot_time', snapshot_time);
         return `/market-breadth/rising-sectors?${params.toString()}`;
       },
