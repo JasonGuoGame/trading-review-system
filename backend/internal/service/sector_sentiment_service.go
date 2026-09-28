@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"trading-review-system/backend/internal/dto"
 	"trading-review-system/backend/internal/repository"
@@ -149,11 +150,22 @@ func (s *SectorSentimentService) GetIceRecovery(tradeDate string) ([]dto.IceReco
 		return nil, fmt.Errorf("冰点回升信号查询失败: %w", err)
 	}
 
+	// Fetch the previous 5 days' red_rate for all ice-recovery sectors in a single
+	// batch query instead of one query per sector (the old N+1 pattern).
+	sectorNames := make([]string, len(rows))
+	for i, row := range rows {
+		sectorNames[i] = row.SectorName
+	}
+	prevRatesMap, err := s.repo.GetIceRecoveryPrev5dRates(sectorNames, tradeDate)
+	if err != nil {
+		log.Printf("[sector-sentiment] GetIceRecoveryPrev5dRates: %v", err)
+		prevRatesMap = make(map[string][]float64)
+	}
+
 	items := make([]dto.IceRecoveryItem, len(rows))
 	for i, row := range rows {
-		prevRates, err := s.repo.GetSectorPrev5dRates(row.SectorName, tradeDate)
-		if err != nil {
-			log.Printf("[sector-sentiment] GetSectorPrev5dRates for %q: %v", row.SectorName, err)
+		prevRates := prevRatesMap[row.SectorName]
+		if prevRates == nil {
 			prevRates = make([]float64, 0)
 		}
 		items[i] = dto.IceRecoveryItem{
@@ -171,14 +183,31 @@ func (s *SectorSentimentService) GetIceRecovery(tradeDate string) ([]dto.IceReco
 // ============================================================
 
 func (s *SectorSentimentService) GetDivergence(tradeDate string) (*dto.DivergenceResponse, error) {
-	rows, err := s.repo.GetDivergenceTrend(tradeDate)
-	if err != nil {
-		return nil, fmt.Errorf("背离信号查询失败: %w", err)
-	}
+	// The two repository calls are independent — run them concurrently so the
+	// median lookup doesn't add serial latency.
+	var (
+		rows     []repository.DivergenceRow
+		trendErr error
+		medRate  float64
+		medErr   error
+	)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		rows, trendErr = s.repo.GetDivergenceTrend(tradeDate)
+	}()
+	go func() {
+		defer wg.Done()
+		medRate, medErr = s.repo.GetIndustryMedianRate(tradeDate)
+	}()
+	wg.Wait()
 
-	medRate, err := s.repo.GetIndustryMedianRate(tradeDate)
-	if err != nil {
-		log.Printf("[sector-sentiment] GetIndustryMedianRate error: %v", err)
+	if trendErr != nil {
+		return nil, fmt.Errorf("背离信号查询失败: %w", trendErr)
+	}
+	if medErr != nil {
+		log.Printf("[sector-sentiment] GetIndustryMedianRate error: %v", medErr)
 		medRate = 0
 	}
 
