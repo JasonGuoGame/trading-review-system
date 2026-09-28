@@ -551,6 +551,26 @@ export const apiSlice = createApi({
       transformResponse: (res) => res.data,
     }),
 
+    // === Market Temperature ===
+    getMarketTemperature: builder.query({
+      query: (params) => ({
+        url: '/market-temperature',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
+    getMarketTemperatureLatestDate: builder.query({
+      query: () => '/market-temperature/latest-date',
+      transformResponse: (res) => res.data,
+    }),
+    getMarketTemperatureSectorDrill: builder.query({
+      query: (params) => ({
+        url: '/market-temperature/sector-drill',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
+
     // === Sector Sentiment ===
     getSectorSentimentLatestDate: builder.query({
       query: () => '/sector-sentiment/latest-date',
@@ -740,6 +760,9 @@ export const {
   useSearchChipStockQuery,
   useLazySearchChipStockQuery,
   useGetSectorSentimentLatestDateQuery,
+  useGetMarketTemperatureQuery,
+  useGetMarketTemperatureLatestDateQuery,
+  useGetMarketTemperatureSectorDrillQuery,
   useGetConsistentStrengthQuery,
   useGetNewFacesQuery,
   useGetIceRecoveryQuery,

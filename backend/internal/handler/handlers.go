@@ -22,6 +22,7 @@ type Handlers struct {
 	ChipMonitor      *ChipMonitorHandler
 	ResearchSql      *ResearchSqlHandler
 	SectorSentiment  *SectorSentimentHandler
+	MarketTemperature *MarketTemperatureHandler
 	Rag              *RagHandler
 }
 
@@ -46,6 +47,7 @@ func NewHandlers(services *service.Services) *Handlers {
 		ChipMonitor:     NewChipMonitorHandler(services.ChipMonitor),
 		ResearchSql:     NewResearchSqlHandler(services.ResearchSql),
 		SectorSentiment: NewSectorSentimentHandler(services.SectorSentiment),
+		MarketTemperature: NewMarketTemperatureHandler(services.MarketTemperature),
 		Rag:             NewRagHandler(services.Rag),
 	}
 }

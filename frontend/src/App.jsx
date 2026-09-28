@@ -30,6 +30,7 @@ import SectorSentimentPage from './pages/SectorSentimentPage'
 import ResearchLabPage from './pages/ResearchLabPage'
 import RAGAnalysisPage from './pages/RAGAnalysisPage'
 import TradePlaybook from './pages/TradePlaybook'
+import MarketTemperaturePage from './pages/MarketTemperaturePage'
 
 const { Sider, Content } = Layout
 
@@ -38,6 +39,7 @@ const menuItems = [
   { key: '/rag-analysis', icon: <RobotOutlined />, label: 'AI 投研分析' },
   { key: '/stock-pool', icon: <FireOutlined />, label: '股票池' },
   { key: '/trade-playbook', icon: <ReadOutlined />, label: '规则手册' },
+  { key: '/market-temperature', icon: <FireOutlined />, label: '市场温度' },
   { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
   { key: '/trades/new', icon: <PlusCircleOutlined />, label: '新建交易' },
@@ -132,6 +134,7 @@ function App() {
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />
             <Route path="/trade-playbook" element={<TradePlaybook key={`trade-playbook-${tick}`} />} />
+            <Route path="/market-temperature" element={<MarketTemperaturePage />} />
             <Route path="/analysis" element={<Analysis />} />
           </Routes>
         </Content>

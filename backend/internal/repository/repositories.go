@@ -23,6 +23,7 @@ type Repositories struct {
 	ChipMonitor       *ChipMonitorRepository
 	ResearchSql       *ResearchSqlRepository
 	SectorSentiment   *SectorSentimentRepository
+	MarketTemperature *MarketTemperatureRepository
 }
 
 func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
@@ -47,5 +48,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		ChipMonitor:     NewChipMonitorRepository(quantDb),
 		ResearchSql:     NewResearchSqlRepository(db, quantDb),
 		SectorSentiment: NewSectorSentimentRepository(db, quantDb),
+		MarketTemperature: NewMarketTemperatureRepository(quantDb),
 	}
 }

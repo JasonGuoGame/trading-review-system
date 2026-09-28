@@ -26,6 +26,7 @@ type Services struct {
 	ChipMonitor     *ChipMonitorService
 	ResearchSql     *ResearchSqlService
 	SectorSentiment *SectorSentimentService
+	MarketTemperature *MarketTemperatureService
 	Rag             *RagService
 }
 
@@ -49,6 +50,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config, db *gorm.DB
 		ChipMonitor:     NewChipMonitorService(repos.ChipMonitor, repos.Kline),
 		ResearchSql:     NewResearchSqlService(repos.ResearchSql),
 		SectorSentiment: NewSectorSentimentService(repos.SectorSentiment),
+		MarketTemperature: NewMarketTemperatureService(repos.MarketTemperature),
 		Rag:             NewRagService(cfg, db),
 	}
 }
