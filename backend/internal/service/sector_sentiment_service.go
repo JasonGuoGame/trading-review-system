@@ -35,67 +35,90 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 	if len(tradeDate) > 10 {
 		tradeDate = tradeDate[:10]
 	}
-	rows, err := s.repo.GetConsistentStrength(tradeDate)
-	if err != nil {
-		return nil, fmt.Errorf("连强信号查询失败: %w", err)
+	// The three independent heavy reads — today's list, yesterday's list (for
+	// IsNew), and the 30-day leader counts — run concurrently.
+	var (
+		rows           []repository.ConsistentStrengthRow
+		rowsErr        error
+		yesterdaySet   = make(map[string]bool)
+		prevDate       string
+		leaderCountMap map[string]int
+		wg             sync.WaitGroup
+	)
+
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		rows, rowsErr = s.repo.GetConsistentStrength(tradeDate)
+	}()
+	go func() {
+		defer wg.Done()
+		p, err := s.repo.GetPreviousTradeDate(tradeDate)
+		if err != nil {
+			log.Printf("[sector-sentiment] GetPreviousTradeDate error for %q: %v — IsNew will be false for all sectors", tradeDate, err)
+			return
+		}
+		prevDate = p
+		if p == "" {
+			log.Printf("[sector-sentiment] no previous trade date found before %q — IsNew will be false for all sectors", tradeDate)
+			return
+		}
+		prevRows, err := s.repo.GetConsistentStrength(p)
+		if err != nil {
+			log.Printf("[sector-sentiment] GetConsistentStrength error for prev date %q: %v — IsNew will be false for all sectors", p, err)
+			return
+		}
+		log.Printf("[sector-sentiment] comparing today (%s) vs yesterday (%s, %d sectors)", tradeDate, p, len(prevRows))
+		for _, r := range prevRows {
+			yesterdaySet[r.SectorName] = true
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		leaderCountMap, _ = s.repo.GetLeaderCountMap(tradeDate)
+	}()
+	wg.Wait()
+
+	if rowsErr != nil {
+		return nil, fmt.Errorf("连强信号查询失败: %w", rowsErr)
 	}
 
-	// Detect new entries (not in yesterday's list).
-	// Compares against yesterday's consistent strength results (top-15 ≥3 of last
-	// 7 days), which correctly identifies leaders even when their current-day rank is > 15.
-	// If yesterday's data cannot be fetched, default IsNew to false
-	// rather than incorrectly marking everything as new.
-	yesterdaySet := make(map[string]bool)
-	if prev, prevErr := s.repo.GetPreviousTradeDate(tradeDate); prevErr != nil {
-		log.Printf("[sector-sentiment] GetPreviousTradeDate error for %q: %v — IsNew will be false for all sectors", tradeDate, prevErr)
-	} else if prev == "" {
-		log.Printf("[sector-sentiment] no previous trade date found before %q — IsNew will be false for all sectors", tradeDate)
-	} else {
-		prevRows, prevErr := s.repo.GetConsistentStrength(prev)
-		if prevErr != nil {
-			log.Printf("[sector-sentiment] GetConsistentStrength error for prev date %q: %v — IsNew will be false for all sectors", prev, prevErr)
+	// Collect sector names (split by source) for the batch lookups.
+	sectorNames := make([]string, len(rows))
+	scoreSectors := make([]string, 0, len(rows))
+	breadthSectors := make([]string, 0, len(rows))
+	for i, row := range rows {
+		sectorNames[i] = row.SectorName
+		if row.Source == "sector_score" {
+			scoreSectors = append(scoreSectors, row.SectorName)
 		} else {
-			log.Printf("[sector-sentiment] comparing today (%s, %d sectors) vs yesterday (%s, %d sectors)",
-				tradeDate, len(rows), prev, len(prevRows))
-			for _, r := range prevRows {
-				yesterdaySet[r.SectorName] = true
-			}
+			breadthSectors = append(breadthSectors, row.SectorName)
 		}
 	}
 
-	// Collect sector names for previous-day high-count lookup
-	sectorNames := make([]string, len(rows))
-	for i, row := range rows {
-		sectorNames[i] = row.SectorName
-	}
-
-	// Fetch previous day's high counts for trend arrows
+	// Fetch previous day's high counts for trend arrows.
 	prevHighMap := make(map[string]repository.PrevHighCount) // key: "sectorName|source"
-	if prev, _ := s.repo.GetPreviousTradeDate(tradeDate); prev != "" {
-		prevRows, _ := s.repo.GetPrevHighCounts(prev, sectorNames)
+	if prevDate != "" {
+		prevRows, _ := s.repo.GetPrevHighCounts(prevDate, sectorNames)
 		for _, p := range prevRows {
 			prevHighMap[p.SectorName+"|"+p.Source] = p
 		}
 	}
 
-	// Fetch 30-day leader appearance counts
-	leaderCountMap, _ := s.repo.GetLeaderCountMap(tradeDate)
+	// Fetch the last 5 ranks for all sectors in two batch queries (one per source).
+	rankMap, rankErr := s.repo.GetSectorsRecentRanks(scoreSectors, breadthSectors, tradeDate)
+	if rankErr != nil {
+		log.Printf("[sector-sentiment] GetSectorsRecentRanks: %v", rankErr)
+	}
 
 	items := make([]dto.ConsistentStrengthItem, len(rows))
 	for i, row := range rows {
-		var ranks []*int
-		var rankErr error
-		if row.Source == "sector_score" {
-			ranks, rankErr = s.repo.GetSectorRecentRanksFromScores(row.SectorName, tradeDate)
-		} else {
-			ranks, rankErr = s.repo.GetSectorRecentRanks(row.SectorName, tradeDate)
-		}
-		if rankErr != nil {
-			log.Printf("[sector-sentiment] GetSectorRecentRanks for %q (source=%s): %v", row.SectorName, row.Source, rankErr)
-			ranks = make([]*int, 5)
+		ranks := rankMap[row.SectorName+"|"+row.Source]
+		if ranks == nil {
+			ranks = make([]*int, 0)
 		}
 		prevKey := row.SectorName + "|" + row.Source
-		prev := prevHighMap[prevKey]
+		prevHigh := prevHighMap[prevKey]
 		items[i] = dto.ConsistentStrengthItem{
 			SectorName:    row.SectorName,
 			StrongDays:    row.StrongDays,
@@ -105,9 +128,9 @@ func (s *SectorSentimentService) GetConsistentStrength(tradeDate string) ([]dto.
 			High20dCount:   row.High20dCount,
 			High60dCount:   row.High60dCount,
 			High250dCount:  row.High250dCount,
-			High20dPrev:    prev.High20dCount,
-			High60dPrev:    prev.High60dCount,
-			High250dPrev:   prev.High250dCount,
+			High20dPrev:    prevHigh.High20dCount,
+			High60dPrev:    prevHigh.High60dCount,
+			High250dPrev:   prevHigh.High250dCount,
 			LeaderCount30d: leaderCountMap[row.SectorName+"|"+row.Source],
 		}
 		// Diagnostic: log each sector's IsNew value to trace issues

@@ -45,20 +45,20 @@ import {
   XAxis, YAxis,
 } from 'recharts'
 import {
-  useGetConsistentStrengthQuery,
-  useGetConcentrationQuery,
-  useGetNewFacesQuery,
-  useGetIceRecoveryQuery,
   useGetClimbingSectorsQuery,
+  useGetConcentrationQuery,
+  useGetConsistentStrengthQuery,
+  useGetIceRecoveryQuery,
+  useGetNewFacesQuery,
   useGetSectorDivergenceQuery,
-  useGetTopSectorsQuery,
-  useGetTopRisingSectorsQuery,
-  useGetTopFallingSectorsQuery,
   useGetSectorNamesQuery,
   useGetSectorSentimentLatestDateQuery,
+  useGetTopFallingSectorsQuery,
+  useGetTopRisingSectorsQuery,
+  useGetTopSectorsQuery,
+  useLazyGetIntradayDriftQuery,
   useLazyGetNewHighStocksQuery,
   useLazyGetSectorDriftQuery,
-  useLazyGetIntradayDriftQuery,
 } from '../app/api'
 
 // ============================================================
@@ -1725,110 +1725,6 @@ export default function SectorSentimentPage() {
         {divergenceLoading ? <CardLoading /> : <DivergencePanel divergence={divergence} />}
       </Card>
 
-      {/* =========================================== */}
-      {/* 连强信号 (火苗) */}
-      {/* =========================================== */}
-      <Card
-        title={
-          <span>
-            <FireOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
-            连强信号 · 寻找领头羊
-            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-              过去7天≥3天排名前15
-            </span>
-          </span>
-        }
-        style={{ marginBottom: 16 }}
-        styles={{ header: { borderBottom: '1px solid #21262d' } }}
-      >
-        {consistentLoading ? <CardLoading /> : <ConsistentStrengthPanel scores={consistentScores} breadths={consistentBreadths} tradeDate={queryDate} />}
-      </Card>
-
-      {/* =========================================== */}
-      {/* 暗线挖掘 */}
-      {/* =========================================== */}
-      <Card
-        title={
-          <span>
-            <EyeOutlined style={{ marginRight: 8, color: '#13c2c2' }} />
-            暗线挖掘 · 二梯队爬坡
-            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-              11-30名区间连续3天排名攀升
-            </span>
-          </span>
-        }
-        style={{ marginBottom: 16 }}
-        styles={{
-          header: {
-            borderBottom: '1px solid #21262d',
-            background: 'linear-gradient(90deg, rgba(19,194,194,0.06) 0%, rgba(82,196,26,0.04) 100%)',
-          },
-        }}
-      >
-        {climbingLoading ? <CardLoading /> : <ClimbingSectorsPanel data={climbingSectors} tradeDate={queryDate} />}
-      </Card>
-
-      {/* =========================================== */}
-      {/* 新面孔信号 (火箭) */}
-      {/* =========================================== */}
-      <Card
-        title={
-          <span>
-            <RocketOutlined style={{ marginRight: 8, color: '#b37feb' }} />
-            新面孔信号 · 捕捉黑马
-            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-              近5天均30名外→今日冲进前10
-            </span>
-          </span>
-        }
-        style={{ marginBottom: 16 }}
-        styles={{ header: { borderBottom: '1px solid #21262d' } }}
-      >
-        {newFacesLoading ? <CardLoading /> : <NewFacesPanel data={newFaces} tradeDate={queryDate} />}
-      </Card>
-
-      {/* =========================================== */}
-      {/* BOTTOM: 冰点回升信号 (破冰) */}
-      {/* =========================================== */}
-      <Card
-        title={
-          <span>
-            <ThunderboltOutlined style={{ marginRight: 8, color: '#1677ff' }} />
-            冰点回升信号 · 苦尽甘来
-            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-              前5日极度低迷(&lt;25%)，今日集体爆发(&ge;80%)
-            </span>
-          </span>
-        }
-        style={{ marginBottom: 16 }}
-        styles={{
-          header: {
-            borderBottom: '1px solid #21262d',
-            background: 'linear-gradient(90deg, rgba(22,119,255,0.06) 0%, rgba(82,196,26,0.04) 100%)',
-          },
-        }}
-      >
-        {iceLoading ? <CardLoading /> : <IceRecoveryPanel data={iceRecovery} tradeDate={queryDate} />}
-      </Card>
-
-      {/* =========================================== */}
-      {/* BOTTOM: 资金抱团度 */}
-      {/* =========================================== */}
-      <Card
-        title={
-          <span>
-            <TrophyOutlined style={{ marginRight: 8, color: '#faad14' }} />
-            资金抱团度 · 大兵团作战
-            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
-              成分股≥20只且红盘率≥85%的"真共振"板块
-            </span>
-          </span>
-        }
-        styles={{ header: { borderBottom: '1px solid #21262d' } }}
-      >
-        {concentrationLoading ? <CardLoading /> : <ConcentrationPanel data={concentration} tradeDate={queryDate} />}
-      </Card>
-
       {/* Top-10 Leaderboards: Scores (Left) + Breadths (Right) */}
       {topSectorsLoading ? (
         <Card size="small" style={{ marginBottom: 16 }}>
@@ -1942,6 +1838,112 @@ export default function SectorSentimentPage() {
           <Empty description="今日暂无盘中排名下降的板块" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
       </Card>
+
+      {/* =========================================== */}
+      {/* 连强信号 (火苗) */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <FireOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
+            连强信号 · 寻找领头羊
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              过去7天≥3天排名前15
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{ header: { borderBottom: '1px solid #21262d' } }}
+      >
+        {consistentLoading ? <CardLoading /> : <ConsistentStrengthPanel scores={consistentScores} breadths={consistentBreadths} tradeDate={queryDate} />}
+      </Card>
+
+      {/* =========================================== */}
+      {/* 暗线挖掘 */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <EyeOutlined style={{ marginRight: 8, color: '#13c2c2' }} />
+            暗线挖掘 · 二梯队爬坡
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              11-30名区间连续3天排名攀升
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{
+          header: {
+            borderBottom: '1px solid #21262d',
+            background: 'linear-gradient(90deg, rgba(19,194,194,0.06) 0%, rgba(82,196,26,0.04) 100%)',
+          },
+        }}
+      >
+        {climbingLoading ? <CardLoading /> : <ClimbingSectorsPanel data={climbingSectors} tradeDate={queryDate} />}
+      </Card>
+
+      {/* =========================================== */}
+      {/* 新面孔信号 (火箭) */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <RocketOutlined style={{ marginRight: 8, color: '#b37feb' }} />
+            新面孔信号 · 捕捉黑马
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              近5天均30名外→今日冲进前10
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{ header: { borderBottom: '1px solid #21262d' } }}
+      >
+        {newFacesLoading ? <CardLoading /> : <NewFacesPanel data={newFaces} tradeDate={queryDate} />}
+      </Card>
+
+      {/* =========================================== */}
+      {/* BOTTOM: 冰点回升信号 (破冰) */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <ThunderboltOutlined style={{ marginRight: 8, color: '#1677ff' }} />
+            冰点回升信号 · 苦尽甘来
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              前5日极度低迷(&lt;25%)，今日集体爆发(&ge;80%)
+            </span>
+          </span>
+        }
+        style={{ marginBottom: 16 }}
+        styles={{
+          header: {
+            borderBottom: '1px solid #21262d',
+            background: 'linear-gradient(90deg, rgba(22,119,255,0.06) 0%, rgba(82,196,26,0.04) 100%)',
+          },
+        }}
+      >
+        {iceLoading ? <CardLoading /> : <IceRecoveryPanel data={iceRecovery} tradeDate={queryDate} />}
+      </Card>
+
+      {/* =========================================== */}
+      {/* BOTTOM: 资金抱团度 */}
+      {/* =========================================== */}
+      <Card
+        title={
+          <span>
+            <TrophyOutlined style={{ marginRight: 8, color: '#faad14' }} />
+            资金抱团度 · 大兵团作战
+            <span style={{ fontSize: 12, color: '#8c8c8c', marginLeft: 8, fontWeight: 400 }}>
+              成分股≥20只且红盘率≥85%的"真共振"板块
+            </span>
+          </span>
+        }
+        styles={{ header: { borderBottom: '1px solid #21262d' } }}
+      >
+        {concentrationLoading ? <CardLoading /> : <ConcentrationPanel data={concentration} tradeDate={queryDate} />}
+      </Card>
+
+
 
       {/* =========================================== */}
       {/* Sector Rank Drift */}

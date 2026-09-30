@@ -225,7 +225,7 @@ const MarketTemperaturePage = () => {
           <Card style={{ background: '#141414', border: '1px solid #30363d', borderRadius: 10, marginBottom: 16 }} styles={{ body: { padding: '16px 20px' } }}>
             <Text strong style={{ color: '#fff', fontSize: 15, display: 'block', marginBottom: 12 }}>市场温度趋势（平均 RSI · 中位数 RSI）</Text>
             {trend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={trend} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
                   <XAxis dataKey="trade_date" tickFormatter={(d) => d.slice(5).replace('-', '/')} stroke="#8c8c8c" fontSize={11} />

@@ -88,7 +88,63 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 	// 连强 when it ranks top-15 on 3+ of the last 7 trading days. This no longer
 	// trusts the pre-computed persistence_7d / is_leader ETL columns, which were
 	// inconsistent with the actual rank_pos history.
+	//
+	// The two data sources (scores / breadths) are independent, so they are
+	// fetched in parallel. Result ordering is restored by a stable sort on
+	// strong_days DESC.
+	var (
+		scoreRows   []ConsistentStrengthRow
+		breadthRows []ConsistentStrengthRow
+		scoreErr    error
+		breadthErr  error
+		wg          sync.WaitGroup
+	)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		scoreRows, scoreErr = r.getConsistentStrengthScores(tradeDate)
+	}()
+	go func() {
+		defer wg.Done()
+		breadthRows, breadthErr = r.getConsistentStrengthBreadths(tradeDate)
+	}()
+	wg.Wait()
+	if scoreErr != nil {
+		return nil, scoreErr
+	}
+	if breadthErr != nil {
+		return nil, breadthErr
+	}
+	rows := append(scoreRows, breadthRows...)
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].StrongDays > rows[j].StrongDays })
+	log.Printf("[sector-sentiment] consistent strength (%s): %d sectors", tradeDate, len(rows))
+	return rows, nil
+}
+
+// getConsistentStrengthScores implements the 连强 logic for stk_sector_scores.
+// The correlated subqueries (latest snapshot per day + the 7th-latest date) are
+// replaced by a precomputed Latest CTE (GROUP BY trade_date) + JOIN over the
+// last 7 trading days.
+func (r *SectorSentimentRepository) getConsistentStrengthScores(tradeDate string) ([]ConsistentStrengthRow, error) {
 	sql := `
+		WITH ScoreRecent AS (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM stk_sector_scores
+				WHERE trade_date <= ? ORDER BY trade_date DESC LIMIT 7
+			) t
+		),
+		ScoreLatest AS (
+			SELECT trade_date, MAX(snapshot_time) AS max_snapshot
+			FROM stk_sector_scores
+			WHERE trade_date IN (SELECT trade_date FROM ScoreRecent)
+			GROUP BY trade_date
+		),
+		ScoreHigh AS (
+			SELECT s.sector_name, s.high_20d_count, s.high_60d_count, s.high_250d_count
+			FROM stk_sector_scores s
+			JOIN ScoreLatest l ON s.trade_date = l.trade_date AND s.snapshot_time <=> l.max_snapshot
+			WHERE s.trade_date = ?
+		)
 		SELECT t.sector_name, t.strong_days AS strong_days,
 			'sector_score' AS source,
 			COALESCE(l.high_20d_count, 0) AS high_20d_count,
@@ -97,22 +153,44 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 		FROM (
 			SELECT s.sector_name, COUNT(DISTINCT s.trade_date) AS strong_days
 			FROM stk_sector_scores s
-			WHERE s.trade_date <= ?
-			  AND s.rank_pos <= 15
-			  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
-			  AND s.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td FROM stk_sector_scores WHERE trade_date <= ? ORDER BY td DESC LIMIT 7) AS d)
+			JOIN ScoreLatest l2 ON s.trade_date = l2.trade_date AND s.snapshot_time <=> l2.max_snapshot
+			WHERE s.rank_pos <= 15
 			GROUP BY s.sector_name
 			HAVING strong_days >= 3
 		) t
-		LEFT JOIN (
-			SELECT sector_name, high_20d_count, high_60d_count, high_250d_count
-			FROM stk_sector_scores
-			WHERE trade_date = ?
-			  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
-		) l ON l.sector_name = t.sector_name
+		LEFT JOIN ScoreHigh l ON l.sector_name = t.sector_name
+	`
+	var rows []ConsistentStrengthRow
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+		log.Printf("[sector-sentiment] GetConsistentStrength (scores) error: %v", err)
+		return nil, err
+	}
+	return rows, nil
+}
 
-		UNION ALL
-
+// getConsistentStrengthBreadths implements the same logic for stk_sector_breadths.
+func (r *SectorSentimentRepository) getConsistentStrengthBreadths(tradeDate string) ([]ConsistentStrengthRow, error) {
+	sql := `
+		WITH BreadthRecent AS (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM stk_sector_breadths
+				WHERE trade_date <= ? AND sector_type = 'industry'
+				ORDER BY trade_date DESC LIMIT 7
+			) t
+		),
+		BreadthLatest AS (
+			SELECT trade_date, MAX(snapshot_time) AS max_snapshot
+			FROM stk_sector_breadths
+			WHERE sector_type = 'industry'
+			  AND trade_date IN (SELECT trade_date FROM BreadthRecent)
+			GROUP BY trade_date
+		),
+		BreadthHigh AS (
+			SELECT b.sector_name, b.high_20d_count, b.high_60d_count, b.high_250d_count
+			FROM stk_sector_breadths b
+			JOIN BreadthLatest l ON b.trade_date = l.trade_date AND b.snapshot_time <=> l.max_snapshot
+			WHERE b.sector_type = 'industry' AND b.trade_date = ?
+		)
 		SELECT t.sector_name, t.strong_days AS strong_days,
 			'sector_breadth' AS source,
 			COALESCE(l.high_20d_count, 0) AS high_20d_count,
@@ -121,52 +199,63 @@ func (r *SectorSentimentRepository) GetConsistentStrength(tradeDate string) ([]C
 		FROM (
 			SELECT b.sector_name, COUNT(DISTINCT b.trade_date) AS strong_days
 			FROM stk_sector_breadths b
-			WHERE b.sector_type = 'industry'
-			  AND b.trade_date <= ?
-			  AND b.rank_pos <= 15
-			  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
-			  AND b.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry' ORDER BY td DESC LIMIT 7) AS d)
+			JOIN BreadthLatest l2 ON b.trade_date = l2.trade_date AND b.snapshot_time <=> l2.max_snapshot
+			WHERE b.sector_type = 'industry' AND b.rank_pos <= 15
 			GROUP BY b.sector_name
 			HAVING strong_days >= 3
 		) t
-		LEFT JOIN (
-			SELECT sector_name, high_20d_count, high_60d_count, high_250d_count
-			FROM stk_sector_breadths
-			WHERE trade_date = ?
-			  AND sector_type = 'industry'
-			  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ? AND sector_type = 'industry')
-		) l ON l.sector_name = t.sector_name
-
-		ORDER BY strong_days DESC
+		LEFT JOIN BreadthHigh l ON l.sector_name = t.sector_name
 	`
 	var rows []ConsistentStrengthRow
-	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
-		log.Printf("[sector-sentiment] GetConsistentStrength error: %v", err)
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+		log.Printf("[sector-sentiment] GetConsistentStrength (breadths) error: %v", err)
 		return nil, err
 	}
-	log.Printf("[sector-sentiment] consistent strength (%s): %d sectors", tradeDate, len(rows))
 	return rows, nil
 }
 
 // GetLeaderCountMap returns how many of the last 30 trading days each sector
 // ranked top-15 (rank_pos ≤ 15, latest snapshot per day), keyed by "sectorName|source".
 func (r *SectorSentimentRepository) GetLeaderCountMap(tradeDate string) (map[string]int, error) {
+	// The correlated subqueries (latest snapshot per day + the 30th-latest date)
+	// are replaced by precomputed Latest CTEs over the last 30 trading days.
 	sql := `
+		WITH ScoreRecent AS (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM stk_sector_scores
+				WHERE trade_date <= ? ORDER BY trade_date DESC LIMIT 30
+			) t
+		),
+		ScoreLatest AS (
+			SELECT trade_date, MAX(snapshot_time) AS max_snapshot
+			FROM stk_sector_scores
+			WHERE trade_date IN (SELECT trade_date FROM ScoreRecent)
+			GROUP BY trade_date
+		),
+		BreadthRecent AS (
+			SELECT trade_date FROM (
+				SELECT DISTINCT trade_date FROM stk_sector_breadths
+				WHERE trade_date <= ? AND sector_type = 'industry'
+				ORDER BY trade_date DESC LIMIT 30
+			) t
+		),
+		BreadthLatest AS (
+			SELECT trade_date, MAX(snapshot_time) AS max_snapshot
+			FROM stk_sector_breadths
+			WHERE sector_type = 'industry'
+			  AND trade_date IN (SELECT trade_date FROM BreadthRecent)
+			GROUP BY trade_date
+		)
 		SELECT s.sector_name, 'sector_score' AS source, COUNT(*) AS cnt
 		FROM stk_sector_scores s
-		WHERE s.trade_date <= ? AND s.rank_pos <= 15
-		  AND s.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
-			FROM stk_sector_scores WHERE trade_date <= ? ORDER BY td DESC LIMIT 30) AS d)
-		  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
+		JOIN ScoreLatest l ON s.trade_date = l.trade_date AND s.snapshot_time <=> l.max_snapshot
+		WHERE s.rank_pos <= 15
 		GROUP BY s.sector_name
 		UNION ALL
 		SELECT b.sector_name, 'sector_breadth' AS source, COUNT(*) AS cnt
 		FROM stk_sector_breadths b
-		WHERE b.trade_date <= ? AND b.rank_pos <= 15 AND b.sector_type = 'industry'
-		  AND b.trade_date >= (SELECT MIN(td) FROM (SELECT DISTINCT trade_date AS td
-			FROM stk_sector_breadths WHERE trade_date <= ? AND sector_type = 'industry'
-			ORDER BY td DESC LIMIT 30) AS d)
-		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
+		JOIN BreadthLatest l ON b.trade_date = l.trade_date AND b.snapshot_time <=> l.max_snapshot
+		WHERE b.sector_type = 'industry' AND b.rank_pos <= 15
 		GROUP BY b.sector_name
 	`
 	type row struct {
@@ -175,7 +264,7 @@ func (r *SectorSentimentRepository) GetLeaderCountMap(tradeDate string) (map[str
 		Cnt        int    `gorm:"column:cnt"`
 	}
 	var rows []row
-	if err := r.db.Raw(sql, tradeDate, tradeDate, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
+	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	result := make(map[string]int, len(rows))
@@ -219,46 +308,87 @@ func (r *SectorSentimentRepository) GetPrevHighCounts(tradeDate string, sectors 
 	return rows, nil
 }
 
-func (r *SectorSentimentRepository) GetSectorRecentRanksFromScores(sectorName, tradeDate string) ([]*int, error) {
+// GetSectorsRecentRanks returns, for the given sectors, their last 5 rank_pos
+// values before tradeDate (oldest first), keyed by "sectorName|source". Replaces
+// the previous N+1 pattern (one GetSectorRecentRanks* call per sector).
+func (r *SectorSentimentRepository) GetSectorsRecentRanks(scoreSectors, breadthSectors []string, tradeDate string) (map[string][]*int, error) {
+	result := make(map[string][]*int, len(scoreSectors)+len(breadthSectors))
 	type rankRow struct {
-		RankPos *int `gorm:"column:rank_pos"`
+		Source     string `gorm:"column:source"`
+		SectorName string `gorm:"column:sector_name"`
+		RankPos    *int   `gorm:"column:rank_pos"`
 	}
-	var rows []rankRow
-	sql := `
-		SELECT s.rank_pos FROM stk_sector_scores s
-		WHERE s.sector_name = ? AND s.trade_date <= ?
-		  AND s.snapshot_time <=> (SELECT MAX(s2.snapshot_time) FROM stk_sector_scores s2 WHERE s2.trade_date = s.trade_date)
-		ORDER BY s.trade_date DESC LIMIT 5
-	`
-	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
-		return nil, err
+	if len(scoreSectors) > 0 {
+		sql := `
+			WITH RecentDates AS (
+				SELECT trade_date FROM (
+					SELECT DISTINCT trade_date FROM stk_sector_scores
+					WHERE trade_date <= ? ORDER BY trade_date DESC LIMIT 20
+				) t
+			),
+			Latest AS (
+				SELECT trade_date, MAX(snapshot_time) AS max_snapshot
+				FROM stk_sector_scores
+				WHERE trade_date IN (SELECT trade_date FROM RecentDates)
+				GROUP BY trade_date
+			),
+			Ranked AS (
+				SELECT s.sector_name, s.rank_pos,
+					ROW_NUMBER() OVER (PARTITION BY s.sector_name ORDER BY s.trade_date DESC) AS rn
+				FROM stk_sector_scores s
+				JOIN Latest l ON s.trade_date = l.trade_date AND s.snapshot_time <=> l.max_snapshot
+				WHERE s.sector_name IN ?
+			)
+			SELECT 'sector_score' AS source, sector_name, rank_pos
+			FROM Ranked
+			WHERE rn <= 5
+			ORDER BY sector_name, rn DESC
+		`
+		var rows []rankRow
+		if err := r.db.Raw(sql, tradeDate, scoreSectors).Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			result[row.SectorName+"|sector_score"] = append(result[row.SectorName+"|sector_score"], row.RankPos)
+		}
 	}
-	ranks := make([]*int, len(rows))
-	for i, row := range rows {
-		ranks[len(rows)-1-i] = row.RankPos
+	if len(breadthSectors) > 0 {
+		sql := `
+			WITH RecentDates AS (
+				SELECT trade_date FROM (
+					SELECT DISTINCT trade_date FROM stk_sector_breadths
+					WHERE trade_date <= ? AND sector_type = 'industry'
+					ORDER BY trade_date DESC LIMIT 20
+				) t
+			),
+			Latest AS (
+				SELECT trade_date, MAX(snapshot_time) AS max_snapshot
+				FROM stk_sector_breadths
+				WHERE sector_type = 'industry'
+				  AND trade_date IN (SELECT trade_date FROM RecentDates)
+				GROUP BY trade_date
+			),
+			Ranked AS (
+				SELECT b.sector_name, b.rank_pos,
+					ROW_NUMBER() OVER (PARTITION BY b.sector_name ORDER BY b.trade_date DESC) AS rn
+				FROM stk_sector_breadths b
+				JOIN Latest l ON b.trade_date = l.trade_date AND b.snapshot_time <=> l.max_snapshot
+				WHERE b.sector_type = 'industry' AND b.sector_name IN ?
+			)
+			SELECT 'sector_breadth' AS source, sector_name, rank_pos
+			FROM Ranked
+			WHERE rn <= 5
+			ORDER BY sector_name, rn DESC
+		`
+		var rows []rankRow
+		if err := r.db.Raw(sql, tradeDate, breadthSectors).Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			result[row.SectorName+"|sector_breadth"] = append(result[row.SectorName+"|sector_breadth"], row.RankPos)
+		}
 	}
-	return ranks, nil
-}
-
-func (r *SectorSentimentRepository) GetSectorRecentRanks(sectorName, tradeDate string) ([]*int, error) {
-	type rankRow struct {
-		RankPos *int `gorm:"column:rank_pos"`
-	}
-	var rows []rankRow
-	sql := `
-		SELECT b.rank_pos FROM stk_sector_breadths b
-		WHERE b.sector_name = ? AND b.sector_type = 'industry' AND b.trade_date <= ?
-		  AND b.snapshot_time <=> (SELECT MAX(b2.snapshot_time) FROM stk_sector_breadths b2 WHERE b2.trade_date = b.trade_date AND b2.sector_type = 'industry')
-		ORDER BY b.trade_date DESC LIMIT 5
-	`
-	if err := r.db.Raw(sql, sectorName, tradeDate).Scan(&rows).Error; err != nil {
-		return nil, err
-	}
-	ranks := make([]*int, len(rows))
-	for i, row := range rows {
-		ranks[len(rows)-1-i] = row.RankPos
-	}
-	return ranks, nil
+	return result, nil
 }
 
 // ============================================================
