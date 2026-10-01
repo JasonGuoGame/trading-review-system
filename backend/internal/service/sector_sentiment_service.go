@@ -330,8 +330,8 @@ func (s *SectorSentimentService) GetConcentration(tradeDate string) ([]dto.Conce
 // Top-10 leaderboards
 // ============================================================
 
-// GetTopSectors returns the top-10 leaderboards for both sources, with the
-// highest-volume stock (龙头) attached to each row.
+// GetTopSectors returns the full ranked leaderboards for both sources, with the
+// highest-volume stock (龙头) attached to each row. The client paginates.
 func (s *SectorSentimentService) GetTopSectors(tradeDate string) ([]dto.TopSectorItem, []dto.TopSectorItem, error) {
 	topScores, err := s.repo.GetTopSectorScores(tradeDate)
 	if err != nil {

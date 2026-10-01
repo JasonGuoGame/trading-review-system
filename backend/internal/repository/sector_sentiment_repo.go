@@ -954,13 +954,14 @@ func (r *SectorSentimentRepository) getClimbingBreadthRows(tradeDate string) ([]
 	return rows, nil
 }
 
-// GetTopSectorScores returns top 10 sectors by rank from stk_sector_scores,
-// restricted to the latest intraday snapshot (snapshot_time) of the day.
+// GetTopSectorScores returns all sectors ranked by rank_pos from
+// stk_sector_scores, restricted to the latest intraday snapshot (snapshot_time)
+// of the day. The full ranking is returned so the client can paginate.
 func (r *SectorSentimentRepository) GetTopSectorScores(tradeDate string) ([]TopSectorItem, error) {
 	sql := `SELECT sector_name, rank_pos, total_score AS score
 		FROM stk_sector_scores WHERE trade_date = ?
 		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
-		ORDER BY rank_pos ASC LIMIT 10`
+		ORDER BY rank_pos ASC`
 	var rows []TopSectorItem
 	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err
@@ -968,13 +969,14 @@ func (r *SectorSentimentRepository) GetTopSectorScores(tradeDate string) ([]TopS
 	return rows, nil
 }
 
-// GetTopSectorBreadths returns top 10 sectors by rank from stk_sector_breadths,
-// restricted to the latest intraday snapshot (snapshot_time) of the day.
+// GetTopSectorBreadths returns all sectors ranked by rank_pos from
+// stk_sector_breadths, restricted to the latest intraday snapshot (snapshot_time)
+// of the day. The full ranking is returned so the client can paginate.
 func (r *SectorSentimentRepository) GetTopSectorBreadths(tradeDate string) ([]TopSectorItem, error) {
 	sql := `SELECT sector_name, rank_pos, red_rate AS score
 		FROM stk_sector_breadths WHERE trade_date = ? AND sector_type = 'industry'
 		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_breadths WHERE trade_date = ?)
-		ORDER BY rank_pos ASC LIMIT 10`
+		ORDER BY rank_pos ASC`
 	var rows []TopSectorItem
 	if err := r.db.Raw(sql, tradeDate, tradeDate).Scan(&rows).Error; err != nil {
 		return nil, err

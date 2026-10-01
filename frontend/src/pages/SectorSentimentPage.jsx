@@ -1743,7 +1743,7 @@ export default function SectorSentimentPage() {
                   dataSource={topScores}
                   rowKey="sector_name"
                   size="small"
-                  pagination={false}
+                  pagination={{ pageSize: 10, showSizeChanger: false, size: 'small' }}
                   columns={[
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="purple">{r}</Tag> },
                     { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (name) => <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_score' })}>{name}</DriftLink> },
@@ -1765,7 +1765,7 @@ export default function SectorSentimentPage() {
                   dataSource={topBreadths}
                   rowKey="sector_name"
                   size="small"
-                  pagination={false}
+                  pagination={{ pageSize: 10, showSizeChanger: false, size: 'small' }}
                   columns={[
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="blue">{r}</Tag> },
                     { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (name) => <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_breadth' })}>{name}</DriftLink> },
