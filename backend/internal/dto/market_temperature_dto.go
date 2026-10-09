@@ -82,3 +82,18 @@ type SectorTopStock struct {
 	RSI     float64 `json:"rsi"`      // 最新交易日 RSI
 	PeakRSI float64 `json:"peak_rsi"` // 30 日内 RSI 峰值
 }
+
+// RSIExtremeStocksResponse lists every stock whose RSI crosses a threshold on
+// the trade date: overbought (RSI > 70) or oversold (RSI < 30).
+type RSIExtremeStocksResponse struct {
+	TradeDate string            `json:"trade_date"`
+	Kind      string            `json:"kind"` // "overbought" | "oversold"
+	Stocks    []RSIExtremeStock `json:"stocks"`
+}
+
+// RSIExtremeStock is a single stock with an extreme RSI value.
+type RSIExtremeStock struct {
+	Symbol string  `json:"symbol"`
+	Name   string  `json:"name"`
+	RSI    float64 `json:"rsi"`
+}

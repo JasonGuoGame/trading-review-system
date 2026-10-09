@@ -40,6 +40,23 @@ func (h *MarketTemperatureHandler) GetMarketTemperature(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
 }
 
+// GetRSIExtremeStocks returns all stocks with RSI > 70 (超买) or < 30 (超卖).
+func (h *MarketTemperatureHandler) GetRSIExtremeStocks(c *gin.Context) {
+	tradeDate := c.Query("trade_date")
+	kind := c.Query("kind")
+	if kind != "overbought" && kind != "oversold" {
+		c.JSON(http.StatusBadRequest, dto.APIResponse{Code: 400, Message: "kind must be 'overbought' or 'oversold'"})
+		return
+	}
+	data, err := h.service.GetRSIExtremeStocks(tradeDate, kind)
+	if err != nil {
+		log.Printf("[market-temperature] rsi stocks error: %v", err)
+		c.JSON(http.StatusInternalServerError, dto.APIResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dto.APIResponse{Code: 200, Message: "OK", Data: data})
+}
+
 // GetSectorDrill returns a single sector's 30-day RSI drift and top-RSI stocks.
 func (h *MarketTemperatureHandler) GetSectorDrill(c *gin.Context) {
 	sectorName := c.Query("sector_name")

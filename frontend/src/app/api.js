@@ -570,6 +570,13 @@ export const apiSlice = createApi({
       }),
       transformResponse: (res) => res.data,
     }),
+    getMarketTemperatureRSIStocks: builder.query({
+      query: (params) => ({
+        url: '/market-temperature/rsi-stocks',
+        params,
+      }),
+      transformResponse: (res) => res.data,
+    }),
 
     // === Sector Sentiment ===
     getSectorSentimentLatestDate: builder.query({
@@ -763,6 +770,7 @@ export const {
   useGetMarketTemperatureQuery,
   useGetMarketTemperatureLatestDateQuery,
   useGetMarketTemperatureSectorDrillQuery,
+  useGetMarketTemperatureRSIStocksQuery,
   useGetConsistentStrengthQuery,
   useGetNewFacesQuery,
   useGetIceRecoveryQuery,

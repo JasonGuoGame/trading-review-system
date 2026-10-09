@@ -14,6 +14,7 @@ import {
 import {
   useGetMarketTemperatureLatestDateQuery,
   useGetMarketTemperatureQuery,
+  useGetMarketTemperatureRSIStocksQuery,
   useGetMarketTemperatureSectorDrillQuery,
 } from '../app/api';
 
@@ -29,11 +30,22 @@ const rsiColor = (v) => {
   return '#13c2c2';
 };
 
-const StatCard = ({ label, value, suffix = '', color = '#fff', sub }) => (
-  <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '14px 16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.06)', height: '100%' }}>
+const StatCard = ({ label, value, suffix = '', color = '#fff', sub, onClick, hint }) => (
+  <div
+    onClick={onClick}
+    title={onClick ? hint : undefined}
+    style={{
+      background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '14px 16px', textAlign: 'center',
+      border: '1px solid rgba(255,255,255,0.06)', height: '100%',
+      cursor: onClick ? 'pointer' : 'default', transition: 'background 0.2s, border-color 0.2s',
+    }}
+    onMouseEnter={onClick ? (e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)'; } : undefined}
+    onMouseLeave={onClick ? (e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; } : undefined}
+  >
     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{label}</Text>
     <div style={{ fontSize: 26, fontWeight: 700, color, lineHeight: 1.3, marginTop: 4 }}>{value}{suffix}</div>
     {sub && <Text type="secondary" style={{ fontSize: 10 }}>{sub}</Text>}
+    {onClick && <div style={{ fontSize: 10, color: '#8c8c8c', marginTop: 2 }}>🔍 点击查看个股</div>}
   </div>
 );
 
@@ -121,6 +133,14 @@ const MarketTemperaturePage = () => {
   );
   const openDrill = (sector) => setDrill({ sector, trade_date: selectedDateStr });
 
+  // RSI 超买/超卖个股弹窗
+  const [rsiDialog, setRsiDialog] = useState(null); // { kind: 'overbought'|'oversold' }
+  const { data: rsiStocksData, isFetching: rsiStocksLoading } = useGetMarketTemperatureRSIStocksQuery(
+    rsiDialog ? { trade_date: selectedDateStr, kind: rsiDialog.kind } : undefined,
+    { skip: !rsiDialog },
+  );
+  const openRSIDialog = (kind) => setRsiDialog({ kind });
+
   const hotSectors = useMemo(
     () => [...sectors].filter((s) => s.delta_rsi > 0).sort((a, b) => b.delta_rsi - a.delta_rsi).slice(0, 8),
     [sectors],
@@ -201,9 +221,9 @@ const MarketTemperaturePage = () => {
             <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
               <Col span={4}><StatCard label="市场平均 RSI" value={market.avg_rsi.toFixed(1)} color={rsiColor(market.avg_rsi)} /></Col>
               <Col span={4}><StatCard label="市场中位数 RSI" value={market.median_rsi.toFixed(1)} color={rsiColor(market.median_rsi)} /></Col>
-              <Col span={4}><StatCard label="RSI > 70（超买）" value={market.rsi_gt70_pct.toFixed(1)} suffix="%" color="#ff4d4f" /></Col>
+              <Col span={4}><StatCard label="RSI > 70（超买）" value={market.rsi_gt70_pct.toFixed(1)} suffix="%" color="#ff4d4f" onClick={() => openRSIDialog('overbought')} hint="点击查看全部 RSI > 70 的个股" /></Col>
               <Col span={4}><StatCard label="RSI > 50（强势）" value={market.rsi_gt50_pct.toFixed(1)} suffix="%" color="#fa8c16" /></Col>
-              <Col span={4}><StatCard label="RSI < 30（超卖）" value={market.rsi_lt30_pct.toFixed(1)} suffix="%" color="#13c2c2" /></Col>
+              <Col span={4}><StatCard label="RSI < 30（超卖）" value={market.rsi_lt30_pct.toFixed(1)} suffix="%" color="#13c2c2" onClick={() => openRSIDialog('oversold')} hint="点击查看全部 RSI < 30 的个股" /></Col>
               <Col span={4}>
                 <StatCard
                   label="市场扩散度"
@@ -402,6 +422,35 @@ const MarketTemperaturePage = () => {
             )}
           </>
         )}
+      </Modal>
+
+      <Modal
+        open={!!rsiDialog}
+        onCancel={() => setRsiDialog(null)}
+        footer={null}
+        width={720}
+        title={rsiDialog ? (
+          <span>
+            {rsiDialog.kind === 'overbought' ? '🔥 RSI > 70（超买）' : '❄ RSI < 30（超卖）'} 个股
+            <Text type="secondary" style={{ fontWeight: 400, fontSize: 13, marginLeft: 10 }}>
+              {rsiStocksData ? `共 ${rsiStocksData.stocks?.length ?? 0} 只 · ${rsiStocksData.trade_date}` : ''}
+            </Text>
+          </span>
+        ) : ''}
+        styles={{ body: { maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' } }}
+      >
+        <Table
+          rowKey="symbol"
+          size="small"
+          loading={rsiStocksLoading}
+          dataSource={rsiStocksData?.stocks || []}
+          pagination={{ pageSize: 20, showSizeChanger: false, size: 'small' }}
+          columns={[
+            { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 120, render: (v) => <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text> },
+            { title: '名称', dataIndex: 'name', key: 'name', render: (v) => <Text style={{ color: '#fff' }}>{v}</Text> },
+            { title: 'RSI', dataIndex: 'rsi', key: 'rsi', width: 100, align: 'right', render: (v) => <span style={{ color: rsiColor(v), fontWeight: 700 }}>{v.toFixed(1)}</span> },
+          ]}
+        />
       </Modal>
     </div>
   );

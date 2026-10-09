@@ -287,8 +287,8 @@ const TradePlaybook = () => {
                       options={[
                         { label: '单条', value: 1 },
                         { label: '2条', value: 2 },
-                        { label: '3条', value: 3 },
                         { label: '4条', value: 4 },
+                        { label: '8条', value: 8 },
                       ]}
                     />
                     <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>{mergeCount > 1 ? '快照窗口' : '快照时间'}</Text>

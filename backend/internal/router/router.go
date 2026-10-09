@@ -160,6 +160,7 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 	// Market Temperature
 	api.GET("/market-temperature/latest-date", handlers.MarketTemperature.GetLatestDate)
 	api.GET("/market-temperature/sector-drill", handlers.MarketTemperature.GetSectorDrill)
+	api.GET("/market-temperature/rsi-stocks", handlers.MarketTemperature.GetRSIExtremeStocks)
 	api.GET("/market-temperature", handlers.MarketTemperature.GetMarketTemperature)
 
 	// Sector Sentiment

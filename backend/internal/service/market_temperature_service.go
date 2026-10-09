@@ -282,6 +282,65 @@ func (s *MarketTemperatureService) GetMarketTemperature(tradeDate string) (*dto.
 	}, nil
 }
 
+// GetRSIExtremeStocks returns all stocks with RSI above 70 (kind="overbought")
+// or below 30 (kind="oversold") on the trade date, sorted by extremeness
+// (descending for overbought, ascending for oversold).
+func (s *MarketTemperatureService) GetRSIExtremeStocks(tradeDate, kind string) (*dto.RSIExtremeStocksResponse, error) {
+	if tradeDate == "" {
+		latest, err := s.repo.GetLatestTradeDate()
+		if err != nil {
+			return nil, err
+		}
+		tradeDate = latest
+	}
+	if len(tradeDate) > 10 {
+		tradeDate = tradeDate[:10]
+	}
+
+	rsiMap, err := s.repo.GetRSIByDate(tradeDate)
+	if err != nil {
+		return nil, err
+	}
+
+	type symRSI struct {
+		symbol string
+		rsi    float64
+	}
+	matches := make([]symRSI, 0, len(rsiMap))
+	for sym, rsi := range rsiMap {
+		if kind == "overbought" && rsi > 70 {
+			matches = append(matches, symRSI{sym, rsi})
+		} else if kind == "oversold" && rsi < 30 {
+			matches = append(matches, symRSI{sym, rsi})
+		}
+	}
+	if kind == "overbought" {
+		sort.Slice(matches, func(i, j int) bool { return matches[i].rsi > matches[j].rsi })
+	} else {
+		sort.Slice(matches, func(i, j int) bool { return matches[i].rsi < matches[j].rsi })
+	}
+
+	symbols := make([]string, len(matches))
+	for i, m := range matches {
+		symbols[i] = m.symbol
+	}
+	names, err := s.repo.GetStockNames(symbols)
+	if err != nil {
+		return nil, err
+	}
+
+	stocks := make([]dto.RSIExtremeStock, 0, len(matches))
+	for _, m := range matches {
+		name := names[m.symbol]
+		if name == "" {
+			name = m.symbol
+		}
+		stocks = append(stocks, dto.RSIExtremeStock{Symbol: m.symbol, Name: name, RSI: m.rsi})
+	}
+
+	return &dto.RSIExtremeStocksResponse{TradeDate: tradeDate, Kind: kind, Stocks: stocks}, nil
+}
+
 // GetSectorDrill returns a single sector's 30-day RSI drift and its top-RSI
 // member stocks. sectorName is the fund-flow sector name (as shown on the page);
 // member symbols are resolved by fuzzy-matching stock_sector_relation via
