@@ -1,6 +1,8 @@
 import {
   CheckCircleOutlined,
   DashboardOutlined,
+  DoubleLeftOutlined,
+  DoubleRightOutlined,
   ExperimentOutlined,
   EyeOutlined,
   FallOutlined,
@@ -15,6 +17,7 @@ import {
 import {
   Alert,
   AutoComplete,
+  Button,
   Card,
   Col,
   DatePicker,
@@ -265,6 +268,7 @@ function ConsistentStrengthPanel({ scores = [], breadths = [], tradeDate }) {
   const [triggerNewHigh, { data: newHighData, isFetching: newHighLoading }] = useLazyGetNewHighStocksQuery()
   const [newHighModal, setNewHighModal] = useState(null)
   const [showRecentRanks, setShowRecentRanks] = useState(false)
+  const [breadthCollapsed, setBreadthCollapsed] = useState(false)
   const [driftTarget, setDriftTarget] = useState(null)
 
   if (scores.length === 0 && breadths.length === 0) {
@@ -314,10 +318,10 @@ function ConsistentStrengthPanel({ scores = [], breadths = [], tradeDate }) {
       },
     },
     ...(showRecentRanks ? [{
-      title: '近5日排名阶梯',
+      title: '近7日排名阶梯',
       dataIndex: 'recent_ranks',
       key: 'recent_ranks',
-      width: 200,
+      width: 252,
       sorter: (a, b) => {
         const lastA = a.recent_ranks?.[a.recent_ranks.length - 1] ?? 999
         const lastB = b.recent_ranks?.[b.recent_ranks.length - 1] ?? 999
@@ -325,15 +329,15 @@ function ConsistentStrengthPanel({ scores = [], breadths = [], tradeDate }) {
       },
       render: (ranks) => (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {[...Array(5)].map((_, i) => {
+          {[...Array(7)].map((_, i) => {
             const r = (ranks && ranks[i]) || null
             const inTop15 = r !== null && r <= 15
             return (
               <Tooltip key={i} title={r !== null ? `排名 ${r}` : '无数据'}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: 4,
+                  width: 26, height: 26, borderRadius: 4,
                   background: inTop15
-                    ? (i >= 3 ? '#faad14' : '#fa541c')
+                    ? (i >= 5 ? '#faad14' : '#fa541c')
                     : '#1f1f1f',
                   border: inTop15 ? '1px solid #fa8c16' : '1px solid #333',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -446,21 +450,46 @@ function ConsistentStrengthPanel({ scores = [], breadths = [], tradeDate }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Switch size="small" checked={showRecentRanks} onChange={setShowRecentRanks} />
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>近5日排名阶梯</span>
+        <span style={{ fontSize: 12, color: '#8c8c8c' }}>近7日排名阶梯</span>
       </div>
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
+        <Col xs={24} lg={breadthCollapsed ? 23 : 12}>
           <div style={{ fontSize: 12, color: '#b37feb', marginBottom: 6, fontWeight: 600 }}>
             📊 评分排名 · stk_sector_scores
           </div>
           {scores.length > 0 ? renderTable(scores) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
         </Col>
-        <Col xs={24} lg={12}>
-          <div style={{ fontSize: 12, color: '#1677ff', marginBottom: 6, fontWeight: 600 }}>
-            📈 宽度排名 · stk_sector_breadths
-          </div>
-          {breadths.length > 0 ? renderTable(breadths) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
-        </Col>
+        {breadthCollapsed ? (
+          <Col xs={24} lg={1}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: 24, height: '100%', borderLeft: '1px solid #21262d' }}>
+              <Button
+                type="text"
+                size="small"
+                icon={<DoubleLeftOutlined />}
+                onClick={() => setBreadthCollapsed(false)}
+                title="展开宽度排名"
+                style={{ color: '#1677ff' }}
+              />
+            </div>
+          </Col>
+        ) : (
+          <Col xs={24} lg={12}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ fontSize: 12, color: '#1677ff', fontWeight: 600 }}>
+                📈 宽度排名 · stk_sector_breadths
+              </div>
+              <Button
+                type="text"
+                size="small"
+                icon={<DoubleRightOutlined />}
+                onClick={() => setBreadthCollapsed(true)}
+                title="向右收起宽度排名"
+                style={{ color: '#8c8c8c' }}
+              />
+            </div>
+            {breadths.length > 0 ? renderTable(breadths) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+          </Col>
+        )}
       </Row>
       <IntradayDriftModal
         sectorName={driftTarget?.sector_name}
@@ -1749,6 +1778,7 @@ export default function SectorSentimentPage() {
                     { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (name) => <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_score' })}>{name}</DriftLink> },
                     { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 100, render: (v) => <span style={{ color: '#b37feb' }}>{v || '--'}</span> },
                     { title: '总分', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => v?.toFixed(1) },
+                    { title: '平均涨跌', dataIndex: 'avg_pct_change', key: 'avg_pct_change', width: 74, align: 'right', render: (v) => <span style={{ color: v >= 0 ? '#ff4d4f' : '#52c41a', fontWeight: 500 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
                   ]}
                 />
               ) : <Empty description="暂无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}

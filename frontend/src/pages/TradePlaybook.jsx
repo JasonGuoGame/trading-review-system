@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Row, Col, Tag, Checkbox, Button, Spin, Collapse, Progress, message, DatePicker, Select, Segmented } from 'antd';
+import { Typography, Card, Row, Col, Tag, Checkbox, Button, Spin, Collapse, Progress, message, DatePicker, Select, Segmented, Pagination } from 'antd';
 import {
   CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined,
   RiseOutlined, FallOutlined, AimOutlined, CalendarOutlined,
@@ -69,6 +69,7 @@ const TradePlaybook = () => {
   const { data: intradayTurnover } = useGetIntradayTurnoverQuery(selectedDateStr, { refetchOnMountOrArgChange: true });
   const [selectedSnapshot, setSelectedSnapshot] = useState(null);
   const [mergeCount, setMergeCount] = useState(1);
+  const [topSectorPage, setTopSectorPage] = useState(1);
   const { data: snapshotTimesRaw } = useGetMarketSnapshotTimesQuery({ trade_date: selectedDateStr }, { refetchOnMountOrArgChange: true });
   const snapshotTimes = Array.isArray(snapshotTimesRaw) ? snapshotTimesRaw : [];
 
@@ -118,6 +119,11 @@ const TradePlaybook = () => {
   useEffect(() => {
     setSelectedSnapshot(null);
   }, [selectedDateStr, mergeCount]);
+
+  // 切换交易日时，板块资金流入列表回到第一页
+  useEffect(() => {
+    setTopSectorPage(1);
+  }, [selectedDateStr]);
 
   const handleCheck = (key) => {
     setCheckItems((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -178,6 +184,8 @@ const TradePlaybook = () => {
 
   const strongSectors = fundFlow?.strong_sectors || [];
   const topSectors = Array.isArray(strongSectors) ? strongSectors : [];
+  const topSectorPageSize = 10;
+  const pagedTopSectors = topSectors.slice((topSectorPage - 1) * topSectorPageSize, topSectorPage * topSectorPageSize);
   const fundSummary = fundFlow?.summary;
 
   const attackItems = topAttacks?.attack_list || [];
@@ -451,22 +459,35 @@ const TradePlaybook = () => {
                 <FundOutlined /> 板块资金流入 TOP10
               </Text>
               {topSectors.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {topSectors.map((s, i) => (
-                    <div key={s.sector_name || i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)',
-                    }}>
-                      <span>
-                        <Text style={{ color: '#8b949e', fontSize: 14, marginRight: 8 }}>#{i + 1}</Text>
-                        <Text style={{ color: '#fff' }}>{s.sector_name || s.name || '--'}</Text>
-                      </span>
-                      <Text style={{ color: s.total_net_inflow > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
-                        {s.total_net_inflow > 0 ? '+' : ''}{s.total_net_inflow.toFixed(2)}亿
-                      </Text>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {pagedTopSectors.map((s, i) => (
+                      <div key={s.sector_name || i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)',
+                      }}>
+                        <span>
+                          <Text style={{ color: '#8b949e', fontSize: 14, marginRight: 8 }}>#{(topSectorPage - 1) * topSectorPageSize + i + 1}</Text>
+                          <Text style={{ color: '#fff' }}>{s.sector_name || s.name || '--'}</Text>
+                        </span>
+                        <Text style={{ color: s.total_net_inflow > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 600 }}>
+                          {s.total_net_inflow > 0 ? '+' : ''}{s.total_net_inflow.toFixed(2)}亿
+                        </Text>
+                      </div>
+                    ))}
+                  </div>
+                  {topSectors.length > topSectorPageSize && (
+                    <Pagination
+                      size="small"
+                      current={topSectorPage}
+                      pageSize={topSectorPageSize}
+                      total={topSectors.length}
+                      onChange={setTopSectorPage}
+                      showSizeChanger={false}
+                      style={{ marginTop: 10, textAlign: 'right' }}
+                    />
+                  )}
+                </>
               ) : (
                 <Text type="secondary">暂无数据</Text>
               )}

@@ -114,7 +114,7 @@ func (h *MarketBreadthHandler) GetTopRisingSectors(c *gin.Context) {
 		limit = l
 	}
 	merge := 1
-	if m, err := strconv.Atoi(c.Query("merge")); err == nil && m >= 1 && m <= 4 {
+	if m, err := strconv.Atoi(c.Query("merge")); err == nil && m >= 1 && m <= 8 {
 		merge = m
 	}
 	data, err := h.service.GetTopRisingSectors(tradeDate, limit, snapshotTime, merge)

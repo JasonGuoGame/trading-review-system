@@ -53,11 +53,17 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 		amount float64
 	}
 	leaderMap := make(map[string]stockInfo)
+	// 每个板块的异动股票集合（去重），用于选出异动股票最多的板块
+	sectorSymbols := make(map[string]map[string]struct{})
 
 	for _, log := range logs {
 		if s.shouldFilter(log.SectorName) {
 			continue
 		}
+		if sectorSymbols[log.SectorName] == nil {
+			sectorSymbols[log.SectorName] = make(map[string]struct{})
+		}
+		sectorSymbols[log.SectorName][log.Symbol] = struct{}{}
 		item, ok := sectorMap[log.SectorName]
 		if !ok {
 			item = &dto.MarketAttackTopItem{
@@ -92,6 +98,7 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 	totalNewStocksSet := make(map[string]bool)
 	var maxAmount float64
 	var topSector string
+	var maxStocks int
 
 	for name, item := range sectorMap {
 		leader := leaderMap[name]
@@ -127,6 +134,9 @@ func (s *MarketAttackService) GetTopAttacks(date string) (*dto.MarketAttackTopRe
 
 		if item.NewTotalAmount > maxAmount {
 			maxAmount = item.NewTotalAmount
+		}
+		if cnt := len(sectorSymbols[name]); cnt > maxStocks {
+			maxStocks = cnt
 			topSector = name
 		}
 	}

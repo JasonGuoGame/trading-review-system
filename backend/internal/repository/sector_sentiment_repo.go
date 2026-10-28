@@ -308,7 +308,7 @@ func (r *SectorSentimentRepository) GetPrevHighCounts(tradeDate string, sectors 
 	return rows, nil
 }
 
-// GetSectorsRecentRanks returns, for the given sectors, their last 5 rank_pos
+// GetSectorsRecentRanks returns, for the given sectors, their last 7 rank_pos
 // values before tradeDate (oldest first), keyed by "sectorName|source". Replaces
 // the previous N+1 pattern (one GetSectorRecentRanks* call per sector).
 func (r *SectorSentimentRepository) GetSectorsRecentRanks(scoreSectors, breadthSectors []string, tradeDate string) (map[string][]*int, error) {
@@ -341,7 +341,7 @@ func (r *SectorSentimentRepository) GetSectorsRecentRanks(scoreSectors, breadthS
 			)
 			SELECT 'sector_score' AS source, sector_name, rank_pos
 			FROM Ranked
-			WHERE rn <= 5
+			WHERE rn <= 7
 			ORDER BY sector_name, rn DESC
 		`
 		var rows []rankRow
@@ -377,7 +377,7 @@ func (r *SectorSentimentRepository) GetSectorsRecentRanks(scoreSectors, breadthS
 			)
 			SELECT 'sector_breadth' AS source, sector_name, rank_pos
 			FROM Ranked
-			WHERE rn <= 5
+			WHERE rn <= 7
 			ORDER BY sector_name, rn DESC
 		`
 		var rows []rankRow
@@ -958,7 +958,7 @@ func (r *SectorSentimentRepository) getClimbingBreadthRows(tradeDate string) ([]
 // stk_sector_scores, restricted to the latest intraday snapshot (snapshot_time)
 // of the day. The full ranking is returned so the client can paginate.
 func (r *SectorSentimentRepository) GetTopSectorScores(tradeDate string) ([]TopSectorItem, error) {
-	sql := `SELECT sector_name, rank_pos, total_score AS score
+	sql := `SELECT sector_name, rank_pos, total_score AS score, COALESCE(avg_pct_change, 0) AS avg_pct_change
 		FROM stk_sector_scores WHERE trade_date = ?
 		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
 		ORDER BY rank_pos ASC`
@@ -986,9 +986,10 @@ func (r *SectorSentimentRepository) GetTopSectorBreadths(tradeDate string) ([]To
 
 // TopSectorItem is a simple sector-rank row.
 type TopSectorItem struct {
-	SectorName string  `gorm:"column:sector_name"`
-	RankPos    int     `gorm:"column:rank_pos"`
-	Score      float64 `gorm:"column:score"`
+	SectorName   string  `gorm:"column:sector_name"`
+	RankPos      int     `gorm:"column:rank_pos"`
+	Score        float64 `gorm:"column:score"`
+	AvgPctChange float64 `gorm:"column:avg_pct_change"`
 }
 
 // GetTopStocksBySectors returns the highest-volume stock per sector for the given date.

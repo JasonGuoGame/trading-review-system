@@ -1,4 +1,4 @@
-import { Card, Col, DatePicker, Empty, Modal, Row, Spin, Table, Tag, Typography } from 'antd';
+import { Card, Col, DatePicker, Empty, Input, Modal, Row, Spin, Table, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -141,6 +141,9 @@ const MarketTemperaturePage = () => {
   );
   const openRSIDialog = (kind) => setRsiDialog({ kind });
 
+  // 板块温度表：按名称筛选
+  const [sectorSearch, setSectorSearch] = useState('');
+
   const hotSectors = useMemo(
     () => [...sectors].filter((s) => s.delta_rsi > 0).sort((a, b) => b.delta_rsi - a.delta_rsi).slice(0, 8),
     [sectors],
@@ -149,6 +152,12 @@ const MarketTemperaturePage = () => {
     () => [...sectors].filter((s) => s.delta_rsi < 0).sort((a, b) => a.delta_rsi - b.delta_rsi).slice(0, 8),
     [sectors],
   );
+
+  const filteredSectors = useMemo(() => {
+    const kw = sectorSearch.trim().toLowerCase();
+    if (!kw) return sectors;
+    return sectors.filter((s) => (s.sector_name || '').toLowerCase().includes(kw));
+  }, [sectors, sectorSearch]);
 
   const columns = [
     {
@@ -263,14 +272,24 @@ const MarketTemperaturePage = () => {
 
           {/* 板块温度表 */}
           <Card style={{ background: '#141414', border: '1px solid #30363d', borderRadius: 10, marginBottom: 16 }} styles={{ body: { padding: '16px 20px' } }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
               <Text strong style={{ color: '#fff', fontSize: 15 }}>板块温度（按平均 RSI 降序）</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>💡 点击板块查看 30 日漂移</Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Input
+                  allowClear
+                  size="small"
+                  placeholder="🔍 按板块名称筛选"
+                  value={sectorSearch}
+                  onChange={(e) => setSectorSearch(e.target.value)}
+                  style={{ width: 200, background: '#1a1a2e', borderColor: '#30363d', color: '#fff' }}
+                />
+                <Text type="secondary" style={{ fontSize: 12 }}>💡 点击板块查看 30 日漂移</Text>
+              </div>
             </div>
             <Table
               rowKey="sector_name"
               columns={columns}
-              dataSource={sectors}
+              dataSource={filteredSectors}
               size="small"
               pagination={{ pageSize: 20, hideOnSinglePage: true }}
               loading={isFetching}

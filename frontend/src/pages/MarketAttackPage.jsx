@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react'
-import { Typography, Row, Col, DatePicker, Space, Button, Spin, Card, Divider, Tag, Statistic, Progress, Modal, Table, Empty } from 'antd'
+import { FireOutlined, ReloadOutlined, SwapOutlined } from '@ant-design/icons'
+import { Button, Card, Col, DatePicker, Divider, Empty, Modal, Progress, Row, Space, Spin, Statistic, Table, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
-import { ReloadOutlined, FireOutlined, SwapOutlined } from '@ant-design/icons'
-import BattlefieldOverview from '../components/attack/BattlefieldOverview'
-import ThermalBattlefield from '../components/attack/ThermalBattlefield'
-import LeaderHierarchy from '../components/attack/LeaderHierarchy'
+import { useMemo, useState } from 'react'
+import { useGetLimitSummaryQuery, useGetSectorAttackDetailQuery, useGetSectorAttackTrendQuery, useGetTopMarketAttacksQuery, useGetTopVolumeStocksQuery, useLazyGetLimitStocksQuery } from '../app/api'
 import AttackTrendChart from '../components/attack/AttackTrendChart'
+import BattlefieldOverview from '../components/attack/BattlefieldOverview'
+import LeaderHierarchy from '../components/attack/LeaderHierarchy'
 import SectorDetailDrawer from '../components/attack/SectorDetailDrawer'
-import { useGetTopMarketAttacksQuery, useGetSectorAttackTrendQuery, useGetTopVolumeStocksQuery, useGetLimitSummaryQuery, useLazyGetLimitStocksQuery } from '../app/api'
+import ThermalBattlefield from '../components/attack/ThermalBattlefield'
 
 const { Title, Text } = Typography
 
@@ -27,6 +27,18 @@ const MarketAttackPage = () => {
   const { data: limitSummary } = useGetLimitSummaryQuery(tradeDate)
   const [triggerLimitStocks, { data: limitStocksData, isFetching: limitStocksLoading }] = useLazyGetLimitStocksQuery()
   const [limitStocksModal, setLimitStocksModal] = useState(null)
+
+  // 最强攻击板块 → 异动个股明细
+  const [attackSectorModal, setAttackSectorModal] = useState(null) // { name, trade_date }
+  const { data: attackSectorDetail, isFetching: attackSectorLoading } = useGetSectorAttackDetailQuery(
+    attackSectorModal ? { name: attackSectorModal.name, trade_date: attackSectorModal.trade_date } : undefined,
+    { skip: !attackSectorModal },
+  )
+  const openAttackSector = () => {
+    if (summary.top_attack_sector) {
+      setAttackSectorModal({ name: summary.top_attack_sector, trade_date: tradeDate })
+    }
+  }
 
   const handleLimitSectorClick = (sectorName, title, eventType) => {
     setLimitStocksModal({ sector_name: sectorName, title })
@@ -93,23 +105,23 @@ const MarketAttackPage = () => {
     { skip: !selectedSector && attackList.length === 0 }
   )
 
-  const temperature = Math.min(((summary.total_new_stocks || 0) / 200) * 100, 100)
-  const isHot = (summary.total_new_stocks || 0) > 100
+  const temperature = Math.min(summary.total_new_stocks, 100)
+  const isHot = (summary.total_new_stocks || 0) > 80
 
   return (
     <div className="page-container" style={{ padding: '24px', background: '#0a0a0a', minHeight: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Title level={2} style={{ margin: 0, color: '#fff' }}>A股情绪周期</Title>
         <Space>
-          <DatePicker 
-            value={dayjs(tradeDate)} 
-            onChange={(date) => setTradeDate(date ? date.format('YYYY-MM-DD') : '')} 
+          <DatePicker
+            value={dayjs(tradeDate)}
+            onChange={(date) => setTradeDate(date ? date.format('YYYY-MM-DD') : '')}
             allowClear={false}
             style={{ background: '#141414', borderColor: '#30363d', color: '#fff' }}
           />
-          <Button 
-            icon={<ReloadOutlined />} 
-            onClick={() => refetch()} 
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => refetch()}
             loading={isFetching}
             style={{ background: '#141414', borderColor: '#30363d', color: '#fff' }}
           >
@@ -124,28 +136,35 @@ const MarketAttackPage = () => {
         </div>
       ) : (
         <>
-          <Card 
+          <Card
             style={{ background: '#141414', border: '1px solid #30363d', borderRadius: 12, marginBottom: 32 }}
             bodyStyle={{ padding: '16px 24px' }}
           >
             <Row gutter={24} align="middle">
               <Col span={6}>
-                <Statistic 
-                  title={<Text style={{ color: 'rgba(255,255,255,0.45)' }}>全场异动个股</Text>}
+                <Statistic
+                  title={<Text style={{ color: 'rgba(255,255,255,0.45)' }}>全场量能异动个股</Text>}
                   value={summary.total_new_stocks || 0}
                   valueStyle={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}
                   suffix={<Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14 }}>只</Text>}
                 />
               </Col>
               <Col span={6}>
-                <Statistic 
-                  title={<Text style={{ color: 'rgba(255,255,255,0.45)' }}>最强攻击板块</Text>}
-                  value={summary.top_attack_sector || '无'}
-                  valueStyle={{ color: '#ff4d4f', fontSize: 24, fontWeight: 'bold' }}
-                />
+                <div
+                  onClick={openAttackSector}
+                  style={{ cursor: summary.top_attack_sector ? 'pointer' : 'default' }}
+                  title={summary.top_attack_sector ? `点击查看「${summary.top_attack_sector}」的异动个股` : undefined}
+                >
+                  <Statistic
+                    title={<Text style={{ color: 'rgba(255,255,255,0.45)' }}>最强攻击板块</Text>}
+                    value={summary.top_attack_sector || '无'}
+                    valueStyle={{ color: '#ff4d4f', fontSize: 24, fontWeight: 'bold', textDecoration: summary.top_attack_sector ? 'underline' : 'none' }}
+                  />
+                  {summary.top_attack_sector && <div style={{ fontSize: 10, color: '#8c8c8c', marginTop: 2 }}>🔍 点击查看异动个股</div>}
+                </div>
               </Col>
               <Col span={6}>
-                <Statistic 
+                <Statistic
                   title={<Text style={{ color: 'rgba(255,255,255,0.45)' }}>最大攻击金额</Text>}
                   value={summary.max_attack_amount || 0}
                   precision={2}
@@ -156,8 +175,8 @@ const MarketAttackPage = () => {
               <Col span={6}>
                 <div style={{ paddingLeft: 24, borderLeft: '1px solid #30363d' }}>
                   <Text style={{ color: 'rgba(255,255,255,0.45)', display: 'block', marginBottom: 8 }}>市场情绪温度</Text>
-                  <Progress 
-                    percent={temperature} 
+                  <Progress
+                    percent={temperature}
                     strokeColor={{ '0%': '#3f8600', '100%': '#cf1322' }}
                     showInfo={false}
                   />
@@ -307,6 +326,7 @@ const MarketAttackPage = () => {
                             display: 'flex', alignItems: 'center', gap: 4,
                             padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)',
                             fontSize: 12,
+                            background: (s.count_30d ?? 0) <= 3 ? 'rgba(250, 173, 20, 0.16)' : undefined,
                           }}
                         >
                           <span style={{ color: '#8b949e', width: 22, textAlign: 'right', flexShrink: 0 }}>
@@ -396,15 +416,15 @@ const MarketAttackPage = () => {
             <Col span={16}>
               <div style={{ marginBottom: 32 }}>
                 <Title level={4} style={{ color: '#fff', marginBottom: 16 }}>热力战场</Title>
-                <ThermalBattlefield 
-                  data={combinedList} 
+                <ThermalBattlefield
+                  data={combinedList}
                   onSectorClick={handleRowClick}
                 />
               </div>
 
               <Row gutter={24}>
                 <Col span={12}>
-                  <Card 
+                  <Card
                     title={<span style={{ color: '#fff' }}><FireOutlined /> 龙头梯队</span>}
                     style={{ background: '#141414', border: '1px solid #30363d', borderRadius: 12 }}
                   >
@@ -412,16 +432,16 @@ const MarketAttackPage = () => {
                   </Card>
                 </Col>
                 <Col span={12}>
-                   <AttackTrendChart 
-                    data={trendData?.trend || []} 
-                    sectorName={selectedSector?.name || (attackList.length > 0 ? attackList[0].sector_name : '未选择')} 
+                  <AttackTrendChart
+                    data={trendData?.trend || []}
+                    sectorName={selectedSector?.name || (attackList.length > 0 ? attackList[0].sector_name : '未选择')}
                   />
                 </Col>
               </Row>
             </Col>
 
             <Col span={8}>
-              <Card 
+              <Card
                 style={{ borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #722ed1 0%, #1677ff 100%)', color: '#fff' }}
               >
                 <Title level={4} style={{ color: '#fff', marginBottom: 16 }}>情绪周期洞察</Title>
@@ -446,7 +466,7 @@ const MarketAttackPage = () => {
                 </Space>
               </Card>
 
-              <Card 
+              <Card
                 title={<span style={{ color: '#fff' }}>资金迁徙预测</span>}
                 style={{ marginTop: 16, background: '#141414', border: '1px solid #30363d', borderRadius: 12 }}
               >
@@ -460,9 +480,9 @@ const MarketAttackPage = () => {
         </>
       )}
 
-      <SectorDetailDrawer 
-        visible={!!selectedSector} 
-        sectorName={selectedSector?.name} 
+      <SectorDetailDrawer
+        visible={!!selectedSector}
+        sectorName={selectedSector?.name}
         isRetreat={selectedSector?.isRetreat}
         tradeDate={tradeDate}
         onClose={() => setSelectedSector(null)}
@@ -491,6 +511,46 @@ const MarketAttackPage = () => {
         )}
         {limitStocksData?.stocks && limitStocksData.stocks.length === 0 && !limitStocksLoading && (
           <Empty description="暂无数据" />
+        )}
+      </Modal>
+      <Modal
+        title={attackSectorModal ? <span>🔥 最强攻击板块「{attackSectorModal.name}」· 异动个股</span> : '异动个股'}
+        open={!!attackSectorModal}
+        onCancel={() => setAttackSectorModal(null)}
+        footer={null}
+        width={820}
+      >
+        {attackSectorLoading && <Spin style={{ display: 'block', margin: '20px auto' }} />}
+        {!attackSectorLoading && attackSectorDetail?.stocks?.length > 0 && (
+          <Table
+            dataSource={attackSectorDetail.stocks}
+            rowKey="symbol"
+            size="small"
+            pagination={{ pageSize: 15, showSizeChanger: false, size: 'small', hideOnSinglePage: true }}
+            columns={[
+              {
+                title: '名称', dataIndex: 'name', key: 'name', width: 120,
+                render: (v, r) => (
+                  <span>
+                    {v || '--'}
+                    {r.is_leader && <Tag color="red" style={{ marginLeft: 6, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>龙头</Tag>}
+                  </span>
+                ),
+              },
+              { title: '代码', dataIndex: 'symbol', key: 'symbol', width: 90, render: (s) => <span style={{ color: '#58a6ff' }}>{s}</span> },
+              {
+                title: '类型', dataIndex: 'action_type', key: 'action_type', width: 64, align: 'center',
+                render: (v) => <Tag color={v === '进攻' ? 'red' : v === '撤退' ? 'green' : 'default'} style={{ margin: 0 }}>{v || '--'}</Tag>,
+              },
+              { title: '涨跌幅', dataIndex: 'pct_chg', key: 'pct_chg', width: 84, align: 'right', sorter: (a, b) => a.pct_chg - b.pct_chg, render: (v) => <span style={{ color: v >= 0 ? '#e84749' : '#3f8600', fontWeight: 600 }}>{v >= 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
+              { title: '今日成交额', dataIndex: 'amount_today', key: 'amount_today', width: 100, align: 'right', sorter: (a, b) => a.amount_today - b.amount_today, render: (v) => `${(v / 1e8).toFixed(2)}亿` },
+              { title: '昨日成交额', dataIndex: 'amount_yesterday', key: 'amount_yesterday', width: 100, align: 'right', render: (v) => `${(v / 1e8).toFixed(2)}亿` },
+              { title: '成交额变化', dataIndex: 'amount_diff', key: 'amount_diff', width: 100, align: 'right', sorter: (a, b) => a.amount_diff - b.amount_diff, render: (v) => <span style={{ color: v >= 0 ? '#e84749' : '#3f8600' }}>{v >= 0 ? '+' : ''}{(v / 1e8).toFixed(2)}亿</span> },
+            ]}
+          />
+        )}
+        {!attackSectorLoading && attackSectorDetail?.stocks?.length === 0 && (
+          <Empty description="该板块暂无异动个股数据" />
         )}
       </Modal>
     </div>

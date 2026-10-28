@@ -229,8 +229,8 @@ func (r *MarketBreadthRepository) GetTopRisingSectors(tradeDate string, limit in
 	if merge < 1 {
 		merge = 1
 	}
-	if merge > 4 {
-		merge = 4
+	if merge > 8 {
+		merge = 8
 	}
 
 	// Resolve the end snapshot time when not explicitly provided.
