@@ -958,7 +958,13 @@ func (r *SectorSentimentRepository) getClimbingBreadthRows(tradeDate string) ([]
 // stk_sector_scores, restricted to the latest intraday snapshot (snapshot_time)
 // of the day. The full ranking is returned so the client can paginate.
 func (r *SectorSentimentRepository) GetTopSectorScores(tradeDate string) ([]TopSectorItem, error) {
-	sql := `SELECT sector_name, rank_pos, total_score AS score, COALESCE(avg_pct_change, 0) AS avg_pct_change
+	sql := `SELECT sector_name, rank_pos, total_score AS score,
+		COALESCE(avg_pct_change, 0) AS avg_pct_change,
+		COALESCE(money_score, 0) AS money_score,
+		COALESCE(profit_score, 0) AS profit_score,
+		COALESCE(leader_score, 0) AS leader_score,
+		COALESCE(attack_score, 0) AS attack_score,
+		COALESCE(continuity_score, 0) AS continuity_score
 		FROM stk_sector_scores WHERE trade_date = ?
 		  AND snapshot_time <=> (SELECT MAX(snapshot_time) FROM stk_sector_scores WHERE trade_date = ?)
 		ORDER BY rank_pos ASC`
@@ -986,10 +992,15 @@ func (r *SectorSentimentRepository) GetTopSectorBreadths(tradeDate string) ([]To
 
 // TopSectorItem is a simple sector-rank row.
 type TopSectorItem struct {
-	SectorName   string  `gorm:"column:sector_name"`
-	RankPos      int     `gorm:"column:rank_pos"`
-	Score        float64 `gorm:"column:score"`
-	AvgPctChange float64 `gorm:"column:avg_pct_change"`
+	SectorName      string  `gorm:"column:sector_name"`
+	RankPos         int     `gorm:"column:rank_pos"`
+	Score           float64 `gorm:"column:score"`
+	AvgPctChange    float64 `gorm:"column:avg_pct_change"`
+	MoneyScore      float64 `gorm:"column:money_score"`
+	ProfitScore     float64 `gorm:"column:profit_score"`
+	LeaderScore     float64 `gorm:"column:leader_score"`
+	AttackScore     float64 `gorm:"column:attack_score"`
+	ContinuityScore float64 `gorm:"column:continuity_score"`
 }
 
 // GetTopStocksBySectors returns the highest-volume stock per sector for the given date.

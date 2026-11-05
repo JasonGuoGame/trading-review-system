@@ -24,6 +24,7 @@ type Repositories struct {
 	ResearchSql       *ResearchSqlRepository
 	SectorSentiment   *SectorSentimentRepository
 	MarketTemperature *MarketTemperatureRepository
+	Etf               *EtfRepository
 }
 
 func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
@@ -49,5 +50,6 @@ func NewRepositories(db *gorm.DB, quantDb *gorm.DB) *Repositories {
 		ResearchSql:     NewResearchSqlRepository(db, quantDb),
 		SectorSentiment: NewSectorSentimentRepository(db, quantDb),
 		MarketTemperature: NewMarketTemperatureRepository(quantDb),
+		Etf:               NewEtfRepository(quantDb),
 	}
 }

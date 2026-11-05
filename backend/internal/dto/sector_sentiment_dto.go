@@ -92,11 +92,16 @@ type ConcentrationItem struct {
 
 // TopSectorItem is a simple sector-rank row for the leaderboard.
 type TopSectorItem struct {
-	SectorName   string  `json:"sector_name"`
-	RankPos      int     `json:"rank_pos"`
-	Score        float64 `json:"score"`           // total_score (scores) or red_rate (breadth)
-	TopStock     string  `json:"top_stock"`       // highest-volume stock in this sector
-	AvgPctChange float64 `json:"avg_pct_change"`  // 板块成分股平均涨跌幅(%)（仅评分排名）
+	SectorName      string  `json:"sector_name"`
+	RankPos         int     `json:"rank_pos"`
+	Score           float64 `json:"score"`           // total_score (scores) or red_rate (breadth)
+	TopStock        string  `json:"top_stock"`       // highest-volume stock in this sector
+	AvgPctChange    float64 `json:"avg_pct_change"`  // 板块成分股平均涨跌幅(%)（仅评分排名）
+	MoneyScore      float64 `json:"money_score"`     // 资金得分（仅评分排名）
+	ProfitScore     float64 `json:"profit_score"`    // 赚钱效应得分（仅评分排名）
+	LeaderScore     float64 `json:"leader_score"`    // 龙头强度得分（仅评分排名）
+	AttackScore     float64 `json:"attack_score"`    // 攻击得分（仅评分排名）
+	ContinuityScore float64 `json:"continuity_score"` // 持续性得分（仅评分排名）
 }
 
 // RisingSectorItem is a sector that rose in rank from morning to afternoon.

@@ -11,15 +11,6 @@ export default function StockTable({ data, loading, onRowClick }) {
     return '#8c8c8c'
   }
 
-  const getStatusTag = (record) => {
-    if (record.vol_ratio > 3 && record.surge_count > 5) {
-      return <Tag color="error" style={{ fontSize: 13 }}>🔥 强势</Tag>
-    } else if (record.vol_ratio > 2) {
-      return <Tag color="warning" style={{ fontSize: 13 }}>⚡ 活跃</Tag>
-    }
-    return <Tag color="default" style={{ fontSize: 13 }}>普通</Tag>
-  }
-
   const columns = [
     {
       title: '股票代码',
@@ -81,9 +72,21 @@ export default function StockTable({ data, loading, onRowClick }) {
       render: (val) => <Text style={{ color: val > 0 ? '#cf1322' : '#3f8600' }}>{val > 0 ? '+' : ''}{val.toFixed(2)}%</Text>,
     },
     {
-      title: '状态',
-      key: 'status',
-      render: (_, record) => getStatusTag(record),
+      title: '资金行为',
+      dataIndex: 'current_types',
+      key: 'current_types',
+      render: (val) => {
+        if (!val) return <Text type="secondary">--</Text>
+        const types = String(val).split(/[,/、|]/).map(s => s.trim()).filter(Boolean)
+        if (types.length === 0) return <Text type="secondary">--</Text>
+        return (
+          <Space wrap size={[0, 4]}>
+            {types.map((t, i) => (
+              <Tag color="magenta" key={`${t}-${i}`} style={{ marginRight: 0 }}>{t}</Tag>
+            ))}
+          </Space>
+        )
+      },
     },
     {
       title: '综合评分',

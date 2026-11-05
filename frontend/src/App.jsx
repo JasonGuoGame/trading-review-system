@@ -1,44 +1,45 @@
-import { useState, useEffect } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu } from 'antd'
 import {
-  DashboardOutlined,
-  UnorderedListOutlined,
-  PlusCircleOutlined,
+  AimOutlined,
   BarChartOutlined,
   CalendarOutlined,
-  ThunderboltOutlined,
-  FundOutlined,
-  FireOutlined,
-  AimOutlined,
-  ReadOutlined,
   CodeOutlined,
+  DashboardOutlined,
+  FireOutlined,
+  FundOutlined,
+  PlusCircleOutlined,
+  ReadOutlined,
   RobotOutlined,
+  ThunderboltOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons'
+import { Layout, Menu } from 'antd'
+import { useEffect, useState } from 'react'
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
+import Analysis from './pages/Analysis'
+import ChipMonitorPage from './pages/ChipMonitorPage'
+import DailyReview from './pages/DailyReview'
 import Dashboard from './pages/Dashboard'
-import Trades from './pages/Trades'
+import EtfCockpitPage from './pages/EtfCockpitPage'
+import MarketAttackPage from './pages/MarketAttackPage'
+import MarketTemperaturePage from './pages/MarketTemperaturePage'
+import RAGAnalysisPage from './pages/RAGAnalysisPage'
+import ResearchLabPage from './pages/ResearchLabPage'
+import SectorFundFlowPage from './pages/SectorFundFlowPage'
+import SectorSentimentPage from './pages/SectorSentimentPage'
+import StockPoolPage from './pages/StockPoolPage'
 import TradeDetail from './pages/TradeDetail'
 import TradeForm from './pages/TradeForm'
-import Analysis from './pages/Analysis'
-import DailyReview from './pages/DailyReview'
-import AbnormalCapitalPage from './pages/AbnormalCapitalPage'
-import MarketAttackPage from './pages/MarketAttackPage'
-import SectorFundFlowPage from './pages/SectorFundFlowPage'
-import StockPoolPage from './pages/StockPoolPage'
-import ChipMonitorPage from './pages/ChipMonitorPage'
-import SectorSentimentPage from './pages/SectorSentimentPage'
-import ResearchLabPage from './pages/ResearchLabPage'
-import RAGAnalysisPage from './pages/RAGAnalysisPage'
 import TradePlaybook from './pages/TradePlaybook'
-import MarketTemperaturePage from './pages/MarketTemperaturePage'
+import Trades from './pages/Trades'
 
 const { Sider, Content } = Layout
 
 const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
-  { key: '/rag-analysis', icon: <RobotOutlined />, label: 'AI 投研分析' },
   { key: '/stock-pool', icon: <FireOutlined />, label: '股票池' },
   { key: '/trade-playbook', icon: <ReadOutlined />, label: '规则手册' },
+  { key: '/etf-cockpit', icon: <FundOutlined />, label: 'ETF全景' },
   { key: '/market-temperature', icon: <FireOutlined />, label: '市场温度' },
   { key: '/daily-review', icon: <CalendarOutlined />, label: '每日复盘' },
   { key: '/trades', icon: <UnorderedListOutlined />, label: '交易列表' },
@@ -46,10 +47,11 @@ const menuItems = [
   { key: '/abnormal-capital', icon: <ThunderboltOutlined />, label: '异动资金' },
   { key: '/chip-monitor', icon: <AimOutlined />, label: '筹码监控' },
   { key: '/sector-sentiment', icon: <DashboardOutlined />, label: '板块情绪' },
-  { type: 'divider' },
-  { key: '/research-lab', icon: <CodeOutlined />, label: 'SQL研究中心' },
   { key: '/market-attack', icon: <AimOutlined />, label: '情绪周期' },
   { key: '/sector-fund-flow', icon: <FundOutlined />, label: '资金流向' },
+  { type: 'divider' },
+  { key: '/research-lab', icon: <CodeOutlined />, label: 'SQL研究中心' },
+  { key: '/rag-analysis', icon: <RobotOutlined />, label: 'AI 投研分析' },
   { key: '/analysis', icon: <BarChartOutlined />, label: '分析中心' },
 ]
 
@@ -84,6 +86,7 @@ function App() {
           top: 0,
           bottom: 0,
           zIndex: 100,
+          overflowY: 'auto',
         }}
       >
         <div
@@ -127,9 +130,10 @@ function App() {
             <Route path="/trades/:id" element={<TradeDetail />} />
             <Route path="/trades/:id/edit" element={<TradeForm />} />
             <Route path="/abnormal-capital" element={<AbnormalCapitalPage />} />
-        <Route path="/chip-monitor" element={<ChipMonitorPage />} />
-        <Route path="/sector-sentiment" element={<SectorSentimentPage key={`sector-sentiment-${tick}`} />} />
-        <Route path="/research-lab" element={<ResearchLabPage />} />
+            <Route path="/chip-monitor" element={<ChipMonitorPage />} />
+            <Route path="/sector-sentiment" element={<SectorSentimentPage key={`sector-sentiment-${tick}`} />} />
+            <Route path="/etf-cockpit" element={<EtfCockpitPage key={`etf-cockpit-${tick}`} />} />
+            <Route path="/research-lab" element={<ResearchLabPage />} />
             <Route path="/market-attack" element={<MarketAttackPage />} />
             <Route path="/sector-fund-flow" element={<SectorFundFlowPage />} />
             <Route path="/stock-pool" element={<StockPoolPage key={`stock-pool-${tick}`} />} />

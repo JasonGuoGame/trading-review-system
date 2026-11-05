@@ -1670,11 +1670,163 @@ function CardLoading() {
   return <Spin style={{ display: 'block', margin: '24px auto' }} />
 }
 
+// ============================================================
+// 板块综合评分构成说明（帮助弹窗）
+// ============================================================
+
+function ScoringTable({ data, valueTitle = '满分' }) {
+  const columns = [
+    { title: '评分项目', dataIndex: 'item', key: 'item', width: 150 },
+    { title: valueTitle, dataIndex: 'max', key: 'max', width: 110, align: 'center', render: (v) => <b style={{ color: '#faad14' }}>{v}</b> },
+    { title: '计算规则', dataIndex: 'rule', key: 'rule' },
+  ]
+  return <Table dataSource={data} columns={columns} rowKey="item" size="small" pagination={false} />
+}
+
+function ScoreHelpModal({ open, onClose }) {
+  const dimensions = [
+    { icon: '💰', name: '资金得分', score: '30分', color: '#ff7875', desc: '资金流入规模、流入比例、净流入状态' },
+    { icon: '💎', name: '赚钱效应得分', score: '30分', color: '#ffd666', desc: '上涨股票比例、涨停数量、炸板情况' },
+    { icon: '👑', name: '龙头强度得分', score: '20分', color: '#b37feb', desc: '成交额前五股票表现、涨停数量、成交额集中度' },
+    { icon: '⚔️', name: '攻击得分', score: '10分', color: '#ff9c6e', desc: '板块内进入市场攻击日志的股票数量' },
+    { icon: '🔁', name: '持续性得分', score: '10分', color: '#5cdbd3', desc: '前一交易日板块排名情况' },
+  ]
+
+  return (
+    <Modal
+      title={<span><QuestionCircleOutlined style={{ marginRight: 8, color: '#1677ff' }} /> 板块综合评分构成说明（满分 100 分）</span>}
+      open={open}
+      onCancel={onClose}
+      footer={null}
+      width={940}
+      styles={{ body: { maxHeight: '72vh', overflowY: 'auto', paddingTop: 4 } }}
+    >
+      {/* 五大维度总览 */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {dimensions.map((d) => (
+          <div
+            key={d.name}
+            style={{
+              flex: '1 1 160px', minWidth: 150,
+              background: 'rgba(255,255,255,0.03)', border: '1px solid #21262d',
+              borderRadius: 8, padding: '12px 10px', textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 22 }}>{d.icon}</div>
+            <div style={{ fontWeight: 700, color: '#e6e6e6', margin: '6px 0 2px', fontSize: 13 }}>{d.name}</div>
+            <div style={{ color: d.color, fontWeight: 700, fontSize: 16 }}>{d.score}</div>
+            <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 4, lineHeight: 1.5 }}>{d.desc}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 16, textAlign: 'center' }}>
+        100 分 = 资金 30 + 赚钱效应 30 + 龙头强度 20 + 攻击 10 + 持续性 10
+      </div>
+
+      <Alert
+        type="warning"
+        showIcon
+        message="⚠️ 实际计算与注释存在偏差"
+        description={
+          <span>
+            代码注释标注合计 100 分，但赚钱效应得分实际最高可达 <b>35 分</b>（上涨比例 20 + 涨停 10 + 炸板 5），
+            因此当前理论最高总分是 <b>105 分</b>，而非 100 分。另：<code>persistence_7d</code> 与 <code>is_leader</code> 是后续单独计算的指标，不直接参与 <code>total_score</code>。
+          </span>
+        }
+        style={{ marginBottom: 20 }}
+      />
+
+      {/* 1. 资金得分 */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#e6e6e6', marginBottom: 8 }}>
+          1. 资金得分 <span style={{ color: '#ff7875' }}>30 分</span>
+        </div>
+        <ScoringTable data={[
+          { item: '净流入金额', max: 15, rule: '净流入金额 × 1.5，最高 15 分' },
+          { item: '净流入比例', max: 10, rule: '净流入比例 × 1，最高 10 分' },
+          { item: '正向流入奖励', max: 5, rule: '净流入金额大于 0 得 5 分' },
+        ]} />
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 6, lineHeight: 1.6 }}>
+          💡 理解：既看资金流入的绝对规模，也看流入比例。净流入金额为负时，前两项得 0，正向流入奖励也没有。
+        </div>
+      </div>
+
+      {/* 2. 赚钱效应得分 */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#e6e6e6', marginBottom: 8 }}>
+          2. 赚钱效应得分 <span style={{ color: '#ffd666' }}>30 分（实际最高 35 分）</span>
+        </div>
+        <ScoringTable data={[
+          { item: '上涨股票比例', max: 20, rule: '上涨股票数 / 板块股票数 × 20' },
+          { item: '涨停数量', max: 10, rule: '每只涨停股票 2 分，最高 10 分' },
+          { item: '炸板情况', max: 5, rule: '5 × (1 - 炸板率)' },
+        ]} />
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 6, lineHeight: 1.6 }}>
+          ⚠️ 注意：实际最高可达 <b>35 分</b>（上涨比例 20 + 涨停 10 + 炸板 5），而非注释标注的 30 分。
+          炸板率 = 触及涨停但收盘未封板数量 / 触及涨停数量，因此炸板越少，得分越高。
+        </div>
+      </div>
+
+      {/* 3. 龙头强度得分 */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#e6e6e6', marginBottom: 8 }}>
+          3. 龙头强度得分 <span style={{ color: '#b37feb' }}>20 分</span>
+        </div>
+        <ScoringTable valueTitle="分值" data={[
+          { item: '核心股表现', max: '0 / 3 / 5', rule: '成交额前五股票平均涨幅 ≥0 得 3 分；≥3% 或 ≥5% 得 5 分；负数得 0' },
+          { item: '涨停数量', max: '0 / 6 / 10', rule: '涨停数 ≥10 得 6 分；≥20 得 10 分' },
+          { item: '成交额集中度', max: '1 / 3 / 5', rule: '前五成交额占板块总成交额 ≥15% 得 3 分；≥30% 得 5 分；否则 1 分' },
+        ]} />
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 6, lineHeight: 1.6 }}>
+          💡 注意：核心股平均涨幅达到 3% 和 5% 都是 5 分，并没有进一步加分。
+        </div>
+      </div>
+
+      {/* 4. 攻击得分 */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#e6e6e6', marginBottom: 8 }}>
+          4. 攻击得分 <span style={{ color: '#ff9c6e' }}>10 分</span>
+        </div>
+        <div style={{ background: '#141414', border: '1px solid #333', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
+          <code style={{ color: '#ff9c6e', fontSize: 13 }}>
+            attack_s = min(unique_group['symbol'].isin(attack_symbols).sum(), 10)
+          </code>
+        </div>
+        <div style={{ fontSize: 12, color: '#c9d1d9', lineHeight: 1.7 }}>
+          板块中有多少只股票出现在 <code>stk_market_attack_log</code> 当天的攻击日志中，就得多少分，最高 10 分。例如：
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <Tag color="orange">3 只攻击股 → 3 分</Tag>
+          <Tag color="orange">7 只攻击股 → 7 分</Tag>
+          <Tag color="red">12 只攻击股 → 10 分</Tag>
+        </div>
+      </div>
+
+      {/* 5. 持续性得分 */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#e6e6e6', marginBottom: 8 }}>
+          5. 持续性得分 <span style={{ color: '#5cdbd3' }}>10 分</span>
+        </div>
+        <ScoringTable valueTitle="得分" data={[
+          { item: '第 1 名', max: 10, rule: '前一交易日板块排名第 1 名' },
+          { item: '第 2–3 名', max: 8, rule: '前一交易日板块排名第 2–3 名' },
+          { item: '第 4 名及以后', max: 6, rule: '前一交易日板块排名第 4 名及以后' },
+          { item: '没有历史排名', max: 5, rule: '没有前一交易日的排名记录' },
+        ]} />
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 6, lineHeight: 1.6 }}>
+          ⚠️ 注意：它不是连续几天排名靠前的评分，而只是根据<b>前一交易日</b>的排名给分。
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export default function SectorSentimentPage() {
   const { data: latestDate } = useGetSectorSentimentLatestDateQuery()
   const [selectedDate, setSelectedDate] = useState(null)
   const queryDate = selectedDate || latestDate || undefined
   const [driftTarget, setDriftTarget] = useState(null)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   // Each feature is loaded by its own API and rendered as soon as its data
   // arrives — no single slow endpoint blocks the whole page.
@@ -1732,6 +1884,15 @@ export default function SectorSentimentPage() {
           <span style={{ fontSize: 12, color: '#8c8c8c' }}>
             <TrophyOutlined style={{ color: '#faad14' }} /> 大兵团: {concentration.length}个
           </span>
+          <Button
+            size="small"
+            type="text"
+            icon={<QuestionCircleOutlined />}
+            onClick={() => setHelpOpen(true)}
+            title="查看板块综合评分构成"
+          >
+            帮助
+          </Button>
         </div>
       </div>
 
@@ -1777,7 +1938,21 @@ export default function SectorSentimentPage() {
                     { title: '#', dataIndex: 'rank_pos', key: 'rank_pos', width: 40, align: 'center', render: (r) => <Tag color="purple">{r}</Tag> },
                     { title: '板块', dataIndex: 'sector_name', key: 'sector_name', render: (name) => <DriftLink onClick={() => setDriftTarget({ sector_name: name, source: 'sector_score' })}>{name}</DriftLink> },
                     { title: '龙头', dataIndex: 'top_stock', key: 'top_stock', width: 100, render: (v) => <span style={{ color: '#b37feb' }}>{v || '--'}</span> },
-                    { title: '总分', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v) => v?.toFixed(1) },
+                    { title: '总分', dataIndex: 'score', key: 'score', width: 60, align: 'right', render: (v, record) => (
+                      <Tooltip
+                        title={
+                          <div style={{ lineHeight: 1.9 }}>
+                            <div>💰 资金得分：<b>{record.money_score?.toFixed(1) ?? '--'}</b> / 30</div>
+                            <div>💎 赚钱效应得分：<b>{record.profit_score?.toFixed(1) ?? '--'}</b> / 30</div>
+                            <div>👑 龙头强度得分：<b>{record.leader_score?.toFixed(1) ?? '--'}</b> / 20</div>
+                            <div>⚔️ 攻击得分：<b>{record.attack_score?.toFixed(1) ?? '--'}</b> / 10</div>
+                            <div>🔁 持续性得分：<b>{record.continuity_score?.toFixed(1) ?? '--'}</b> / 10</div>
+                          </div>
+                        }
+                      >
+                        <span style={{ cursor: 'help' }}>{v?.toFixed(1)}</span>
+                      </Tooltip>
+                    ) },
                     { title: '平均涨跌', dataIndex: 'avg_pct_change', key: 'avg_pct_change', width: 74, align: 'right', render: (v) => <span style={{ color: v >= 0 ? '#ff4d4f' : '#52c41a', fontWeight: 500 }}>{v > 0 ? '+' : ''}{v?.toFixed(2)}%</span> },
                   ]}
                 />
@@ -2015,6 +2190,9 @@ export default function SectorSentimentPage() {
         tradeDate={queryDate}
         onClose={() => setDriftTarget(null)}
       />
+
+      {/* 板块综合评分构成说明 */}
+      <ScoreHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   )
 }

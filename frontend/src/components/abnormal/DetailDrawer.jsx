@@ -9,6 +9,11 @@ export default function DetailDrawer({ visible, data, onClose }) {
 
   if (!data) return null
 
+  // Parse abnormal_types (comma-separated accumulated capital behaviors)
+  const abnormalTypes = data.abnormal_types
+    ? String(data.abnormal_types).split(',').map(s => s.trim()).filter(Boolean)
+    : []
+
   // Parse surge_times logic (could be "09:45,10:12" or JSON)
   let timesList = []
   if (data.surge_times) {
@@ -74,11 +79,20 @@ export default function DetailDrawer({ visible, data, onClose }) {
         </Descriptions.Item>
       </Descriptions>
 
-      <Title level={5}>资金行为</Title>
-      <div style={{ marginBottom: 24 }}>
-        <Tag color="magenta">持续脉冲上涨</Tag>
-        {data.vol_ratio > 3 && <Tag color="red">主力爆量</Tag>}
-      </div>
+      <Title level={5}>当日累计资金行为</Title>
+      {abnormalTypes.length > 0 ? (
+        <Timeline mode="left" style={{ marginBottom: 24 }}>
+          {abnormalTypes.map((t, i) => (
+            <Timeline.Item key={i} color={i === abnormalTypes.length - 1 ? 'red' : 'magenta'}>
+              {t}
+            </Timeline.Item>
+          ))}
+        </Timeline>
+      ) : (
+        <div style={{ marginBottom: 24 }}>
+          <Text type="secondary">无资金行为记录</Text>
+        </div>
+      )}
 
       <Title level={5}>操作建议</Title>
       <div style={{ marginBottom: 24 }}>

@@ -38,7 +38,7 @@ const SectorDetailDrawer = ({ visible, sectorName, isRetreat, tradeDate, onClose
       title: '今日成交',
       dataIndex: 'amount_today',
       key: 'amount_today',
-      render: (val) => <Text style={{ color: '#faad14', fontWeight: 'bold' }}>{(val || 0).toFixed(2)} 亿</Text>,
+      render: (val) => <Text style={{ color: '#faad14', fontWeight: 'bold' }}>{((val || 0) / 1e8).toFixed(2)} 亿</Text>,
     },
     {
       title: '较昨日增量',
@@ -48,7 +48,7 @@ const SectorDetailDrawer = ({ visible, sectorName, isRetreat, tradeDate, onClose
         const v = val || 0
         return (
           <Text style={{ color: v > 0 ? '#cf1322' : '#3f8600' }}>
-            {v > 0 ? '+' : ''}{v.toFixed(2)} 亿
+            {v > 0 ? '+' : ''}{(v / 1e8).toFixed(2)} 亿
           </Text>
         )
       },

@@ -32,6 +32,45 @@ func (r *MarketAttackRepository) GetSectorStocks(date, sectorName string) ([]mod
 	return logs, err
 }
 
+// KlineAmountRow carries a stock's trading amount for the requested date and the
+// previous trading day, sourced from quant_db.stk_daily_kline (the source of truth
+// for turnover — the log table's amount_* columns are not reliable).
+type KlineAmountRow struct {
+	Symbol          string  `gorm:"column:symbol"`
+	AmountToday     float64 `gorm:"column:amount_today"`
+	AmountYesterday float64 `gorm:"column:amount_yesterday"`
+}
+
+// GetSectorStockAmounts returns today/yesterday trading amounts for a sector's
+// stocks on the given trade date, read from quant_db.stk_daily_kline.
+func (r *MarketAttackRepository) GetSectorStockAmounts(date, sectorName string) (map[string]KlineAmountRow, error) {
+	sql := `
+		SELECT l.symbol,
+			COALESCE(k.amount, 0) AS amount_today,
+			COALESCE(prev.amount, 0) AS amount_yesterday
+		FROM stk_market_attack_log l
+		LEFT JOIN quant_db.stk_daily_kline k
+			ON k.symbol COLLATE utf8mb4_unicode_ci = l.symbol COLLATE utf8mb4_unicode_ci
+		   AND k.trade_date = l.trade_date
+		LEFT JOIN quant_db.stk_daily_kline prev
+			ON prev.symbol COLLATE utf8mb4_unicode_ci = l.symbol COLLATE utf8mb4_unicode_ci
+		   AND prev.trade_date = (
+				SELECT MAX(trade_date) FROM quant_db.stk_daily_kline WHERE trade_date < ?
+		   )
+		WHERE l.trade_date = ?
+		  AND l.sector_name = ?
+	`
+	var rows []KlineAmountRow
+	if err := r.db.Raw(sql, date, date, sectorName).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[string]KlineAmountRow, len(rows))
+	for _, row := range rows {
+		result[row.Symbol] = row
+	}
+	return result, nil
+}
+
 // TopVolumeRow is a raw scan row for the top-volume query.
 type TopVolumeRow struct {
 	Symbol       string  `gorm:"column:symbol"`

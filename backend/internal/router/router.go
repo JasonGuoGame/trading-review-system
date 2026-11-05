@@ -194,6 +194,19 @@ func Setup(handlers *handler.Handlers, mw *middleware.Middleware) *gin.Engine {
 		researchLab.GET("/history", handlers.ResearchSql.ListHistory)
 		researchLab.DELETE("/history", handlers.ResearchSql.ClearHistory)
 	}
+
+	// ETF Cockpit
+	etf := api.Group("/etf")
+	{
+		etf.GET("/meta", handlers.Etf.GetMeta)
+		etf.GET("/overview", handlers.Etf.GetOverview)
+		etf.GET("/broad-trend", handlers.Etf.GetBroadTrend)
+		etf.GET("/industries", handlers.Etf.GetIndustries)
+		etf.GET("/industry-etfs", handlers.Etf.GetIndustryEtfs)
+		etf.GET("/rotation", handlers.Etf.GetRotation)
+		etf.GET("/ranking", handlers.Etf.GetRanking)
+		etf.GET("/detail", handlers.Etf.GetDetail)
+	}
 }
 
 return r

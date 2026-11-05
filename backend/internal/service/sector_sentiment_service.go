@@ -358,7 +358,18 @@ func (s *SectorSentimentService) GetTopSectors(tradeDate string) ([]dto.TopSecto
 
 	topScoresDTO := make([]dto.TopSectorItem, len(topScores))
 	for i, r := range topScores {
-		topScoresDTO[i] = dto.TopSectorItem{SectorName: r.SectorName, RankPos: r.RankPos, Score: r.Score, TopStock: topStockMap[r.SectorName], AvgPctChange: r.AvgPctChange}
+		topScoresDTO[i] = dto.TopSectorItem{
+			SectorName:      r.SectorName,
+			RankPos:         r.RankPos,
+			Score:           r.Score,
+			TopStock:        topStockMap[r.SectorName],
+			AvgPctChange:    r.AvgPctChange,
+			MoneyScore:      r.MoneyScore,
+			ProfitScore:     r.ProfitScore,
+			LeaderScore:     r.LeaderScore,
+			AttackScore:     r.AttackScore,
+			ContinuityScore: r.ContinuityScore,
+		}
 	}
 	topBreadthsDTO := make([]dto.TopSectorItem, len(topBreadths))
 	for i, r := range topBreadths {

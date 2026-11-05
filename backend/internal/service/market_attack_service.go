@@ -223,17 +223,32 @@ func (s *MarketAttackService) GetSectorDetail(date, sectorName string) (*dto.Sec
 		return nil, err
 	}
 
+	// Turnover amounts are sourced from quant_db.stk_daily_kline; the log table's
+	// amount_today/amount_yesterday columns are unreliable (tiny placeholder values).
+	amountMap, err := s.repo.GetSectorStockAmounts(date, sectorName)
+	if err != nil {
+		log.Printf("[market-attack] GetSectorStockAmounts error: %v", err)
+		amountMap = make(map[string]repository.KlineAmountRow)
+	}
+
 	var stocks []dto.AttackStockDetail
 	var leaderIndex int = -1
 	var maxPctChg float64 = -999.0
 
 	for i, log := range logs {
+		amountToday := log.AmountToday
+		amountYesterday := log.AmountYesterday
+		if amt, ok := amountMap[log.Symbol]; ok {
+			amountToday = amt.AmountToday
+			amountYesterday = amt.AmountYesterday
+		}
+
 		stocks = append(stocks, dto.AttackStockDetail{
 			Symbol:          log.Symbol,
 			Name:            log.Name,
-			AmountYesterday: log.AmountYesterday,
-			AmountToday:     log.AmountToday,
-			AmountDiff:      log.AmountToday - log.AmountYesterday,
+			AmountYesterday: amountYesterday,
+			AmountToday:     amountToday,
+			AmountDiff:      amountToday - amountYesterday,
 			PctChg:          log.PctChg,
 			ClosePos:        log.ClosePos,
 			ActionType:      log.ActionType,

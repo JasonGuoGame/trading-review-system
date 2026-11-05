@@ -689,6 +689,40 @@ export const apiSlice = createApi({
       query: (days = 30) => ({ url: `/research-lab/history?days=${days}`, method: 'DELETE' }),
       invalidatesTags: ['ResearchLabHistory'],
     }),
+
+    // === ETF Cockpit ===
+    getEtfMeta: builder.query({
+      query: () => '/etf/meta',
+      transformResponse: (res) => res.data,
+    }),
+    getEtfOverview: builder.query({
+      query: (params) => ({ url: '/etf/overview', params }),
+      transformResponse: (res) => res.data,
+    }),
+    getEtfBroadTrend: builder.query({
+      query: (params) => ({ url: '/etf/broad-trend', params }),
+      transformResponse: (res) => res.data,
+    }),
+    getEtfIndustries: builder.query({
+      query: (params) => ({ url: '/etf/industries', params }),
+      transformResponse: (res) => res.data,
+    }),
+    getEtfIndustryEtfs: builder.query({
+      query: (params) => ({ url: '/etf/industry-etfs', params }),
+      transformResponse: (res) => res.data,
+    }),
+    getEtfRotation: builder.query({
+      query: (params) => ({ url: '/etf/rotation', params }),
+      transformResponse: (res) => res.data,
+    }),
+    getEtfRanking: builder.query({
+      query: (params) => ({ url: '/etf/ranking', params }),
+      transformResponse: (res) => res.data,
+    }),
+    getEtfDetail: builder.query({
+      query: (params) => ({ url: '/etf/detail', params }),
+      transformResponse: (res) => res.data,
+    }),
   }),
 })
 
@@ -796,4 +830,12 @@ export const {
   useAnalyzeRagMutation,
   useGetRagHotTopicsQuery,
   useGetRagAuthorsQuery,
+  useGetEtfMetaQuery,
+  useGetEtfOverviewQuery,
+  useGetEtfBroadTrendQuery,
+  useGetEtfIndustriesQuery,
+  useGetEtfIndustryEtfsQuery,
+  useGetEtfRotationQuery,
+  useGetEtfRankingQuery,
+  useGetEtfDetailQuery,
 } = apiSlice

@@ -27,6 +27,7 @@ type Services struct {
 	ResearchSql     *ResearchSqlService
 	SectorSentiment *SectorSentimentService
 	MarketTemperature *MarketTemperatureService
+	Etf               *EtfService
 	Rag             *RagService
 }
 
@@ -51,6 +52,7 @@ func NewServices(repos *repository.Repositories, cfg *config.Config, db *gorm.DB
 		ResearchSql:     NewResearchSqlService(repos.ResearchSql),
 		SectorSentiment: NewSectorSentimentService(repos.SectorSentiment),
 		MarketTemperature: NewMarketTemperatureService(repos.MarketTemperature),
+		Etf:               NewEtfService(repos.Etf),
 		Rag:             NewRagService(cfg, db),
 	}
 }

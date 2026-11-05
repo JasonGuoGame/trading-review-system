@@ -23,6 +23,7 @@ type Handlers struct {
 	ResearchSql      *ResearchSqlHandler
 	SectorSentiment  *SectorSentimentHandler
 	MarketTemperature *MarketTemperatureHandler
+	Etf               *EtfHandler
 	Rag              *RagHandler
 }
 
@@ -48,6 +49,7 @@ func NewHandlers(services *service.Services) *Handlers {
 		ResearchSql:     NewResearchSqlHandler(services.ResearchSql),
 		SectorSentiment: NewSectorSentimentHandler(services.SectorSentiment),
 		MarketTemperature: NewMarketTemperatureHandler(services.MarketTemperature),
+		Etf:               NewEtfHandler(services.Etf),
 		Rag:             NewRagHandler(services.Rag),
 	}
 }
